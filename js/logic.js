@@ -288,6 +288,61 @@ export function lineTokens(line) {
   return tokens;
 }
 
+function verseBlocks(segmented) {
+  const blocks = [];
+  for (const line of String(segmented || "").split("\n")) {
+    if (!line.trim()) continue;
+    blocks.push(...tokenBlocks(line));
+  }
+  return blocks;
+}
+
+/** Selectable words in reading order. joinNext is true when the next word is in the same verse with no punctuation between. */
+export function passageSlots(passage, segmented) {
+  if (segmentMode(passage, segmented) !== "tokens") return [];
+  const slots = [];
+  for (const block of verseBlocks(segmented)) {
+    let previous = -1;
+    block.tokens.forEach((token, index) => {
+      if (token.kind !== "word") return;
+      const text = token.text.trim();
+      if (!isSelectableWord(text)) return;
+      if (previous >= 0) slots[slots.length - 1].joinNext = index === previous + 1;
+      slots.push({ text, joinNext: false });
+      previous = index;
+    });
+  }
+  return slots;
+}
+
+function findWordRun(slots, word, used) {
+  for (let start = 0; start < slots.length; start += 1) {
+    if (used[start]) continue;
+    let text = "";
+    for (let end = start; end < slots.length; end += 1) {
+      if (used[end]) break;
+      text += slots[end].text;
+      if (text === word) return [start, end];
+      if (!word.startsWith(text) || !slots[end].joinNext) break;
+    }
+  }
+  return null;
+}
+
+function bindWordSlots(words, slots) {
+  const owners = new Array(slots.length).fill(null);
+  const used = new Array(slots.length).fill(false);
+  for (const word of normalizeWords(words)) {
+    const run = findWordRun(slots, word, used);
+    if (!run) continue;
+    for (let index = run[0]; index <= run[1]; index += 1) {
+      used[index] = true;
+      owners[index] = word;
+    }
+  }
+  return owners;
+}
+
 export function normalizeWords(words) {
   if (!Array.isArray(words)) return [];
   const list = [];
@@ -317,10 +372,42 @@ export function addWord(words, raw) {
   return { words: [...list, clean], limited: false };
 }
 
-export function toggleWord(words, raw) {
+export function toggleWord(words, raw, options = {}) {
   const list = normalizeWords(words);
   const clean = String(raw || "").trim();
   if (!clean || !isSelectableWord(clean)) return { words: list, limited: false };
+  const slots = Array.isArray(options.slots) ? options.slots : null;
+  const slotIndex = Number(options.slotIndex);
+  const slotted =
+    slots &&
+    Number.isInteger(slotIndex) &&
+    slotIndex >= 0 &&
+    slotIndex < slots.length &&
+    slots[slotIndex]?.text === clean;
+  if (slotted) {
+    const owners = bindWordSlots(list, slots);
+    const current = owners[slotIndex];
+    if (current) return { words: list.filter((word) => word !== current), limited: false };
+    const left = slotIndex > 0 && slots[slotIndex - 1].joinNext ? owners[slotIndex - 1] : null;
+    const right = slots[slotIndex].joinNext ? owners[slotIndex + 1] : null;
+    if (!left && !right && list.length >= WORD_LIMIT) return { words: list, limited: true };
+    const merged = `${left || ""}${clean}${right || ""}`;
+    const remove = new Set([left, right].filter(Boolean));
+    const next = [];
+    let placed = false;
+    for (const word of list) {
+      if (remove.has(word)) {
+        if (!placed) {
+          next.push(merged);
+          placed = true;
+        }
+        continue;
+      }
+      next.push(word);
+    }
+    if (!placed) next.push(merged);
+    return { words: normalizeWords(next), limited: false };
+  }
   const index = list.indexOf(clean);
   if (index >= 0) return { words: list.filter((_, item) => item !== index), limited: false };
   if (list.length >= WORD_LIMIT) return { words: list, limited: true };
@@ -391,10 +478,10 @@ function tokenPunct(text) {
   return text ? `<span class="token-punct">${esc(text)}</span>` : "";
 }
 
-function tokenButton(token, selected, prefix = "", suffix = "") {
+function tokenButton(token, on, prefix = "", suffix = "", slotIndex = -1) {
   const value = token.text.trim();
-  const on = selected.has(value);
-  const button = `<span role="button" tabindex="0" class="token${on ? " is-on" : ""}" data-action="toggle-word" data-word="${esc(value)}" aria-pressed="${on ? "true" : "false"}">${esc(token.text)}</span>`;
+  const slot = slotIndex >= 0 ? ` data-slot="${slotIndex}"` : "";
+  const button = `<span role="button" tabindex="0" class="token${on ? " is-on" : ""}" data-action="toggle-word" data-word="${esc(value)}"${slot} aria-pressed="${on ? "true" : "false"}">${esc(token.text)}</span>`;
   if (!prefix && !suffix) return button;
   return `<span class="token-glue">${tokenPunct(prefix)}${button}${tokenPunct(suffix)}</span>`;
 }
@@ -404,8 +491,13 @@ function versePrefix(n) {
   return `<span class="sr-only">${esc(verseSpoken(n))}。</span><sup class="vnum">${esc(n)}</sup>`;
 }
 
-function atomsHtml(tokens, selected) {
+function atomsHtml(tokens, owners, slotState) {
   let html = "";
+  const mark = () => {
+    const slotIndex = slotState.index;
+    slotState.index += 1;
+    return { on: owners[slotIndex] != null, slotIndex };
+  };
   for (let cursor = 0; cursor < tokens.length; cursor += 1) {
     const token = tokens[cursor];
     if (token.kind === "verse") {
@@ -425,7 +517,8 @@ function atomsHtml(tokens, selected) {
           suffix += tokens[look].text;
           look += 1;
         }
-        html += tokenButton(next, selected, token.text, suffix);
+        const selected = mark();
+        html += tokenButton(next, selected.on, token.text, suffix, selected.slotIndex);
         cursor = look - 1;
         continue;
       }
@@ -438,7 +531,8 @@ function atomsHtml(tokens, selected) {
       suffix += tokens[look].text;
       look += 1;
     }
-    html += tokenButton(token, selected, "", suffix);
+    const selected = mark();
+    html += tokenButton(token, selected.on, "", suffix, selected.slotIndex);
     cursor = look - 1;
   }
   return html;
@@ -471,7 +565,9 @@ export function passageHtml(text, segmented = "", words = []) {
   const parts = [];
   let previous = null;
   if (tokens) {
-    const selected = new Set(normalizeWords(words));
+    const slots = passageSlots(source, segmented);
+    const owners = bindWordSlots(words, slots);
+    const slotState = { index: 0 };
     for (const line of String(segmented).split("\n")) {
       if (!line.trim()) continue;
       for (const block of tokenBlocks(line)) {
@@ -479,7 +575,7 @@ export function passageHtml(text, segmented = "", words = []) {
           parts.push(`<p class="verse-gap">${esc(ui.passage.skip)}</p>`);
         }
         if (block.key) previous = block.key;
-        parts.push(`<p class="verse">${block.prefix}${atomsHtml(block.tokens, selected)}</p>`);
+        parts.push(`<p class="verse">${block.prefix}${atomsHtml(block.tokens, owners, slotState)}</p>`);
       }
     }
   } else {

@@ -15,9 +15,11 @@ import {
   fillPrayerFrame,
   flowSteps,
   formatMarkedWords,
+  normalizeWords,
   hongKongDate,
   nextStepId,
   passageHtml,
+  passageSlots,
   prayerFrameHtml,
   segmentMode,
   toggleWord,
@@ -218,6 +220,80 @@ assert.equal(toggleWord([], "，").words.length, 0);
 assert.equal(toggleWord([], "2").words.length, 0);
 assert.deepEqual(toggleWord([], "看哪").words, ["看哪"]);
 assert.deepEqual(toggleWord([], "主上帝").words, ["主上帝"]);
+const chain = [
+  { text: "甲", joinNext: true },
+  { text: "乙", joinNext: true },
+  { text: "丙", joinNext: false },
+];
+let chainWords = toggleWord([], "甲", { slots: chain, slotIndex: 0 }).words;
+chainWords = toggleWord(chainWords, "丙", { slots: chain, slotIndex: 2 }).words;
+assert.deepEqual(chainWords, ["甲", "丙"]);
+chainWords = toggleWord(chainWords, "乙", { slots: chain, slotIndex: 1 }).words;
+assert.deepEqual(chainWords, ["甲乙丙"]);
+assert.deepEqual(toggleWord(chainWords, "乙", { slots: chain, slotIndex: 1 }).words, []);
+assert.deepEqual(toggleWord(["甲乙丙"], "甲", { slots: chain, slotIndex: 0 }).words, []);
+assert.deepEqual(toggleWord(["甲乙丙"], "丙", { slots: chain, slotIndex: 2 }).words, []);
+const punctuated = "1 甲，乙。";
+const punctuatedSlots = passageSlots(punctuated, "1 ｜甲｜，｜乙｜。");
+assert.equal(punctuatedSlots[0].joinNext, false);
+let punctWords = toggleWord([], "甲", { slots: punctuatedSlots, slotIndex: 0 }).words;
+punctWords = toggleWord(punctWords, "乙", { slots: punctuatedSlots, slotIndex: 1 }).words;
+assert.deepEqual(punctWords, ["甲", "乙"]);
+const across = "1 甲乙。\n2 丙。";
+const acrossSlots = passageSlots(across, "1 ｜甲｜乙｜。\n2 ｜丙｜。");
+assert.equal(acrossSlots.map((slot) => slot.text).join(","), "甲,乙,丙");
+assert.equal(acrossSlots[0].joinNext, true);
+assert.equal(acrossSlots[1].joinNext, false);
+let acrossWords = toggleWord([], "乙", { slots: acrossSlots, slotIndex: 1 }).words;
+acrossWords = toggleWord(acrossWords, "丙", { slots: acrossSlots, slotIndex: 2 }).words;
+assert.deepEqual(acrossWords, ["乙", "丙"]);
+const quotaSlots = [
+  { text: "一", joinNext: false },
+  { text: "二", joinNext: false },
+  { text: "三", joinNext: false },
+  { text: "四", joinNext: false },
+  { text: "五", joinNext: true },
+  { text: "六", joinNext: false },
+  { text: "七", joinNext: false },
+];
+let quotaWords = [];
+for (let index = 0; index < 5; index += 1) {
+  quotaWords = toggleWord(quotaWords, quotaSlots[index].text, { slots: quotaSlots, slotIndex: index }).words;
+}
+assert.equal(quotaWords.length, 5);
+const blocked = toggleWord(quotaWords, "七", { slots: quotaSlots, slotIndex: 6 });
+assert.equal(blocked.limited, true);
+assert.deepEqual(blocked.words, quotaWords);
+const mergedAtLimit = toggleWord(quotaWords, "六", { slots: quotaSlots, slotIndex: 5 });
+assert.equal(mergedAtLimit.limited, false);
+assert.deepEqual(mergedAtLimit.words, ["一", "二", "三", "四", "五六"]);
+assert.deepEqual(normalizeWords(["量出", "滿碗"]), ["量出", "滿碗"]);
+assert.equal(formatMarkedWords(["量出", "滿碗"]), "「量出」、「滿碗」");
+assert.equal(formatMarkedWords(["量出滿碗"]), "「量出滿碗」");
+for (const edition of ["shen", "shangdi"]) {
+  const day = plan.days[0];
+  const slots = passageSlots(day.passage[edition], day.segments[edition]);
+  const liang = slots.findIndex((slot) => slot.text === "量出");
+  const bowl = slots.findIndex((slot) => slot.text === "滿碗");
+  assert.equal(slots[liang].joinNext, true);
+  assert.equal(slots[liang + 1].text, "滿碗");
+  let marked = toggleWord([], "量出", { slots, slotIndex: liang }).words;
+  marked = toggleWord(marked, "滿碗", { slots, slotIndex: bowl }).words;
+  assert.deepEqual(marked, ["量出滿碗"]);
+  const html = passageHtml(day.passage[edition], day.segments[edition], marked);
+  assert.match(html, /data-word="量出"[^>]*aria-pressed="true"/);
+  assert.match(html, /data-word="滿碗"[^>]*aria-pressed="true"/);
+  assert.doesNotMatch(html, /aria-pressed="true"[^>]*>[^<]*[！，。？、；：」』]/);
+  const legacy = passageHtml(day.passage[edition], day.segments[edition], ["量出", "滿碗"]);
+  assert.match(legacy, /data-word="量出"[^>]*aria-pressed="true"/);
+  assert.match(legacy, /data-word="滿碗"[^>]*aria-pressed="true"/);
+}
+const uiCopy = JSON.parse(readFileSync(new URL("../ui-strings.json", import.meta.url), "utf8"));
+assert.match(uiCopy.read.tokenHint, /最多 5 處/);
+assert.match(uiCopy.read.selectHint, /最多 5 處/);
+assert.equal(uiCopy.words.limit, "最多選 5 處");
+assert.equal(uiCopy.read.tokenHint.includes("5 個"), false);
+assert.equal(uiCopy.read.selectHint.includes("5 個"), false);
 for (const day of plan.days) {
   for (const edition of ["shen", "shangdi"]) {
     assert.equal(

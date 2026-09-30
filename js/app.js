@@ -24,6 +24,7 @@ import {
   formatMarkedWords,
   normalizeWords,
   passageHtml,
+  passageSlots,
   prayerFrameHtml,
   previousStepId,
   segmentMode,
@@ -981,7 +982,14 @@ function onClick(event) {
     return;
   }
   if (action === "toggle-word" || action === "remove-word") {
-    const result = toggleWord(entry.words, button.dataset.word);
+    const edition = app.state.edition === "shangdi" ? "shangdi" : "shen";
+    const slots = passageSlots(day.passage?.[edition], day.segments?.[edition]);
+    const hasSlot = action === "toggle-word" && button.dataset.slot != null && button.dataset.slot !== "";
+    const result = toggleWord(
+      entry.words,
+      button.dataset.word,
+      hasSlot ? { slots, slotIndex: Number(button.dataset.slot) } : {}
+    );
     entry.words = result.words;
     app.wordHintDay = action === "toggle-word" && result.limited ? day.day : 0;
     saveState(app.state);
