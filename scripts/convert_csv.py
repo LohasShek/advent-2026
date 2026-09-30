@@ -205,7 +205,9 @@ def convert_plan(scripture_path: Path, guide_path: Path) -> dict:
         prompt = pick(emo, "一週感受回顧提示")
         review = None
         if prompt:
-            scope = "season" if "總回顧" in prompt else "week"
+            # 12 月 25 日是整段將臨期回顧。試算表已拿掉「將臨期總回顧」前綴，
+            # 所以第 27 日一律當作全期，其餘有提示的日子是一週回顧。
+            scope = "season" if day_no == "27" or "總回顧" in prompt else "week"
             review = {"scope": scope, "prompt": prompt}
 
         shen = clean_passage(pick(row, "經文全文（神版）", "經文全文(神版)", "經文全文"))

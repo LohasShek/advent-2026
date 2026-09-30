@@ -188,7 +188,7 @@ export function parseGuideCsv(text) {
     }
     const prompt = record["一週感受回顧提示"] || "";
     const review = prompt
-      ? { scope: prompt.includes("總回顧") ? "season" : "week", prompt }
+      ? { scope: day === 27 || prompt.includes("總回顧") ? "season" : "week", prompt }
       : null;
     return {
       day,

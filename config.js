@@ -6,5 +6,5 @@
 window.ADVENT_CONFIG = {
   goatcounter: "",
   churchContact: "歡迎聯絡石守賢傳道",
-  sheetId: "",
+  sheetId: "1KpW6fsjUaHnj17MiKtIjLS7ybe4geqMr-rkPkSqB-DU",
 };

@@ -109,8 +109,8 @@ const idle = await refreshFromSheet({
 assert.equal(idle.fetched, false);
 assert.equal(idle.plan.days[1].title, "願你破天而降");
 
-const titled = scriptureCsv.replace(",願你破天而降,經文,", ",願你破天而降（試算表）,經文,");
-const labeled = feelingsCsv.replace("喜樂,Joyful,興奮,Excited,1", "喜樂,Joyful,興奮試,Excited,1");
+const titled = scriptureCsv.replace('"願你破天而降","經文"', '"願你破天而降（試算表）","經文"');
+const labeled = feelingsCsv.replace('"喜樂","Joyful","興奮","Excited","1"', '"喜樂","Joyful","興奮試","Excited","1"');
 const successFetch = fetchByTab({
   [SHEET_TABS.scripture]: titled,
   [SHEET_TABS.guide]: guideCsv,
@@ -218,7 +218,7 @@ assert.equal(painted.plan.days[0].title, plan.days[0].title);
 const reloaded = loadSheetCache(successStorage);
 assert.equal(reloaded.scripture[1].title, "願你破天而降（試算表）");
 
-assert.match(config, /sheetId:\s*""/);
+assert.match(config, /sheetId:\s*"1KpW6fsjUaHnj17MiKtIjLS7ybe4geqMr-rkPkSqB-DU"/);
 assert.match(pages, /test_sheet\.mjs/);
 assert.match(syncWorkflow, /workflow_dispatch/);
 assert.match(syncWorkflow, /sheet_id/);
