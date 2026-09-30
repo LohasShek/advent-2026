@@ -85,7 +85,7 @@ const SCRIPTURE_KEYS = [
   "segments",
 ];
 
-const GUIDE_KEYS = ["focus", "openingPrayer", "reflect1", "reflect2", "samplePrayer", "review"];
+const GUIDE_KEYS = ["focus", "openingPrayer", "reflect1", "reflect2", "samplePrayer", "review", "experience"];
 
 export class SheetError extends Error {
   constructor(message, code) {
@@ -206,6 +206,7 @@ export function parseGuideCsv(text) {
       reflect2: record["反思二（連繫自己）"],
       samplePrayer: record["示範禱文"],
       review,
+      experience: String(record["小體驗"] || "").trim() || null,
     };
   });
 }

@@ -4,6 +4,12 @@ import ui from "../ui-strings.json" with { type: "json" };
 
 export const TIMEZONE = "Asia/Hong_Kong";
 
+export function editionGuide(text, edition) {
+  const raw = String(text || "").trim();
+  if (!raw || edition !== "shangdi") return raw;
+  return raw.replace(/上帝|神/g, "上帝");
+}
+
 export function fill(template, vars = {}) {
   return String(template ?? "").replace(/\{(\w+)\}/g, (_, key) =>
     vars[key] == null ? "" : String(vars[key])

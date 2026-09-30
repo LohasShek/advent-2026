@@ -10,6 +10,7 @@ import {
   careStreak,
   comparisonNote,
   daysBetween,
+  editionGuide,
   addWord,
   fillPrayerFrame,
   flowSteps,
@@ -234,6 +235,15 @@ const countToken = (edition, word) =>
     (sum, day) => sum + day.segments[edition].split("｜").filter((token) => token === word).length,
     0
   );
+assert.deepEqual(
+  plan.days.filter((day) => day.experience).map((day) => day.day),
+  [4, 11, 17, 26]
+);
+assert.equal(plan.days.filter((day) => !day.experience).length, 23);
+assert.equal(editionGuide(plan.days[16].experience, "shen").includes("帶到神面前"), true);
+assert.equal(editionGuide(plan.days[16].experience, "shangdi").includes("帶到上帝面前"), true);
+assert.equal(editionGuide(plan.days[16].experience, "shangdi").includes("帶到神面前"), false);
+assert.equal(editionGuide("主上帝與神", "shangdi"), "主上帝與上帝");
 assert.equal(countToken("shen", "看哪"), 12);
 assert.equal(countToken("shangdi", "看哪"), 12);
 assert.equal(plan.days.some((day) => day.segments.shen.includes("看｜哪") || day.segments.shangdi.includes("看｜哪")), false);

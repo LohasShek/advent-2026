@@ -695,6 +695,28 @@ input[type="text"], textarea {
 }
 .feel-bit { display: inline-flex; align-items: center; gap: 0.28rem; }
 
+.experience {
+  margin: 0.9rem 0 0.15rem;
+  padding: 0.75rem 0.9rem 0.85rem;
+  background: rgba(201, 184, 220, 0.34);
+  border: 1px solid var(--c-lavender);
+  border-radius: 14px;
+  line-break: strict;
+  word-break: normal;
+}
+
+.experience h3 {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--c-purple);
+}
+
+.experience p {
+  margin: 0;
+}
+
 .care {
   background: rgba(243, 238, 248, 0.94);
   border: 1px solid var(--c-lavender);
