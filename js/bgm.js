@@ -13,8 +13,8 @@
  * iOS 在 speechSynthesis 開始或結束時，可能把正在播的 audio 暫停。
  * 只要開關仍然開著，系統暫停會再 play()，朗讀和音樂可以同時聽。
  *
- * 曲目按讀經週次。預設該週的 a。?week=1..4 強制週次，?bgm=a|b 揀候選，
- * ?bgm=old 播舊的 110bpm。計劃開始前用第一週，結束後用第四週。
+ * 曲目按讀經週次。預設該週的 a。?week=1..4 強制週次，?bgm=a|b 揀候選。
+ * 計劃開始前用第一週，結束後用第四週。
  */
 
 export const BGM_STORAGE_KEY = "advent2026.bgm";
@@ -130,18 +130,6 @@ export const BGM_WEEKS = Object.freeze({
   }),
 });
 
-export const BGM_OLD = track({
-  id: "old",
-  week: 0,
-  slot: "old",
-  src: "./assets/bgm.mp3",
-  title: "Light Piano Retro Loop 110bpm",
-  author: "RokZRooM",
-  source: "https://freesound.org/people/RokZRooM/sounds/345310/",
-  weekLabel: "",
-  theme: "",
-});
-
 export const BGM_SRC = BGM_WEEKS[1].a.src;
 
 let audio = null;
@@ -185,7 +173,6 @@ export function readingWeek(dateIso, days, season) {
 
 export function resolveBgmTrack(search = "", dateIso = "", days = null, season = null) {
   const params = new URLSearchParams(String(search || "").replace(/^\?/, ""));
-  if (params.get("bgm") === "old") return BGM_OLD;
   const forced = Number(params.get("week"));
   const week = forced >= 1 && forced <= 4 ? forced : readingWeek(dateIso, days, season);
   const slot = params.get("bgm") === "b" ? "b" : "a";

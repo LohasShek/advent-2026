@@ -47,6 +47,9 @@ import {
   resumeSpeech,
   stopSpeech,
   speechVoiceStatus,
+  setSpeechRate,
+  speechCursor,
+  splitSentences,
 } from "../js/speech.js";
 import {
   bgmLevel,
@@ -70,8 +73,8 @@ import {
   BGM_FADE,
   BGM_SRC,
   BGM_WEEKS,
-  BGM_OLD,
 } from "../js/bgm.js";
+import { withoutMarkLock } from "../js/storage.js";
 import {
   statsPolicy,
   statsPathWhitelist,
@@ -251,6 +254,7 @@ assert.equal(pickChineseVoice([{ lang: "en-US", name: "Alex" }]), null);
 assert.equal(verseScreenLabel("5", "你以眼淚當食物給他們吃"), "第5節，你以眼淚當食物給他們吃");
 assert.equal(verseScreenLabel("80:5", "你以眼淚"), "第80章5節，你以眼淚");
 const calls = [];
+let last = null;
 const synth = {
   getVoices() {
     return [
@@ -263,11 +267,18 @@ const synth = {
   },
   speak(utter) {
     calls.push(utter.text);
+    last = utter;
     assert.equal(utter.voice.name, "Cantonese");
     utter.onstart?.();
   },
   cancel() {
     calls.push("cancel");
+  },
+  pause() {
+    calls.push("native-pause");
+  },
+  resume() {
+    calls.push("native-resume");
   },
   addEventListener() {},
 };
@@ -275,17 +286,46 @@ assert.equal(initDeviceSpeech(synth), true);
 assert.equal(deviceSpeechSupported(), true);
 assert.equal(speechVoiceStatus(), "ready");
 const spokenLines = passageUtterances("詩篇 80:5", "5 你以眼淚當食物給他們吃。\n6 神使他們。");
-assert.deepEqual(spokenLines, ["詩篇 80:5", "第5節，你以眼淚當食物給他們吃。", "第6節，神使他們。"]);
+assert.deepEqual(spokenLines.map((line) => line.text), ["詩篇 80:5", "第5節，你以眼淚當食物給他們吃。", "第6節，神使他們。"]);
+assert.deepEqual(spokenLines.map((line) => line.verse), ["", "5", "6"]);
+assert.deepEqual(splitSentences("甲。乙！丙？丁；戊"), ["甲。", "乙！", "丙？", "丁；", "戊"]);
+const multi = passageUtterances("以賽亞", "1 甲。乙！");
+assert.deepEqual(multi.map((line) => line.text), ["以賽亞", "第1節，甲。", "乙！"]);
+assert.deepEqual(multi.map((line) => line.verse), ["", "1", "1"]);
 assert.equal(speakPassage(spokenLines), true);
-assert.equal(calls[0], spokenLines[0]);
+assert.equal(calls[0], spokenLines[0].text);
 assert.equal(speechPhase(), "playing");
+assert.equal(speechCursor().index, 0);
+last.onend();
+assert.equal(calls.at(-1), spokenLines[1].text);
+assert.equal(speechCursor().verse, "5");
 pauseSpeech();
 assert.equal(speechPhase(), "paused");
 assert.equal(calls.at(-1), "cancel");
+assert.equal(speechCursor().index, 1);
 resumeSpeech();
 assert.equal(speechPhase(), "playing");
-assert.equal(calls.at(-1), spokenLines[0]);
+assert.equal(calls.at(-1), spokenLines[1].text);
+assert.equal(last.rate, 1);
+setSpeechRate(0.75);
+assert.equal(calls.at(-1), spokenLines[1].text);
+assert.equal(last.rate, 0.75);
+assert.equal(speechCursor().index, 1);
+pauseSpeech();
+setSpeechRate(1.25);
+assert.equal(speechPhase(), "paused");
+assert.equal(calls.at(-1), "cancel");
+resumeSpeech();
+assert.equal(last.text, spokenLines[1].text);
+assert.equal(last.rate, 1.25);
 stopSpeech();
+assert.equal(speechPhase(), "idle");
+assert.equal(speechCursor(), null);
+assert.equal(speakPassage(spokenLines), true);
+assert.equal(calls.at(-1), spokenLines[0].text);
+assert.equal(calls.includes("native-pause"), false);
+assert.equal(calls.includes("native-resume"), false);
+cancelDeviceSpeech();
 assert.equal(speechPhase(), "idle");
 assert.equal(speakDeviceText("主啊"), true);
 cancelDeviceSpeech();
@@ -307,6 +347,9 @@ assert.equal(appSource.includes("new Audio"), false);
 assert.match(speechSource, /粵語/);
 assert.match(speechSource, /voiceschanged/);
 assert.match(speechSource, /engine\.speak\(utter\)/);
+assert.equal(speechSource.includes(".pause("), false);
+assert.equal(speechSource.includes(".resume("), false);
+assert.match(speechSource, /。！？；/);
 assert.match(bgmSource, /new Ctor\(\)/);
 assert.match(bgmSource, /createMediaElementSource/);
 assert.match(bgmSource, /setTargetAtTime/);
@@ -349,13 +392,12 @@ assert.equal(pickTrack("?week=2", "2026-11-29").id, "w2-a");
 assert.equal(pickTrack("?week=2&bgm=b", "2026-11-01").id, "w2-b");
 assert.equal(pickTrack("?week=3&bgm=a", "2026-12-25").week, 3);
 assert.equal(pickTrack("?bgm=b", "2026-12-15").id, "w3-b");
-assert.equal(pickTrack("?bgm=old", "2026-12-24").id, "old");
-assert.equal(pickTrack("?bgm=old", "2026-12-24").src, "./assets/bgm.mp3");
+assert.equal(pickTrack("?bgm=old", "2026-12-24").id, "w4-a");
+assert.equal(pickTrack("?bgm=old", "2026-12-24").src, BGM_WEEKS[4].a.src);
 assert.equal(pickTrack("?bgm=nope", "2026-12-08").slot, "a");
 assert.equal(pickTrack("?week=9", "2026-12-08").week, 2);
 assert.equal(BGM_WEEKS[1].a.title, "Piano Drone Loop");
 assert.equal(BGM_WEEKS[1].b.author, "Boatlanman-");
-assert.equal(BGM_OLD.author, "RokZRooM");
 assert.equal(bgmTrack().id, "w1-a");
 for (const week of [1, 2, 3, 4]) {
   for (const slot of ["a", "b"]) {
@@ -365,7 +407,11 @@ for (const week of [1, 2, 3, 4]) {
     assert.equal(item.licenseName, "CC0 1.0");
   }
 }
-assert.match(credits, /Light Piano Retro Loop 110bpm/);
+assert.equal(credits.includes("Light Piano Retro Loop 110bpm"), false);
+assert.equal(credits.includes("?bgm=old"), false);
+assert.equal(credits.includes("RokZRooM"), false);
+assert.equal(bgmSource.includes("bgm.mp3"), false);
+assert.equal(bgmSource.includes("BGM_OLD"), false);
 assert.match(credits, /http:\/\/creativecommons\.org\/publicdomain\/zero\/1\.0\//);
 assert.match(credits, /CC0/);
 assert.match(credits, /\?bgm=b/);
@@ -650,7 +696,7 @@ selectBgmTrack("?week=2&bgm=b", "2026-11-29", plan.days, plan.season);
 assert.equal(setBgmEnabled(true, armed), true);
 assert.equal(trackAudio.element.src, BGM_WEEKS[2].b.src);
 selectBgmTrack("?bgm=old", "2026-12-06", plan.days, plan.season);
-assert.equal(trackAudio.element.src, BGM_OLD.src);
+assert.equal(trackAudio.element.src, BGM_WEEKS[2].a.src);
 useBgmDrivers({});
 assert.match(passageHtml("1 甲\n2 乙\n7 丙"), /verse-gap">……<\/p>/);
 assert.doesNotMatch(passageHtml("1 甲\n2 乙"), /verse-gap/);
@@ -791,6 +837,13 @@ assert.match(uiCopy.read.selectHint, /最多 5 處/);
 assert.equal(uiCopy.words.limit, "最多選 5 處");
 assert.equal(uiCopy.read.tokenHint.includes("5 個"), false);
 assert.equal(uiCopy.read.selectHint.includes("5 個"), false);
+assert.equal(uiCopy.read.markOn, undefined);
+assert.equal(uiCopy.read.markOff, undefined);
+const bgmCopy = "預設開啟，音量兩成。第一次點按後開始播放。可在頁頂關掉，並會記住。";
+assert.equal(uiCopy.bgm.help, bgmCopy);
+assert.equal(uiCopy.bgm.aboutBody, bgmCopy);
+assert.equal(uiCopy.about.shareHelp.startsWith("預設關閉"), true);
+assert.equal((JSON.stringify(uiCopy.bgm).match(/預設關閉/g) || []).length, 0);
 for (const day of plan.days) {
   for (const edition of ["shen", "shangdi"]) {
     assert.equal(
@@ -970,12 +1023,12 @@ assert.equal(kept[0].from, 1);
 assert.equal(kept[0].to, 2);
 const keptHtml = passageHtml(keptText, keptSegments, keptMark, "shen");
 assert.deepEqual(
-  [...keptHtml.matchAll(/data-word="量出"[^>]*aria-pressed="(true|false)"/g)].map((match) => match[1]),
+  [...keptHtml.matchAll(/role="button"[^>]*data-word="量出"[^>]*aria-pressed="(true|false)"/g)].map((match) => match[1]),
   ["true", "false"]
 );
 const switched = passageHtml(day7.passage.shangdi, day7.segments.shangdi, godWords);
 assert.equal(
-  [...switched.matchAll(/data-word="上帝"[^>]*aria-pressed="(true|false)"/g)].filter((match) => match[1] === "true").length,
+  [...switched.matchAll(/role="button"[^>]*data-word="上帝"[^>]*aria-pressed="(true|false)"/g)].filter((match) => match[1] === "true").length,
   1
 );
 assert.equal(resolveWords(["沒有這個詞"], shenSlots).join(","), "沒有這個詞");
@@ -1081,7 +1134,9 @@ assert.ok(readFileSync(new URL("../ui-strings.json", import.meta.url), "utf8").i
 assert.equal(appSource.includes("匿名分享我今日嘅感受"), false);
 assert.ok(appSource.includes("scriptureCopyright"));
 assert.match(readFileSync(new URL("../.github/workflows/pages.yml", import.meta.url), "utf8"), /deploy-pages/);
-assert.ok(appSource.includes('data-action="toggle-marking"'));
+assert.equal(appSource.includes('data-action="toggle-marking"'), false);
+assert.equal(appSource.includes("markOff"), false);
+assert.equal(appSource.includes("app.marking"), false);
 assert.ok(appSource.includes('data-setting="bgm"'));
 assert.ok(appSource.includes('data-setting="bgm-volume"'));
 assert.ok(appSource.includes("aria-valuetext"));
@@ -1089,19 +1144,28 @@ assert.ok(appSource.includes("bindBgmGesture"));
 assert.ok(appSource.includes("selectBgmTrack"));
 const day1mark = plan.days[0];
 const plainVerse = passageHtml(day1mark.passage.shen, day1mark.segments.shen, [], "shen");
-assert.match(plainVerse, /class="sr-only">第5節，你以/);
-assert.match(plainVerse, /verse-visual" aria-hidden="true"/);
+assert.match(plainVerse, /tabindex="0"/);
+assert.doesNotMatch(plainVerse, /tabindex="-1"/);
+assert.doesNotMatch(plainVerse, /verse-visual" aria-hidden="true"/);
+assert.match(plainVerse, /aria-label="[^"]+，未圈選"/);
+const legacyLocked = withoutMarkLock({ words: ["量出"], locked: true, marking: false, markingLocked: true, wordsLocked: true, markLocked: true, reached: "read" });
+assert.equal(legacyLocked.locked, undefined);
+assert.equal(legacyLocked.marking, undefined);
+assert.equal(legacyLocked.markingLocked, undefined);
+assert.deepEqual(legacyLocked.words, ["量出"]);
+assert.equal(legacyLocked.reached, "read");
 const markSlots = passageSlots(day1mark.passage.shen, day1mark.segments.shen);
 const liangAt = markSlots.findIndex((slot) => slot.text === "量出" && slot.verse === "5");
 let markWords = toggleWord([], "量出", { slots: markSlots, slotIndex: liangAt }).words;
 markWords = toggleWord(markWords, "滿碗", { slots: markSlots, slotIndex: liangAt + 1 }).words;
-const markingHtml = passageHtml(day1mark.passage.shen, day1mark.segments.shen, markWords, "shen", { marking: true });
+const markingHtml = passageHtml(day1mark.passage.shen, day1mark.segments.shen, markWords, "shen", { speakingVerse: "5" });
 assert.match(markingHtml, /aria-label="量出滿碗，已圈選"/);
 assert.match(markingHtml, /aria-label="你，未圈選"/);
-assert.doesNotMatch(markingHtml, /<span class="sr-only">第5節，/);
+assert.match(markingHtml, /class="verse is-speaking" data-verse="5"/);
+assert.doesNotMatch(markingHtml, /data-verse="6"[^>]*is-speaking|is-speaking[^>]*data-verse="6"/);
 const day7speak = plan.days.find((day) => day.day === 7);
-const shenSpeak = passageUtterances(day7speak.reference, day7speak.passage.shen).join("\n");
-const shangdiSpeak = passageUtterances(day7speak.reference, day7speak.passage.shangdi).join("\n");
+const shenSpeak = passageUtterances(day7speak.reference, day7speak.passage.shen).map((line) => line.text).join("\n");
+const shangdiSpeak = passageUtterances(day7speak.reference, day7speak.passage.shangdi).map((line) => line.text).join("\n");
 assert.match(shenSpeak, /神的話/);
 assert.match(shangdiSpeak, /上帝的話/);
 assert.equal(shangdiSpeak.includes("神的話"), false);

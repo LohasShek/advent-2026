@@ -1,7 +1,7 @@
 背景音樂
 
 每週兩首候選，預設播該週的 a。讀經日期（包括 ?asof）決定週次；計劃開始前用第一週，結束後用第四週。
-網址加上 ?week=1、?week=2、?week=3 或 ?week=4 可強制週次。?bgm=b 改播該週的 b，?bgm=a 改回 a。?bgm=old 改播下面的舊曲。
+網址加上 ?week=1、?week=2、?week=3 或 ?week=4 可強制週次。?bgm=b 改播該週的 b，?bgm=a 改回 a。
 
 這些都是符合該週氣氛的輕柔器樂，不是詩歌旋律的錄音。
 來源頁上的人聲詩歌（例如 Mystery Mammal 的 O Come, O Come, Emmanuel 和 Silent Night）雖標 CC0，但 Free Music Archive 標明 Instrumental: No，所以沒有用作讀經背景音樂。
@@ -89,15 +89,6 @@
 授權：CC0 1.0 Universal（公眾領域貢獻）
 授權頁：http://creativecommons.org/publicdomain/zero/1.0/
 長度：約 43 秒。來源頁沒有標 bpm。可循環。
-來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
-
-舊曲（?bgm=old）assets/bgm.mp3
-曲名：Light Piano Retro Loop 110bpm
-作者：RokZRooM
-來源頁：https://freesound.org/people/RokZRooM/sounds/345310/
-授權：CC0 1.0 Universal（公眾領域貢獻）
-授權頁：http://creativecommons.org/publicdomain/zero/1.0/
-長度：約 20 秒，110bpm，可循環。節奏偏快，只留來比較。
 來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
 
 Service worker 不會預先下載這八首。播過的檔案會在第一次成功取得後留在快取。

@@ -773,10 +773,16 @@ export function prayerFrameHtml(text) {
     .join("");
 }
 
-function verseBodyHtml(verse) {
+function verseAttrs(label, speakingVerse) {
+  const on = speakingVerse && String(speakingVerse) === String(label);
+  const verseAttr = label ? ` data-verse="${esc(label)}"` : "";
+  return `<p class="verse${on ? " is-speaking" : ""}"${verseAttr}>`;
+}
+
+function verseBodyHtml(verse, speakingVerse) {
   const label = verseScreenLabel(verse.n, verse.text);
   const num = verse.n ? `<sup class="vnum">${esc(verse.n)}</sup>` : "";
-  return `<p class="verse"><span class="sr-only">${esc(label)}</span><span class="verse-visual" aria-hidden="true">${num}${esc(verse.text)}</span></p>`;
+  return `${verseAttrs(verse.n, speakingVerse)}<span class="sr-only">${esc(label)}</span><span class="verse-visual" aria-hidden="true">${num}${esc(verse.text)}</span></p>`;
 }
 
 function wordSpoken(text, on) {
@@ -830,7 +836,7 @@ function renderRun(run, tab) {
   return `<span class="token-glue">${tokenPunct(run.prefix)}${button}${tokenPunct(run.suffix)}</span>`;
 }
 
-function atomsHtml(tokens, owners, slotState, slots, marking = false) {
+function atomsHtml(tokens, owners, slotState, slots) {
   const items = [];
   const mark = () => {
     const slotIndex = slotState.index;
@@ -885,7 +891,7 @@ function atomsHtml(tokens, owners, slotState, slots, marking = false) {
     pushWord(token, "", suffix);
     cursor = look - 1;
   }
-  const tab = marking ? "0" : "-1";
+  const tab = "0";
   let html = "";
   let run = null;
   const flush = () => {
@@ -900,7 +906,7 @@ function atomsHtml(tokens, owners, slotState, slots, marking = false) {
       continue;
     }
     const prevSlot = run ? run.slotIndexes[run.slotIndexes.length - 1] : -1;
-    const joined = marking && run && run.on && item.on && !item.prefix && slots[prevSlot]?.joinNext;
+    const joined = run && run.on && item.on && !item.prefix && slots[prevSlot]?.joinNext;
     if (joined) {
       run.parts.push(item);
       run.slotIndexes.push(item.slotIndex);
@@ -945,7 +951,7 @@ export function passageHtml(text, segmented = "", words = [], edition = "", opti
   if (!source.trim()) {
     return `<p class="placeholder">${esc(ui.passage.placeholder)}</p>`;
   }
-  const marking = options?.marking === true;
+  const speakingVerse = options?.speakingVerse || "";
   const tokens = segmentMode(source, segmented) === "tokens";
   const parts = [];
   let previous = null;
@@ -960,14 +966,8 @@ export function passageHtml(text, segmented = "", words = [], edition = "", opti
           parts.push(`<p class="verse-gap">${esc(ui.passage.skip)}</p>`);
         }
         if (block.key) previous = block.key;
-        const visual = `${block.prefix}${atomsHtml(block.tokens, owners, slotState, slots, marking)}`;
-        if (marking) parts.push(`<p class="verse">${visual}</p>`);
-        else {
-          const label = verseScreenLabel(block.label, block.tokens.map((token) => token.text).join(""));
-          parts.push(
-            `<p class="verse"><span class="sr-only">${esc(label)}</span><span class="verse-visual" aria-hidden="true">${visual}</span></p>`
-          );
-        }
+        const visual = `${block.prefix}${atomsHtml(block.tokens, owners, slotState, slots)}`;
+        parts.push(`${verseAttrs(block.label, speakingVerse)}${visual}</p>`);
       }
     }
   } else {
@@ -977,7 +977,7 @@ export function passageHtml(text, segmented = "", words = [], edition = "", opti
         parts.push(`<p class="verse-gap">${esc(ui.passage.skip)}</p>`);
       }
       if (key) previous = key;
-      parts.push(verseBodyHtml(verse));
+      parts.push(verseBodyHtml(verse, speakingVerse));
     }
   }
   return `<div class="passage${tokens ? " is-tokens" : " is-selectable"}">${parts.join("")}</div>`;

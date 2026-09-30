@@ -47,7 +47,7 @@ import {
 } from "./storage.js";
 import { initStats, statsEnabled, trackComplete, trackFeelings, trackOpen } from "./stats.js";
 import { applySheetCache, loadSheetCache, refreshFromSheet, saveSheetCache } from "./sheet.js";
-import { initDeviceSpeech, speechVoiceStatus, speechPhase, speechRate, setSpeechRate, speechRates, speakPassage, pauseSpeech, resumeSpeech, stopSpeech, passageUtterances } from "./speech.js";
+import { initDeviceSpeech, speechVoiceStatus, speechPhase, speechRate, setSpeechRate, speechRates, speakPassage, pauseSpeech, resumeSpeech, stopSpeech, passageUtterances, speechCursor } from "./speech.js";
 import { bgmTrack, readBgmEnabled, readBgmVolume, setBgmEnabled, setBgmVolume, selectBgmTrack, bindBgmGesture, duckBgm, restoreBgm } from "./bgm.js";
 import ui from "../ui-strings.json" with { type: "json" };
 
@@ -70,7 +70,6 @@ const app = {
   frameIndex: 0,
   frameDay: 0,
   touchStart: null,
-  marking: false,
   bgmOpen: false,
 };
 
@@ -605,6 +604,13 @@ function renderSpeakBar() {
   </div>`;
 }
 
+function paintSpeakingVerse() {
+  const verse = speechCursor()?.verse || "";
+  for (const node of document.querySelectorAll(".passage .verse")) {
+    node.classList.toggle("is-speaking", Boolean(verse) && node.dataset.verse === verse);
+  }
+}
+
 function renderRead(day) {
   const edition = app.state.edition === "shangdi" ? "shangdi" : "shen";
   const editionLabel = edition === "shangdi" ? ui.read.shangdi : ui.read.shen;
@@ -622,22 +628,17 @@ function renderRead(day) {
     }
   }
   const markHint = mode === "tokens" ? ui.read.tokenHint : ui.read.selectHint;
-  const markButton =
-    mode === "tokens"
-      ? `<button type="button" class="btn ghost" data-action="toggle-marking" aria-pressed="${app.marking ? "true" : "false"}">${esc(app.marking ? ui.read.markOff : ui.read.markOn)}</button>`
-      : "";
   return `<div class="card reading">
     <h2>${esc(ui.read.title)}</h2>
     <p class="hint">${esc(ui.read.hint)}</p>
     <p class="hint" data-live-hint aria-live="polite">${esc(markHint)}</p>
-    ${markButton}
     <div class="segmented" role="group" aria-label="${esc(ui.read.editionLabel)}">
       <button type="button" data-action="set-edition" data-edition="shen" aria-pressed="${edition === "shen" ? "true" : "false"}">${esc(ui.read.shen)}</button>
       <button type="button" data-action="set-edition" data-edition="shangdi" aria-pressed="${edition === "shangdi" ? "true" : "false"}">${esc(ui.read.shangdi)}</button>
     </div>
     ${renderSpeakBar()}
     ${day.focus ? `<p class="focus">${esc(shown(fill(ui.day.focus, { focus: day.focus })))}</p>` : ""}
-    ${passageHtml(text, mode === "tokens" ? segmented : "", entry.words, edition, { marking: mode === "tokens" && app.marking })}
+    ${passageHtml(text, mode === "tokens" ? segmented : "", entry.words, edition, { speakingVerse: speechCursor()?.verse || "" })}
     ${renderWordBar(day, entry, mode)}
     ${scriptureCopyright() ? `<p class="copyright">${esc(scriptureCopyright())}</p>` : ""}
     <button type="button" class="btn" data-action="next">${esc(ui.read.next)}</button>
@@ -1026,6 +1027,7 @@ function render() {
     maybeTrack("home");
   }
 
+  paintSpeakingVerse();
   if (viewChanged) {
     window.scrollTo(0, 0);
     main.focus({ preventScroll: true });
@@ -1118,13 +1120,10 @@ function onClick(event) {
     return;
   }
   if (action === "set-edition") {
+    stopSpeech();
+    restoreBgm();
     app.state.edition = button.dataset.edition === "shangdi" ? "shangdi" : "shen";
     saveState(app.state);
-    rerenderKeepingPlace();
-    return;
-  }
-  if (action === "toggle-marking") {
-    app.marking = !app.marking;
     rerenderKeepingPlace();
     return;
   }
@@ -1138,6 +1137,7 @@ function onClick(event) {
       const lines = passageUtterances(day.reference, day.passage?.[edition] || "");
       speakPassage(lines, {
         onstart: () => duckBgm(),
+        onsentence: () => paintSpeakingVerse(),
         onend: () => {
           restoreBgm();
           rerenderKeepingPlace();
