@@ -94,11 +94,37 @@ for (const hit of counts) {
 }
 assert.equal(paths.some((path) => path.startsWith("feeling")), false, paths.join(", "));
 assert.equal(await page.locator("[data-setting='shareFeelings']").count(), 0);
+const openCount = () => hits.filter((hit) => /\/count\?/.test(hit.url) && new URL(hit.url).searchParams.get("p") === "open").length;
+assert.equal(openCount(), 1);
 
-await page.goto(`${base}/?asof=2026-11-29#/about`, { waitUntil: "domcontentloaded" });
-await page.waitForSelector("article.about h1");
+async function show(hash) {
+  await page.evaluate((next) => {
+    location.hash = next;
+  }, hash);
+  await page.waitForFunction((expected) => {
+    if (expected === "#/") return location.hash.startsWith("#/day/");
+    if (expected.startsWith("#/day/")) {
+      const day = expected.split("/")[2];
+      return location.hash.startsWith(`#/day/${day}/`);
+    }
+    return location.hash === expected;
+  }, hash);
+  await page.waitForSelector("article h1");
+}
+await show("#/plan");
+await show("#/about");
+await show("#/");
+await show("#/day/1/read");
+await page.locator("[data-action='set-edition'][data-edition='shangdi']").click();
+await page.locator("[data-action='set-edition'][data-edition='shen']").click();
+await show("#/day/2/read");
+await show("#/day/8/quiet");
+await show("#/about");
+assert.equal(openCount(), 1, hits.map((hit) => hit.url).join(" "));
+
 const about = await page.locator("article.about").innerText();
-assert.match(about, /我們只計算打開頁面和完成讀經的次數，不會收集或儲存你的個人資料。/);
+assert.doesNotMatch(about, /次數/);
+assert.match(about, /開啟後只會匿名送出日序、感受代號和強度。/);
 const share = page.locator("[data-setting='shareFeelings']");
 assert.equal(await share.isChecked(), false);
 const more = hits.filter((hit) => /\/count\?/.test(hit.url)).map((hit) => new URL(hit.url).searchParams.get("p"));

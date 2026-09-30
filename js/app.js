@@ -45,7 +45,7 @@ import {
   loadState,
   saveState,
 } from "./storage.js";
-import { initStats, statsEnabled, trackComplete, trackFeelings, trackOpen } from "./stats.js";
+import { initStats, trackComplete, trackFeelings, trackOpen } from "./stats.js";
 import { applySheetCache, loadSheetCache, refreshFromSheet, saveSheetCache } from "./sheet.js";
 import { initDeviceSpeech, speechVoiceStatus, speechPhase, speechRate, setSpeechRate, speechRates, speakPassage, pauseSpeech, resumeSpeech, stopSpeech, passageUtterances, speechCursor } from "./speech.js";
 import { bgmTrack, readBgmEnabled, readBgmVolume, setBgmEnabled, setBgmVolume, selectBgmTrack, bindBgmGesture, duckBgm, restoreBgm } from "./bgm.js";
@@ -524,8 +524,12 @@ function bgmStatusLabel() {
 
 function bgmToggle() {
   const on = readBgmEnabled();
+  const name = fill(ui.bgm.status, {
+    state: on ? ui.bgm.stateOn : ui.bgm.stateOff,
+    percent: String(bgmPercent()),
+  });
   return `<label class="toggle">
-    <input type="checkbox" data-setting="bgm" ${on ? "checked" : ""}>
+    <input type="checkbox" data-setting="bgm" aria-label="${esc(name)}" ${on ? "checked" : ""}>
     <span class="switch" aria-hidden="true"></span>
     <span>
       <strong>${esc(on ? ui.bgm.stateOn : ui.bgm.stateOff)}</strong>
@@ -541,7 +545,7 @@ function bgmCreditLine() {
     : "";
   return `<p class="bgm-credit">${week}${esc(fill(ui.bgm.creditLine, { title: credit.title, author: credit.author }))}
     <a href="${esc(credit.source)}" target="_blank" rel="noopener noreferrer">${esc(ui.bgm.sourceLink)}</a>
-    <a href="${esc(credit.license)}" target="_blank" rel="noopener noreferrer">${esc(ui.bgm.licenseLink)}</a>
+    <a href="${esc(credit.license)}" target="_blank" rel="noopener noreferrer">${esc(credit.licenseLabel || ui.bgm.licenseLink)}</a>
   </p>`;
 }
 
@@ -569,12 +573,16 @@ function bgmHeaderHtml() {
     </div>`;
 }
 
-function paintBgmHeader() {
+function paintBgmHeader(options = {}) {
   const root = document.getElementById("bgm-control");
   if (!root) return;
-  const restoreFocus = Boolean(document.activeElement?.closest?.("[data-action='bgm-panel']"));
+  const active = document.activeElement;
+  const mode = options.focus
+    || (active?.matches?.("[data-setting='bgm']") ? "toggle" : "")
+    || (active?.closest?.("[data-action='bgm-panel']") ? "speaker" : "");
   root.innerHTML = bgmHeaderHtml();
-  if (restoreFocus) root.querySelector("[data-action='bgm-panel']")?.focus();
+  if (mode === "toggle") root.querySelector("[data-setting='bgm']")?.focus();
+  if (mode === "speaker") root.querySelector("[data-action='bgm-panel']")?.focus();
 }
 
 function renderSpeakBar() {
@@ -857,7 +865,6 @@ function renderAbout(today) {
   const edition = app.state.edition === "shangdi" ? "shangdi" : "shen";
   const share = app.state.shareFeelings === true;
   const contact = activeChurchContact();
-  const stats = !statsEnabled() ? `<p>${esc(ui.about.statsOff)}</p>` : `<p>${esc(ui.about.statsOn)}</p>`;
   const careContact = contact ? (contact.endsWith("。") ? contact : `${contact}。`) : "";
   setTitle(ui.about.title);
   delete main.dataset.day;
@@ -886,7 +893,6 @@ function renderAbout(today) {
     </div>
     <div class="card">
       <h2>${esc(ui.about.statsTitle)}</h2>
-      ${stats}
       <label class="toggle">
         <input type="checkbox" data-setting="shareFeelings" ${share ? "checked" : ""}>
         <span class="switch" aria-hidden="true"></span>
@@ -905,7 +911,7 @@ function renderAbout(today) {
         <div><dt>${esc(ui.bgm.titleLabel)}</dt><dd>${esc(bgmTrack().title)}</dd></div>
         <div><dt>${esc(ui.bgm.authorLabel)}</dt><dd>${esc(bgmTrack().author)}</dd></div>
         <div><dt>${esc(ui.bgm.sourceLink)}</dt><dd><a href="${esc(bgmTrack().source)}" target="_blank" rel="noopener noreferrer">${esc(bgmTrack().source)}</a></dd></div>
-        <div><dt>${esc(ui.bgm.licenseLink)}</dt><dd><a href="${esc(bgmTrack().license)}" target="_blank" rel="noopener noreferrer">${esc(bgmTrack().licenseName)}</a></dd></div>
+        <div><dt>${esc(bgmTrack().licenseLabel || ui.bgm.licenseLink)}</dt><dd><a href="${esc(bgmTrack().license)}" target="_blank" rel="noopener noreferrer">${esc(bgmTrack().licenseName)}</a></dd></div>
       </dl>
       ${bgmCreditLine()}
     </div>
@@ -1187,6 +1193,7 @@ function onClick(event) {
     }
     saveState(app.state);
     render();
+    main.querySelector("[data-action='pick-feeling']")?.focus();
     return;
   }
   if (action === "pick-feeling") {
@@ -1195,14 +1202,17 @@ function onClick(event) {
     draft.feelingOrder = Number(button.dataset.order);
     saveState(app.state);
     render();
+    main.querySelector("[data-action='pick-intensity']")?.focus();
     return;
   }
   if (action === "pick-intensity") {
     captureFields();
     const draft = ensureDraft(entry, main.dataset.step === "after" ? "after" : "before");
-    draft.intensity = Number(button.dataset.level);
+    const level = button.dataset.level;
+    draft.intensity = Number(level);
     saveState(app.state);
     render();
+    main.querySelector(`[data-action='pick-intensity'][data-level='${level}']`)?.focus();
     return;
   }
   if (action === "save-before" || action === "save-after") {
@@ -1408,7 +1418,13 @@ async function mainInit() {
     const bgm = event.target.closest?.("[data-setting='bgm']");
     if (!bgm) return;
     setBgmEnabled(bgm.checked === true);
-    paintBgmHeader();
+    paintBgmHeader({ focus: "toggle" });
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || !app.bgmOpen) return;
+    event.preventDefault();
+    app.bgmOpen = false;
+    paintBgmHeader({ focus: "speaker" });
   });
   document.addEventListener("input", (event) => {
     const range = event.target.closest?.("[data-setting='bgm-volume']");

@@ -355,9 +355,10 @@ assert.match(bgmSource, /createMediaElementSource/);
 assert.match(bgmSource, /setTargetAtTime/);
 assert.match(bgmSource, /crossOrigin = "anonymous"/);
 assert.match(bgmSource, /webkitAudioContext/);
-assert.match(bgmSource, /pointerdown/);
+assert.match(bgmSource, /addEventListener\("pointerup"/);
 assert.match(bgmSource, /keydown/);
 assert.match(bgmSource, /touchend/);
+assert.doesNotMatch(bgmSource, /addEventListener\("pointerdown"/);
 assert.equal(BGM_DEFAULT_VOLUME, 0.2);
 assert.equal(BGM_DUCK_RATIO, 0.25);
 assert.equal(bgmLevel(true), 0.05);
@@ -391,24 +392,35 @@ assert.equal(pickTrack("?bgm=b", "2026-11-29").id, "w1-b");
 assert.equal(pickTrack("?week=2", "2026-11-29").id, "w2-a");
 assert.equal(pickTrack("?week=2&bgm=b", "2026-11-01").id, "w2-b");
 assert.equal(pickTrack("?week=3&bgm=a", "2026-12-25").week, 3);
-assert.equal(pickTrack("?bgm=b", "2026-12-15").id, "w3-b");
-assert.equal(pickTrack("?bgm=old", "2026-12-24").id, "w4-a");
+assert.equal(pickTrack("?bgm=b", "2026-12-15").id, "w3-a");
+assert.equal(pickTrack("?bgm=b", "2026-12-15").src, BGM_WEEKS[3].a.src);
+assert.equal(pickTrack("?bgm=b", "2026-12-24").id, "w4");
+assert.equal(pickTrack("?bgm=old", "2026-12-24").id, "w4");
 assert.equal(pickTrack("?bgm=old", "2026-12-24").src, BGM_WEEKS[4].a.src);
 assert.equal(pickTrack("?bgm=nope", "2026-12-08").slot, "a");
 assert.equal(pickTrack("?week=9", "2026-12-08").week, 2);
-assert.equal(BGM_WEEKS[1].a.title, "cello drone.wav");
-assert.equal(BGM_WEEKS[1].b.author, "Beetlemuse");
+assert.equal(BGM_WEEKS[1].a.title, "07 Worms Cathedral organ practice.wav");
+assert.equal(BGM_WEEKS[1].b.title, "Harmonium Drone2");
+assert.equal(BGM_WEEKS[2].a.author, "stixthule");
+assert.equal(BGM_WEEKS[2].b.author, "Jadis0x");
+assert.equal(BGM_WEEKS[3].b, undefined);
+assert.equal(BGM_WEEKS[4].b, undefined);
+assert.equal(BGM_WEEKS[4].a.license, "https://creativecommons.org/licenses/by/3.0/");
+assert.equal(BGM_WEEKS[4].a.licenseName, "CC BY 3.0");
+assert.equal(BGM_WEEKS[4].a.licenseLabel, "CC BY 3.0");
 assert.equal(BGM_WEEKS[1].a.source.includes("869196"), false);
 assert.equal(BGM_WEEKS[1].b.source.includes("818034"), false);
 assert.equal(bgmTrack().id, "w1-a");
 for (const week of [1, 2, 3, 4]) {
   for (const slot of ["a", "b"]) {
     const item = BGM_WEEKS[week][slot];
+    if (!item) continue;
     assert.match(credits, new RegExp(item.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
     assert.match(credits, new RegExp(item.source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-    assert.equal(item.licenseName, "CC0 1.0");
+    assert.equal(item.licenseName, week === 4 ? "CC BY 3.0" : "CC0 1.0");
   }
 }
+assert.equal(credits.includes("已轉換"), false);
 assert.equal(credits.includes("Light Piano Retro Loop 110bpm"), false);
 assert.equal(credits.includes("?bgm=old"), false);
 assert.equal(credits.includes("RokZRooM"), false);
@@ -434,7 +446,11 @@ assert.equal(shownCount(4, "feeling"), UNDER_FIVE);
 assert.equal(shownCount(4, "core"), "4");
 assert.equal(appSource.includes('data-setting="statsOptIn"'), false);
 assert.equal(appSource.includes("statsRequireOptIn"), false);
-assert.match(readFileSync(new URL("../ui-strings.json", import.meta.url), "utf8"), /我們只計算打開頁面和完成讀經的次數，不會收集或儲存你的個人資料。/);
+const uiText = readFileSync(new URL("../ui-strings.json", import.meta.url), "utf8");
+assert.equal(uiText.includes("我們只計算打開頁面和完成讀經的次數"), false);
+assert.equal(uiText.includes("開啟後只會匿名送出日序、感受代號和強度。"), true);
+assert.equal(appSource.includes("ui.about.statsOn"), false);
+assert.equal(appSource.includes("ui.about.statsOff"), false);
 assert.equal(appSource.includes("trackPage"), false);
 assert.equal(appSource.includes("location.pathname"), false);
 assert.equal(appSource.includes("location.href"), false);
@@ -497,7 +513,8 @@ assert.equal(trackComplete(5), false);
 assert.equal(trackFeelings(event, true), false);
 initStats("lohasshek");
 assert.equal(trackOpen("about"), true);
-assert.equal(trackOpen("day", 5), true);
+assert.equal(trackOpen("day", 5), false);
+assert.equal(trackOpen(), false);
 assert.equal(trackFeelings(event, false), false);
 assert.equal(trackFeelings({ ...event, because: "因為我好驚", feelingZh: "孤單", title: "因為我好驚" }, true), true);
 assert.equal(trackComplete(5), true);
@@ -513,10 +530,11 @@ for (const url of sent) assertCountQuery(url);
 assert.equal(new URL(sent[0]).searchParams.get("p"), "open");
 assert.equal(new URL(sent[0]).searchParams.get("t"), "open");
 assert.equal(new URL(sent[0]).searchParams.get("e"), "false");
-assert.equal(new URL(sent[2]).searchParams.get("t"), "feeling");
-assert.equal(new URL(sent[2]).searchParams.get("e"), "true");
-assert.equal(new URL(sent[3]).searchParams.get("p"), "day-5-done");
-assert.equal(new URL(sent[3]).searchParams.get("t"), "day-5-done");
+assert.equal(sent.filter((url) => new URL(url).searchParams.get("p") === "open").length, 1);
+assert.equal(new URL(sent[1]).searchParams.get("t"), "feeling");
+assert.equal(new URL(sent[1]).searchParams.get("e"), "true");
+assert.equal(new URL(sent[2]).searchParams.get("p"), "day-5-done");
+assert.equal(new URL(sent[2]).searchParams.get("t"), "day-5-done");
 assert.doesNotMatch(joined, /asof|week|bgm|because|我好驚|孤單|[?&](r|s|q)=/);
 assert.equal(joined.includes("location"), false);
 const fixed = statsCountUrl("https://lohasshek.goatcounter.com/count", { path: "open", title: "open", event: false }, "abc123");
@@ -565,9 +583,11 @@ function mockAudio() {
 
 function mockContext() {
   const targets = [];
+  const instances = [];
   let constructed = 0;
   function AudioContextMock() {
     constructed += 1;
+    instances.push(this);
     this.state = "suspended";
     this.currentTime = 4;
     this.destination = { kind: "destination" };
@@ -596,7 +616,7 @@ function mockContext() {
       },
     });
   }
-  return { AudioContextMock, targets, count: () => constructed };
+  return { AudioContextMock, targets, instances, count: () => constructed };
 }
 
 const memoryBgm = { store: {}, getItem(key) { return this.store[key] ?? null; }, setItem(key, value) { this.store[key] = String(value); } };
@@ -700,6 +720,30 @@ assert.equal(trackAudio.element.src, BGM_WEEKS[2].b.src);
 selectBgmTrack("?bgm=old", "2026-12-06", plan.days, plan.season);
 assert.equal(trackAudio.element.src, BGM_WEEKS[2].a.src);
 useBgmDrivers({});
+const flaky = mockAudio();
+const flakyGraph = mockContext();
+let rejectPlay = true;
+flaky.element.play = function play() {
+  this.plays += 1;
+  if (rejectPlay) return Promise.reject(new Error("blocked"));
+  this.paused = false;
+  return Promise.resolve();
+};
+useBgmDrivers({ Audio: flaky.AudioMock, AudioContext: flakyGraph.AudioContextMock });
+const flakyStore = { store: {}, getItem(key) { return this.store[key] ?? null; }, setItem(key, value) { this.store[key] = String(value); } };
+const blankTarget = { target: { closest() { return null; } } };
+assert.equal(handleBgmGesture(blankTarget, flakyStore), true);
+assert.equal(flakyGraph.instances[0].resumes >= 1, true);
+assert.equal(flaky.element.paused, true);
+assert.equal(handleBgmGesture(blankTarget, flakyStore), true);
+assert.equal(flaky.element.plays, 2);
+rejectPlay = false;
+assert.equal(handleBgmGesture(blankTarget, flakyStore), true);
+assert.equal(flaky.element.paused, false);
+assert.equal(flaky.element.plays, 3);
+assert.equal(handleBgmGesture(blankTarget, flakyStore), false);
+assert.equal(flaky.element.plays, 3);
+useBgmDrivers({});
 assert.match(passageHtml("1 甲\n2 乙\n7 丙"), /verse-gap">……<\/p>/);
 assert.doesNotMatch(passageHtml("1 甲\n2 乙"), /verse-gap/);
 assert.match(passageHtml("3:4 甲\n4:5 乙"), /verse-gap/);
@@ -715,16 +759,16 @@ assert.match(tokenHtml, /data-word="殘幹"[^>]*aria-pressed="true"/);
 assert.match(tokenHtml, /class="token is-on is-run-start is-run-end"[^>]*data-word="殘幹"/);
 assert.doesNotMatch(tokenHtml, /role="button"[^>]*>1<\/span>/);
 const glued = passageHtml("1 側耳而聽！他說，「嫩枝」。", "1 側耳而｜聽｜！｜他｜說｜，｜「｜嫩枝｜」。", ["嫩枝"]);
-assert.match(glued, /class="token-glue"><span role="button"[^>]*data-word="聽"[^>]*>聽<\/span><span class="token-punct">！<\/span>/);
-assert.match(glued, /class="token-glue"><span role="button"[^>]*data-word="說"[^>]*>說<\/span><span class="token-punct">，<\/span>/);
+assert.match(glued, /class="token-glue"><span class="token"[^>]*data-word="聽"[^>]*>聽<\/span><span class="token-punct">！<\/span>/);
+assert.match(glued, /class="token-glue"><span class="token"[^>]*data-word="說"[^>]*>說<\/span><span class="token-punct">，<\/span>/);
 assert.match(
   glued,
-  /class="token-glue"><span class="token-punct">「<\/span><span role="button"[^>]*data-word="嫩枝"[^>]*aria-pressed="true"[^>]*>嫩枝<\/span><span class="token-punct">」。<\/span>/
+  /class="token-glue"><span class="token-punct">「<\/span><span class="token is-on[^"]*"[^>]*data-word="嫩枝"[^>]*>嫩枝<\/span><span class="token-punct">」。<\/span>/
 );
 assert.doesNotMatch(glued, /aria-pressed="true"[^>]*>[^<]*[！，。？、；：」』]/);
 assert.doesNotMatch(glued, /data-word="聽"[^>]*>聽！/);
 const inlineVerse = passageHtml("來！2 在以法蓮", "來｜！2 ｜在｜以法蓮", []);
-assert.match(inlineVerse, /class="token-glue"><span role="button"[^>]*data-word="來"[^>]*>來<\/span><span class="token-punct">！<\/span>/);
+assert.match(inlineVerse, /class="token-glue"><span class="token"[^>]*data-word="來"[^>]*>來<\/span><span class="token-punct">！<\/span>/);
 assert.match(inlineVerse, /<sup class="vnum">2<\/sup>/);
 assert.doesNotMatch(inlineVerse, /data-word="2"/);
 assert.doesNotMatch(inlineVerse, /data-word="！"/);
@@ -844,7 +888,9 @@ assert.equal(uiCopy.read.markOff, undefined);
 const bgmCopy = "預設開啟，音量兩成。第一次點按後開始播放。可在頁頂關掉，並會記住。";
 assert.equal(uiCopy.bgm.help, bgmCopy);
 assert.equal(uiCopy.bgm.aboutBody, bgmCopy);
-assert.equal(uiCopy.about.shareHelp.startsWith("預設關閉"), true);
+assert.equal(uiCopy.about.shareHelp, "開啟後只會匿名送出日序、感受代號和強度。");
+assert.equal(uiCopy.about.statsOn, undefined);
+assert.equal(uiCopy.about.statsOff, undefined);
 assert.equal((JSON.stringify(uiCopy.bgm).match(/預設關閉/g) || []).length, 0);
 for (const day of plan.days) {
   for (const edition of ["shen", "shangdi"]) {
@@ -1025,12 +1071,12 @@ assert.equal(kept[0].from, 1);
 assert.equal(kept[0].to, 2);
 const keptHtml = passageHtml(keptText, keptSegments, keptMark, "shen");
 assert.deepEqual(
-  [...keptHtml.matchAll(/role="button"[^>]*data-word="量出"[^>]*aria-pressed="(true|false)"/g)].map((match) => match[1]),
+  [...keptHtml.matchAll(/data-action="toggle-word"[^>]*data-word="量出"[^>]*aria-pressed="(true|false)"/g)].map((match) => match[1]),
   ["true", "false"]
 );
 const switched = passageHtml(day7.passage.shangdi, day7.segments.shangdi, godWords);
 assert.equal(
-  [...switched.matchAll(/role="button"[^>]*data-word="上帝"[^>]*aria-pressed="(true|false)"/g)].filter((match) => match[1] === "true").length,
+  [...switched.matchAll(/data-action="toggle-word"[^>]*data-word="上帝"[^>]*aria-pressed="(true|false)"/g)].filter((match) => match[1] === "true").length,
   1
 );
 assert.equal(resolveWords(["沒有這個詞"], shenSlots).join(","), "沒有這個詞");
@@ -1143,13 +1189,29 @@ assert.ok(appSource.includes('data-setting="bgm"'));
 assert.ok(appSource.includes('data-setting="bgm-volume"'));
 assert.ok(appSource.includes("aria-valuetext"));
 assert.ok(appSource.includes("bindBgmGesture"));
+assert.ok(appSource.includes('aria-label="${esc(name)}"') || appSource.includes("ui.bgm.status"));
+assert.ok(appSource.includes("Escape"));
+assert.ok(appSource.includes("pick-feeling"));
+assert.ok(appSource.includes("pick-intensity"));
 assert.ok(appSource.includes("selectBgmTrack"));
 const day1mark = plan.days[0];
 const plainVerse = passageHtml(day1mark.passage.shen, day1mark.segments.shen, [], "shen");
-assert.match(plainVerse, /tabindex="0"/);
-assert.doesNotMatch(plainVerse, /tabindex="-1"/);
-assert.doesNotMatch(plainVerse, /verse-visual" aria-hidden="true"/);
-assert.match(plainVerse, /aria-label="[^"]+，未圈選"/);
+const plainTabs = plainVerse.match(/tabindex="0"/g) || [];
+const plainVerses = plainVerse.match(/<p class="verse[\s"]/g) || [];
+assert.equal(plainTabs.length, plainVerses.length);
+assert.match(plainVerse, /class="sr-only">第1節，/);
+assert.doesNotMatch(plainVerse, /aria-label=/);
+assert.match(plainVerse, /verse-visual" aria-hidden="true"/);
+assert.doesNotMatch(plainVerse, /未圈選|已圈選|role="button"/);
+const day19Html = passageHtml(day19.passage.shen, day19.segments.shen, [], "shen");
+const day19Tabs = (day19Html.match(/tabindex="0"/g) || []).length;
+const day19Verses = (day19Html.match(/<p class="verse[\s"]/g) || []).length;
+const day19Words = (day19Html.match(/data-word="/g) || []).length;
+assert.equal(day19Tabs, day19Verses);
+assert.ok(day19Words > day19Tabs);
+assert.doesNotMatch(day19Html, /未圈選/);
+assert.match(day19Html, /class="sr-only">第/);
+assert.doesNotMatch(day19Html, /aria-label=/);
 const legacyLocked = withoutMarkLock({ words: ["量出"], locked: true, marking: false, markingLocked: true, wordsLocked: true, markLocked: true, reached: "read" });
 assert.equal(legacyLocked.locked, undefined);
 assert.equal(legacyLocked.marking, undefined);
@@ -1161,8 +1223,9 @@ const liangAt = markSlots.findIndex((slot) => slot.text === "量出" && slot.ver
 let markWords = toggleWord([], "量出", { slots: markSlots, slotIndex: liangAt }).words;
 markWords = toggleWord(markWords, "滿碗", { slots: markSlots, slotIndex: liangAt + 1 }).words;
 const markingHtml = passageHtml(day1mark.passage.shen, day1mark.segments.shen, markWords, "shen", { speakingVerse: "5" });
-assert.match(markingHtml, /aria-label="量出滿碗，已圈選"/);
-assert.match(markingHtml, /aria-label="你，未圈選"/);
+assert.match(markingHtml, /data-word="量出"/);
+assert.match(markingHtml, /class="token is-on/);
+assert.doesNotMatch(markingHtml, /未圈選|已圈選/);
 assert.match(markingHtml, /class="verse is-speaking" data-verse="5"/);
 assert.doesNotMatch(markingHtml, /data-verse="6"[^>]*is-speaking|is-speaking[^>]*data-verse="6"/);
 const day7speak = plan.days.find((day) => day.day === 7);

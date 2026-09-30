@@ -1,98 +1,79 @@
 背景音樂
 
-每週兩首候選，預設播該週的 a。讀經日期（包括 ?asof）決定週次；計劃開始前用第一週，結束後用第四週。
-網址加上 ?week=1、?week=2、?week=3 或 ?week=4 可強制週次。?bgm=b 改播該週的 b，?bgm=a 改回 a。
+第一、二週各有兩首候選，預設播該週的 a。第三、四週各有一首。讀經日期（包括 ?asof）決定週次；計劃開始前用第一週，結束後用第四週。
+網址加上 ?week=1、?week=2、?week=3 或 ?week=4 可強制週次。?bgm=b 改播該週的 b，?bgm=a 改回 a。第三、四週沒有另一首，?bgm=b 會播回那一首。
 
-這些都是符合該週氣氛的輕柔器樂，不是詩歌旋律的錄音。
+這些都是符合該週氣氛的輕柔器樂。第四週是 Kevin MacLeod 的 Silent Night，授權是 CC BY 3.0，和前面幾首的 CC0 不同。
 來源頁上的人聲詩歌（例如 Mystery Mammal 的 O Come, O Come, Emmanuel 和 Silent Night）雖標 CC0，但 Free Music Archive 標明 Instrumental: No，所以沒有用作讀經背景音樂。
-再次搜尋後，仍然沒有找到可核實為 CC0 的 O Come, O Come, Emmanuel、On Jordan's Bank、尊主頌、Silent Night 或 O Little Town of Bethlehem 純器樂錄音。Freesound 以 CC0 搜尋 Veni Emmanuel 沒有結果。Wikimedia Commons 上美軍 Old Guard Fife and Drum Corps 的演奏屬美國聯邦政府作品，是笛鼓禮儀樂，不是慢而安靜的器樂，因此沒有採用。
-八首是大提琴、管風琴、鋼琴、弦樂或環境音樂。第一週不再使用先前的 Piano Drone Loop 和 Slow Ethereal Piano loop 80bpm。
+再次搜尋後，仍然沒有找到可核實為 CC0 的 O Come, O Come, Emmanuel、On Jordan's Bank、尊主頌或 O Little Town of Bethlehem 純器樂錄音。Freesound 以 CC0 搜尋 Veni Emmanuel 沒有結果。Wikimedia Commons 上美軍 Old Guard Fife and Drum Corps 的演奏屬美國聯邦政府作品，是笛鼓禮儀樂，不是慢而安靜的器樂，因此沒有採用。
 
-授權都在 Freesound 的聲音頁核實：頁面寫「Creative Commons 0」，並連結到 CC0 1.0 授權頁。
-旋律屬公有領域，不代表錄音屬公有領域。這裡採用的是錄音本身的 CC0。
-沒有使用 Pixabay，也沒有使用 CC-BY、CC-BY-SA 或來源不明的音樂。
+CC0 曲目的授權都在 Freesound 的聲音頁核實：頁面寫「Creative Commons 0」，並連結到 CC0 1.0 授權頁。
+旋律屬公有領域，不代表錄音屬公有領域。第一至三週採用的是錄音本身的 CC0。
+沒有使用 Pixabay。第四週的 Silent Night 是明確採用的 CC BY 3.0，其餘不是 CC-BY、CC-BY-SA 或來源不明的音樂。
 
 第一週 a（預設）assets/bgm/w1-a.mp3　「在黑暗中等候」
-曲名：cello drone.wav
-旋律：不是 Veni Emmanuel。低音大提琴的持續音，沒有旋律，也沒有節拍。弓聲慢慢起伏，像等候裡的一聲嘆息，音量平穩，不是一首悲傷的曲子。
-作者：carrieedick
-來源頁：https://freesound.org/people/carrieedick/sounds/465558/
+曲名：07 Worms Cathedral organ practice.wav
+旋律：不是 Veni Emmanuel。沃爾姆斯主教座堂裏的管風琴練習，慢，連續，音區有低音，沒有節拍。
+作者：blaukreuz
+來源頁：https://freesound.org/people/blaukreuz/sounds/131112/
 授權：CC0 1.0 Universal（公眾領域貢獻）
 授權頁：http://creativecommons.org/publicdomain/zero/1.0/
-長度：約 68 秒。來源頁標 1:08.230，沒有標 bpm。
+長度：約 129 秒。來源頁標 2:08.512，沒有標 bpm。開頭和結尾都有聲音，循環沒有靜音段。
 來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
 
 第一週 b　assets/bgm/w1-b.mp3
-曲名：Cathedral Organ
-旋律：不是 Veni Emmanuel。聖堂裡的管風琴和弦，音區偏低，慢，安靜，比持續音多一點光。
-作者：Beetlemuse
-來源頁：https://freesound.org/people/Beetlemuse/sounds/527206/
+曲名：Harmonium Drone2
+旋律：不是 Veni Emmanuel。印度簧風琴的持續音，比同一作者的 Drone1 再低一點，慢，安靜，沒有旋律。
+作者：easy_thunder
+來源頁：https://freesound.org/people/easy_thunder/sounds/264442/
 授權：CC0 1.0 Universal（公眾領域貢獻）
 授權頁：http://creativecommons.org/publicdomain/zero/1.0/
-長度：約 43 秒。來源頁標 0:42.858，沒有標 bpm。
+長度：約 87 秒。來源頁標 1:33.859。錄音結尾有淡出，使用時剪去淡出並做交叉淡入，循環沒有靜音，也沒有硬接。
 來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
 
 第二週 a（預設）assets/bgm/w2-a.mp3　「預備道路」
-曲名：Piano Ambience chord progression 82bpm (sharps keys not quantized, natural)
-旋律：不是 On Jordan's Bank 或 Comfort, Comfort Ye My People。較有進行感的柔和鋼琴，用來配合清醒與期待。
-作者：CVLTIV8R
-來源頁：https://freesound.org/people/CVLTIV8R/sounds/810857/
+曲名：upright_piano_loop_7000924_083bpm.wav
+旋律：不是 On Jordan's Bank 或 Comfort, Comfort Ye My People。直立鋼琴的輕柔循環，和第三週不是同一首，也不是同一位作者。
+作者：stixthule
+來源頁：https://freesound.org/people/stixthule/sounds/593837/
 授權：CC0 1.0 Universal（公眾領域貢獻）
 授權頁：http://creativecommons.org/publicdomain/zero/1.0/
-長度：約 99 秒，曲名標明 82bpm。柔和和弦，混響較多。
+長度：約 69 秒。來源頁標 1:09.397，曲名標明 083bpm。錄音本身可以無縫循環。
 來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
 
 第二週 b　assets/bgm/w2-b.mp3
-曲名：Atmospheric Piano & Violin Music 01
-旋律：不是上述詩歌。鋼琴與小提琴的氣氛音樂。
-作者：Magmi.Soundtracks
-來源頁：https://freesound.org/people/Magmi.Soundtracks/sounds/478255/
+曲名：Calm Ambient Piano Loop
+旋律：不是上述詩歌。簡單的輕柔鋼琴循環。
+作者：Jadis0x
+來源頁：https://freesound.org/people/Jadis0x/sounds/832628/
 授權：CC0 1.0 Universal（公眾領域貢獻）
 授權頁：http://creativecommons.org/publicdomain/zero/1.0/
-長度：約 120 秒。來源頁沒有標 bpm。慢，音量平穩。
+長度：約 84 秒。來源頁標 1:26.399。循環位做了交叉淡入，沒有靜音段。
 來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
 
-第三週 a（預設）assets/bgm/w3-a.mp3　「等候的人」
+第三週 a（預設，只有這一首）assets/bgm/w3-a.mp3　「等候的人」
 曲名：Sleepy Upright Piano Seamless Loop
 旋律：不是尊主頌。直立鋼琴，比前兩週暖一點，仍保持安靜。
 作者：blankie.rest
 來源頁：https://freesound.org/people/blankie.rest/sounds/859607/
 授權：CC0 1.0 Universal（公眾領域貢獻）
 授權頁：http://creativecommons.org/publicdomain/zero/1.0/
-長度：約 116 秒。來源頁沒有標 bpm。可無縫循環，高音較柔。
+長度：約 116 秒。來源頁沒有標 bpm。錄音本身可以無縫循環，開頭和結尾都有聲音。
 來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
 
-第三週 b　assets/bgm/w3-b.mp3
-曲名：peaceful ambient pad
-旋律：不是尊主頌。和弦加上持續音墊。
-作者：jjwoosh
-來源頁：https://freesound.org/people/jjwoosh/sounds/743772/
-授權：CC0 1.0 Universal（公眾領域貢獻）
-授權頁：http://creativecommons.org/publicdomain/zero/1.0/
-長度：約 104 秒。來源頁沒有標 bpm。平靜、沒有明顯節拍。
-來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
+第四週（只有這一首）assets/bgm/w4.mp3　「降生」
+曲名：Silent Night
+旋律：Kevin MacLeod 的 Silent Night，ISRC USUAN1100075。
+作者：Kevin MacLeod（incompetech.com）
+來源頁：https://commons.wikimedia.org/wiki/File:Silent_Night_(ISRC_USUAN1100075).mp3
+授權：CC BY 3.0
+授權頁：https://creativecommons.org/licenses/by/3.0/
+長度：約 123 秒。Commons 上的原裝 MP3 是 5,369,410 bytes、320 kbps、約 131 秒，和 File:Silent Night (Kevin MacLeod) (ISRC USUAN1100075).oga 是同一段錄音。使用時剪去頭尾靜音並做交叉淡入，再把響度對齊其他週，所以網站裏的檔案是 1,974,214 bytes。
+來源頁的類別是 CC-BY-3.0，授權名稱是 Creative Commons Attribution 3.0。
 
-第四週 a（預設）assets/bgm/w4-a.mp3　「降生」
-曲名：SandsShift.wav
-旋律：不是 Silent Night，也不是 O Little Town of Bethlehem。鍵盤與鋼琴拉長的音景，偏聖誕夜的安靜，不快板。
-作者：Bigvegie
-來源頁：https://freesound.org/people/Bigvegie/sounds/623859/
-授權：CC0 1.0 Universal（公眾領域貢獻）
-授權頁：http://creativecommons.org/publicdomain/zero/1.0/
-長度：約 143 秒。來源頁沒有標 bpm。合唱效果與鋼琴，很慢。
-來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
+六首播出來的響度都在整合響度約 -29.3 至 -29.8 LUFS。
 
-第四週 b　assets/bgm/w4-b.mp3
-曲名：Piano lullaby
-旋律：不是 Silent Night。像搖籃曲的鋼琴，音量輕。
-作者：ctribolet
-來源頁：https://freesound.org/people/ctribolet/sounds/713537/
-授權：CC0 1.0 Universal（公眾領域貢獻）
-授權頁：http://creativecommons.org/publicdomain/zero/1.0/
-長度：約 43 秒。來源頁沒有標 bpm。可循環。
-來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
-
-Service worker 不會預先下載這八首。播過的檔案會在第一次成功取得後留在快取。
+Service worker 不會預先下載這些音樂。播過的檔案會在第一次成功取得後留在快取。
 
 朗讀使用裝置內建的 Web Speech API（speechSynthesis）。
 不收錄、不產生、不發佈任何朗讀聲檔。

@@ -1,12 +1,13 @@
 /**
  * 背景音樂。沒有存過開關時視為開啟，音量預設 20%。
  * 手機瀏覽器不准自動出聲，所以真正的 play() 要等第一次用家手勢
- * （pointerdown、keydown 或 touchend）。不彈出提示。
+ * （pointerup、keydown 或 touchend）。不彈出提示。
+ * 觸控若 play() 失敗，下一次手勢會再試，直到播得出聲。
  * 用家關掉之後會記住，之後的手勢不再播放。
  *
  * iPhone Safari 的 HTMLMediaElement.volume 是唯讀的，永遠是 1。
  * 音量和朗讀時的降低都走 Web Audio 的 GainNode。
- * AudioContext 只在那一下手勢（或用家按下開關）裡建立並 resume。
+ * AudioContext 只在那一下手勢（或用家按下開關）裏建立並 resume。
  * 沒有 Web Audio 時才退回 audio.volume。
  * 朗讀時增益降到用家音量的四分之一，停止後回到用家音量。
  *
@@ -14,6 +15,7 @@
  * 只要開關仍然開著，系統暫停會再 play()，朗讀和音樂可以同時聽。
  *
  * 曲目按讀經週次。預設該週的 a。?week=1..4 強制週次，?bgm=a|b 揀候選。
+ * 第三、四週只有一首；?bgm=b 會播回那一首。
  * 計劃開始前用第一週，結束後用第四週。
  */
 
@@ -28,8 +30,16 @@ export const BGM_FADE = 0.12;
 const CC0 = "http://creativecommons.org/publicdomain/zero/1.0/";
 
 function track(fields) {
-  return Object.freeze({ license: CC0, licenseName: "CC0 1.0", melody: "", ...fields });
+  return Object.freeze({
+    license: CC0,
+    licenseName: "CC0 1.0",
+    licenseLabel: "CC0 授權",
+    melody: "",
+    ...fields,
+  });
 }
+
+const BY = "https://creativecommons.org/licenses/by/3.0/";
 
 export const BGM_WEEKS = Object.freeze({
   1: Object.freeze({
@@ -38,9 +48,9 @@ export const BGM_WEEKS = Object.freeze({
       week: 1,
       slot: "a",
       src: "./assets/bgm/w1-a.mp3",
-      title: "cello drone.wav",
-      author: "carrieedick",
-      source: "https://freesound.org/people/carrieedick/sounds/465558/",
+      title: "07 Worms Cathedral organ practice.wav",
+      author: "blaukreuz",
+      source: "https://freesound.org/people/blaukreuz/sounds/131112/",
       weekLabel: "第一週",
       theme: "在黑暗中等候",
     }),
@@ -49,9 +59,9 @@ export const BGM_WEEKS = Object.freeze({
       week: 1,
       slot: "b",
       src: "./assets/bgm/w1-b.mp3",
-      title: "Cathedral Organ",
-      author: "Beetlemuse",
-      source: "https://freesound.org/people/Beetlemuse/sounds/527206/",
+      title: "Harmonium Drone2",
+      author: "easy_thunder",
+      source: "https://freesound.org/people/easy_thunder/sounds/264442/",
       weekLabel: "第一週",
       theme: "在黑暗中等候",
     }),
@@ -62,9 +72,9 @@ export const BGM_WEEKS = Object.freeze({
       week: 2,
       slot: "a",
       src: "./assets/bgm/w2-a.mp3",
-      title: "Piano Ambience chord progression 82bpm (sharps keys not quantized, natural)",
-      author: "CVLTIV8R",
-      source: "https://freesound.org/people/CVLTIV8R/sounds/810857/",
+      title: "upright_piano_loop_7000924_083bpm.wav",
+      author: "stixthule",
+      source: "https://freesound.org/people/stixthule/sounds/593837/",
       weekLabel: "第二週",
       theme: "預備道路",
     }),
@@ -73,9 +83,9 @@ export const BGM_WEEKS = Object.freeze({
       week: 2,
       slot: "b",
       src: "./assets/bgm/w2-b.mp3",
-      title: "Atmospheric Piano & Violin Music 01",
-      author: "Magmi.Soundtracks",
-      source: "https://freesound.org/people/Magmi.Soundtracks/sounds/478255/",
+      title: "Calm Ambient Piano Loop",
+      author: "Jadis0x",
+      source: "https://freesound.org/people/Jadis0x/sounds/832628/",
       weekLabel: "第二週",
       theme: "預備道路",
     }),
@@ -92,38 +102,19 @@ export const BGM_WEEKS = Object.freeze({
       weekLabel: "第三週",
       theme: "等候的人",
     }),
-    b: track({
-      id: "w3-b",
-      week: 3,
-      slot: "b",
-      src: "./assets/bgm/w3-b.mp3",
-      title: "peaceful ambient pad",
-      author: "jjwoosh",
-      source: "https://freesound.org/people/jjwoosh/sounds/743772/",
-      weekLabel: "第三週",
-      theme: "等候的人",
-    }),
   }),
   4: Object.freeze({
     a: track({
-      id: "w4-a",
+      id: "w4",
       week: 4,
       slot: "a",
-      src: "./assets/bgm/w4-a.mp3",
-      title: "SandsShift.wav",
-      author: "Bigvegie",
-      source: "https://freesound.org/people/Bigvegie/sounds/623859/",
-      weekLabel: "第四週",
-      theme: "降生",
-    }),
-    b: track({
-      id: "w4-b",
-      week: 4,
-      slot: "b",
-      src: "./assets/bgm/w4-b.mp3",
-      title: "Piano lullaby",
-      author: "ctribolet",
-      source: "https://freesound.org/people/ctribolet/sounds/713537/",
+      src: "./assets/bgm/w4.mp3",
+      title: "Silent Night",
+      author: "Kevin MacLeod",
+      source: "https://commons.wikimedia.org/wiki/File:Silent_Night_(ISRC_USUAN1100075).mp3",
+      license: BY,
+      licenseName: "CC BY 3.0",
+      licenseLabel: "CC BY 3.0",
       weekLabel: "第四週",
       theme: "降生",
     }),
@@ -139,6 +130,7 @@ let ducked = false;
 let wantPlay = false;
 let resuming = false;
 let gestureStarted = false;
+let playGen = 0;
 let audioCtor = null;
 let contextCtor = null;
 let userVolume = BGM_DEFAULT_VOLUME;
@@ -176,7 +168,7 @@ export function resolveBgmTrack(search = "", dateIso = "", days = null, season =
   const forced = Number(params.get("week"));
   const week = forced >= 1 && forced <= 4 ? forced : readingWeek(dateIso, days, season);
   const slot = params.get("bgm") === "b" ? "b" : "a";
-  return BGM_WEEKS[week][slot];
+  return BGM_WEEKS[week][slot] || BGM_WEEKS[week].a;
 }
 
 export function bgmTrack() {
@@ -256,6 +248,7 @@ export function useBgmDrivers(drivers = {}) {
   wantPlay = false;
   resuming = false;
   gestureStarted = false;
+  playGen += 1;
   userVolume = BGM_DEFAULT_VOLUME;
   activeSrc = "";
   reading = { search: "", date: "", days: null, season: null };
@@ -374,20 +367,43 @@ export function setBgmEnabled(on, storage = globalThis.localStorage) {
     return false;
   }
   ensureElement();
-  // This call sits inside the user gesture that may start audio.
+  // play() and AudioContext.resume() stay synchronous inside the gesture.
   openGraph();
-  if (context?.state === "suspended") context.resume?.()?.catch?.(() => {});
+  const resume = context?.resume?.();
+  resume?.catch?.(() => {});
   fadeTo(bgmLevel(ducked));
   wantPlay = true;
-  const pending = audio?.play?.();
-  pending?.catch?.(() => {});
+  const gen = ++playGen;
+  let pending;
+  try {
+    pending = audio?.play?.();
+  } catch {
+    wantPlay = false;
+    gestureStarted = false;
+    return false;
+  }
+  const succeed = () => {
+    if (gen !== playGen) return;
+    gestureStarted = true;
+  };
+  const fail = () => {
+    if (gen !== playGen) return;
+    if (audio?.paused === false) return;
+    gestureStarted = false;
+    wantPlay = false;
+  };
+  if (audio?.paused === false) gestureStarted = true;
+  if (pending && typeof pending.then === "function") pending.then(succeed, fail);
+  else if (audio?.paused === false) gestureStarted = true;
+  else fail();
   return true;
 }
 
 /**
- * First pointerdown / keydown / touchend starts playback when the reader
- * has not turned music off. The switch that is about to turn music off
- * does not count as that start gesture.
+ * pointerup、touchend and keydown start playback when the reader has not
+ * turned music off. play() and AudioContext.resume() run in that handler.
+ * A failed play does not lock the gesture, so the next tap tries again.
+ * The switch that is about to turn music off does not count as that start.
  */
 function gestureToggle(event) {
   const target = event?.target;
@@ -402,7 +418,6 @@ export function handleBgmGesture(event, storage = globalThis.localStorage) {
   if (!readBgmEnabled(storage)) return false;
   const toggle = gestureToggle(event);
   if (toggle?.checked) return false;
-  gestureStarted = true;
   return setBgmEnabled(true, storage);
 }
 
@@ -412,7 +427,7 @@ export function bindBgmGesture(target = globalThis.document) {
   const handler = (event) => {
     handleBgmGesture(event);
   };
-  target.addEventListener("pointerdown", handler, true);
+  target.addEventListener("pointerup", handler, true);
   target.addEventListener("keydown", handler, true);
   target.addEventListener("touchend", handler, true);
 }

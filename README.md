@@ -75,13 +75,13 @@ python3 scripts/convert_csv.py
 打開 `config.js`：
 
 - `goatcounter`：填 GoatCounter 的網站代碼。目前是 `lohasshek`（即 `lohasshek.goatcounter.com`，計數網址 `https://lohasshek.goatcounter.com/count`）。留空代表完全不載入統計、不送出任何數字。若填的是完整網址（以 `https://` 開頭），就會直接用那個計數網址。
-- `churchContact`：關懷提示裏的聯絡句子。執行轉換腳本時，會依詞彙 CSV 的關懷提示覆寫這一行。目前是「歡迎聯絡石守賢傳道」。聯絡句子之後的文字（例如明愛向晴熱線）留在提示裡。畫面上的 18288 是 `tel:18288` 連結。若試算表的關懷提示有另一句聯絡，打開應用程式時以試算表那句為準。
+- `churchContact`：關懷提示裏的聯絡句子。執行轉換腳本時，會依詞彙 CSV 的關懷提示覆寫這一行。目前是「歡迎聯絡石守賢傳道」。聯絡句子之後的文字（例如明愛向晴熱線）留在提示裏。畫面上的 18288 是 `tel:18288` 連結。若試算表的關懷提示有另一句聯絡，打開應用程式時以試算表那句為準。
 - `scriptureCopyright`：畫面上唯一的版權句。關於頁和讀經頁底部都用這一句。
 - `sheetId`：Google 試算表 ID。留空代表不讀試算表。
 
-填了網站代碼之後，打開頁面會自動計一次，事件名稱是 `open`；按下「完成今天的讀經」會自動計一次，事件名稱是 `day-1-done` 至 `day-27-done`。程式直接請求 `https://lohasshek.goatcounter.com/count`，不載入 `count.js`。每個請求只有 `p`、`t`、`e`、`rnd` 四個參數，title 是固定英文（`open`、`day-5-done` 或 `feeling`）。不送 referrer、螢幕闊度或網址上的 query，不用 cookie，也不寫統計用的 localStorage 識別碼。
+填了網站代碼之後，每個瀏覽器分頁載入應用程式時自動計一次，事件名稱是 `open`。這次計數只用記憶體裏的旗標，轉畫面、轉日、轉版本都不會再計，也不寫 localStorage、cookie 或識別碼。按下「完成今天的讀經」會自動計一次，事件名稱是 `day-1-done` 至 `day-27-done`。程式直接請求 `https://lohasshek.goatcounter.com/count`，不載入 `count.js`。每個請求只有 `p`、`t`、`e`、`rnd` 四個參數，title 是固定英文（`open`、`day-5-done` 或 `feeling`）。不送 referrer、螢幕闊度或網址上的 query，不用 cookie，也不寫統計用的 localStorage 識別碼。
 
-「關於」頁有一個預設關閉的開關「匿名分享我今天的感受」。關閉時不會送出任何感受事件。打開並完成當日之後，才會匿名送出該日的感受代號（英文核心、英文細分感受和強度）。不會送出「因為……」、反思、圈選字詞或身分。
+「關於」頁有一個預設關閉的開關「匿名分享我今天的感受」。開關旁邊寫「開啟後只會匿名送出日序、感受代號和強度。」關閉時不會送出任何感受事件。打開並完成當日之後，才匿名送出該日的日序、感受代號和強度。不會送出「因為……」、反思、圈選字詞或身分。
 
 畫面上的介面文字集中在 `ui-strings.json`，用書面中文。經文、禱文和感受詞彙仍來自試算表，不在這份檔案。
 

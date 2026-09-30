@@ -773,20 +773,18 @@ export function prayerFrameHtml(text) {
     .join("");
 }
 
-function verseAttrs(label, speakingVerse) {
+function verseAttrs(label, speakingVerse, screenLabel = "") {
   const on = speakingVerse && String(speakingVerse) === String(label);
   const verseAttr = label ? ` data-verse="${esc(label)}"` : "";
-  return `<p class="verse${on ? " is-speaking" : ""}"${verseAttr}>`;
+  const tab = screenLabel ? ` tabindex="0"` : "";
+  const name = screenLabel ? `<span class="sr-only">${esc(screenLabel)}</span>` : "";
+  return `<p class="verse${on ? " is-speaking" : ""}"${verseAttr}${tab}>${name}`;
 }
 
 function verseBodyHtml(verse, speakingVerse) {
   const label = verseScreenLabel(verse.n, verse.text);
   const num = verse.n ? `<sup class="vnum">${esc(verse.n)}</sup>` : "";
-  return `${verseAttrs(verse.n, speakingVerse)}<span class="sr-only">${esc(label)}</span><span class="verse-visual" aria-hidden="true">${num}${esc(verse.text)}</span></p>`;
-}
-
-function wordSpoken(text, on) {
-  return fill(on ? ui.words.spokenOn : ui.words.spokenOff, { word: text });
+  return `${verseAttrs(verse.n, speakingVerse, label)}<span class="verse-visual" aria-hidden="true">${num}${esc(verse.text)}</span></p>`;
 }
 
 function tokenPunct(text) {
@@ -803,35 +801,33 @@ function tokenFace(slotIndex, slots, owners) {
   return face;
 }
 
-function tokenButton(token, face = "", prefix = "", suffix = "", slotIndex = -1, label = "", tabIndex = "0") {
+function tokenButton(token, face = "", prefix = "", suffix = "", slotIndex = -1) {
   const value = token.text.trim();
   const slot = slotIndex >= 0 ? ` data-slot="${slotIndex}"` : "";
   const on = face.includes("is-on");
-  const spoken = label ? ` aria-label="${esc(label)}"` : "";
-  const button = `<span role="button" tabindex="${tabIndex}" class="token${face ? ` ${face}` : ""}" data-action="toggle-word" data-word="${esc(value)}"${slot} aria-pressed="${on ? "true" : "false"}"${spoken}>${esc(token.text)}</span>`;
+  const button = `<span class="token${face ? ` ${face}` : ""}" data-action="toggle-word" data-word="${esc(value)}"${slot} aria-pressed="${on ? "true" : "false"}">${esc(token.text)}</span>`;
   if (!prefix && !suffix) return button;
   return `<span class="token-glue">${tokenPunct(prefix)}${button}${tokenPunct(suffix)}</span>`;
 }
 
 function versePrefix(n) {
   if (!n) return "";
-  return `<span class="sr-only">${esc(verseSpoken(n))}。</span><sup class="vnum">${esc(n)}</sup>`;
+  return `<sup class="vnum">${esc(n)}</sup>`;
 }
 
-function renderRun(run, tab) {
-  const label = wordSpoken(run.text, run.on);
+function renderRun(run) {
   if (run.parts.length === 1) {
     const part = run.parts[0];
-    return tokenButton({ text: part.raw }, part.face, run.prefix, run.suffix, part.slotIndex, label, tab);
+    return tokenButton({ text: part.raw }, part.face, run.prefix, run.suffix, part.slotIndex);
   }
   const inner = run.parts
     .map(
       (part) =>
-        `<span class="token${part.face ? ` ${part.face}` : ""}" data-word="${esc(part.text)}" aria-pressed="${run.on ? "true" : "false"}" aria-hidden="true">${esc(part.raw)}</span>`
+        `<span class="token${part.face ? ` ${part.face}` : ""}" data-word="${esc(part.text)}" aria-pressed="${run.on ? "true" : "false"}">${esc(part.raw)}</span>`
     )
     .join("");
   const first = run.parts[0];
-  const button = `<span role="button" tabindex="${tab}" class="token-run" data-action="toggle-word" data-word="${esc(first.text)}" data-slot="${first.slotIndex}" aria-pressed="${run.on ? "true" : "false"}" aria-label="${esc(label)}">${inner}</span>`;
+  const button = `<span class="token-run${run.on ? " is-on" : ""}" data-action="toggle-word" data-word="${esc(first.text)}" data-slot="${first.slotIndex}" aria-pressed="${run.on ? "true" : "false"}">${inner}</span>`;
   if (!run.prefix && !run.suffix) return button;
   return `<span class="token-glue">${tokenPunct(run.prefix)}${button}${tokenPunct(run.suffix)}</span>`;
 }
@@ -891,12 +887,11 @@ function atomsHtml(tokens, owners, slotState, slots) {
     pushWord(token, "", suffix);
     cursor = look - 1;
   }
-  const tab = "0";
   let html = "";
   let run = null;
   const flush = () => {
     if (!run) return;
-    html += renderRun(run, tab);
+    html += renderRun(run);
     run = null;
   };
   for (const item of items) {
@@ -966,8 +961,9 @@ export function passageHtml(text, segmented = "", words = [], edition = "", opti
           parts.push(`<p class="verse-gap">${esc(ui.passage.skip)}</p>`);
         }
         if (block.key) previous = block.key;
-        const visual = `${block.prefix}${atomsHtml(block.tokens, owners, slotState, slots)}`;
-        parts.push(`${verseAttrs(block.label, speakingVerse)}${visual}</p>`);
+        const body = block.tokens.map((token) => token.text).join("");
+        const visual = `<span class="verse-visual" aria-hidden="true">${block.prefix}${atomsHtml(block.tokens, owners, slotState, slots)}</span>`;
+        parts.push(`${verseAttrs(block.label, speakingVerse, verseScreenLabel(block.label, body))}${visual}</p>`);
       }
     }
   } else {

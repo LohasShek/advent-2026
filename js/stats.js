@@ -14,6 +14,8 @@ let usageAllowed = false;
 let endpoint = "";
 const queue = [];
 let transport = defaultTransport;
+/** One open hit per document load. A module flag only; nothing is stored on the device. */
+let openCounted = false;
 
 export function statsPolicy({ code }) {
   const site = Boolean(String(code || "").trim());
@@ -108,6 +110,7 @@ export function resetStatsState() {
   endpoint = "";
   queue.length = 0;
   transport = defaultTransport;
+  openCounted = false;
 }
 
 function flush() {
@@ -141,7 +144,10 @@ export function statsEnabled() {
 }
 
 export function trackOpen() {
-  return sendHit("open", false, false);
+  if (openCounted) return false;
+  const sent = sendHit("open", false, false);
+  if (sent) openCounted = true;
+  return sent;
 }
 
 export function trackComplete(dayNumber) {
