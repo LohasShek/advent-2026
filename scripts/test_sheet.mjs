@@ -98,6 +98,11 @@ const sheetPrayers = prayerCsv.replace("字詞觸動", "字詞觸動試");
 
 const parsedGuide = parseGuideCsv(guideCsv);
 assert.equal(parsedGuide[1].openingPrayer, plan.days[1].openingPrayer);
+assert.deepEqual(
+  parsedGuide.filter((day) => day.experience).map((day) => day.day),
+  plan.days.filter((day) => day.experience).map((day) => day.day)
+);
+assert.equal(parsedGuide[3].experience, plan.days[3].experience);
 assert.equal(parsedGuide[7].review.scope, "week");
 assert.equal(parsedGuide[26].review.scope, "season");
 

@@ -9,6 +9,7 @@ import {
   comparisonNote,
   countCores,
   daysBetween,
+  editionGuide,
   esc,
   flowSteps,
   fill,
@@ -28,6 +29,7 @@ import {
   segmentMode,
   toggleWord,
   reviewBounds,
+  reviewIntensity,
   reviewSummary,
   seasonPhase,
   weeksOf,
@@ -374,7 +376,9 @@ function renderComparison(day, entry) {
 function feelBit(pick) {
   if (!pick) return `<span class="muted">${esc(ui.review.notRecorded)}</span>`;
   const color = coreById(pick.coreId)?.color || "#E4DCCF";
-  return `<span class="feel-bit"><i class="dot" style="background:${esc(color)}"></i>${esc(pick.coreZh)} · ${esc(pick.feelingZh)}</span>`;
+  const level = reviewIntensity(pick.intensity);
+  const levelHtml = level ? `<span class="feel-level">${esc(level)}</span>` : "";
+  return `<span class="feel-bit"><i class="dot" style="background:${esc(color)}"></i>${esc(pick.coreZh)} · ${esc(pick.feelingZh)}${levelHtml}</span>`;
 }
 
 function renderBars(counts, label) {
@@ -505,6 +509,15 @@ function renderRead(day) {
   </div>`;
 }
 
+function renderExperience(day) {
+  const text = editionGuide(day.experience, app.state.edition);
+  if (!text) return "";
+  return `<aside class="experience">
+    <h3>${esc(ui.reflect.experienceTitle)}</h3>
+    <p>${esc(text)}</p>
+  </aside>`;
+}
+
 function renderReflect(day) {
   const entry = dayState(app.state, day.day);
   return `<div class="card">
@@ -518,6 +531,7 @@ function renderReflect(day) {
       <span>${esc(day.reflect2)}</span>
       <textarea rows="3" maxlength="2000" autocomplete="off" data-field="reflect2" placeholder="${esc(ui.reflect.placeholder)}">${esc(entry.reflect2 || "")}</textarea>
     </label>
+    ${renderExperience(day)}
     <button type="button" class="btn" data-action="next">${esc(ui.reflect.toAfter)}</button>
   </div>`;
 }

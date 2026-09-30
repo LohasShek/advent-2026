@@ -252,6 +252,7 @@ def convert_plan(scripture_path: Path, guide_path: Path) -> dict:
                 "reflect2": pick(emo, "反思二（連繫自己）"),
                 "samplePrayer": pick(emo, "示範禱文"),
                 "review": review,
+                "experience": pick(emo, "小體驗") or None,
                 "passage": {"shen": shen, "shangdi": shangdi},
                 "segments": {
                     "shen": clean_passage(pick(row, "分詞（神版）", "分詞(神版)")),
