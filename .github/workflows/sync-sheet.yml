@@ -35,6 +35,7 @@ jobs:
         run: |
           node scripts/test_logic.mjs
           node scripts/test_sheet.mjs
+          node scripts/test_ui.mjs
 
       - name: Open a pull request
         uses: peter-evans/create-pull-request@v6

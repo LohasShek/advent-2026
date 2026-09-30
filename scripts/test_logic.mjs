@@ -157,7 +157,8 @@ entry.completed = true;
 assert.equal(activeStepId(reviewDay, entry, "review"), "review");
 
 assert.equal(SCRIPTURE_COPYRIGHT, "經文取自《聖經．和合本修訂版》，香港聖經公會，蒙允准使用。");
-assert.ok(appSource.includes("匿名分享我今日嘅感受"));
+assert.ok(readFileSync(new URL("../ui-strings.json", import.meta.url), "utf8").includes("匿名分享我今天的感受"));
+assert.equal(appSource.includes("匿名分享我今日嘅感受"), false);
 assert.ok(appSource.includes("SCRIPTURE_COPYRIGHT"));
 assert.match(readFileSync(new URL("../.github/workflows/pages.yml", import.meta.url), "utf8"), /deploy-pages/);
 

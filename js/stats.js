@@ -3,7 +3,14 @@
  * Page views and "completed reading" are the only automatic events.
  * Feeling events are sent only after the reader opts in, and only with
  * day number, core id, finer-feeling id, and intensity — never notes.
+ *
+ * Reading those counts back needs a GoatCounter API token. That token is a
+ * credential, so this static site never requests the stats API. The public
+ * dashboard therefore still shows finer-feeling totals below 5.
  */
+
+import ui from "../ui-strings.json" with { type: "json" };
+import { fill } from "./logic.js";
 
 let enabled = false;
 const queue = [];
@@ -59,7 +66,7 @@ export function trackPage(path) {
 export function trackComplete(dayNumber) {
   send({
     path: `complete-reading/${dayNumber}`,
-    title: `完成第${dayNumber}日`,
+    title: fill(ui.stats.completeTitle, { day: dayNumber }),
     event: true,
   });
 }
@@ -68,5 +75,5 @@ export function trackFeelings(payload) {
   if (!payload?.path || payload.path.includes("because") || /[\u3400-\u9fff]/.test(payload.path)) {
     return;
   }
-  send({ path: payload.path, title: "匿名感受", event: true });
+  send({ path: payload.path, title: ui.stats.feelingTitle, event: true });
 }

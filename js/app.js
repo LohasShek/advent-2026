@@ -11,6 +11,7 @@ import {
   daysBetween,
   esc,
   flowSteps,
+  fill,
   formatFullDate,
   formatMonthDay,
   hongKongDate,
@@ -39,6 +40,7 @@ import {
   trackPage,
 } from "./stats.js";
 import { applySheetCache, loadSheetCache, refreshFromSheet, saveSheetCache } from "./sheet.js";
+import ui from "../ui-strings.json" with { type: "json" };
 
 const main = document.querySelector("#app");
 const tabbar = document.querySelector(".tabbar");
@@ -168,7 +170,7 @@ function stopBreath() {
 }
 
 function setTitle(text) {
-  document.title = text ? `${text} · 將臨期情感讀經` : "將臨期情感讀經 2026";
+  document.title = text ? `${text} · ${ui.shell.titleSuffix}` : ui.shell.documentTitle;
 }
 
 function setTab(name) {
@@ -196,7 +198,7 @@ function careBanner(today) {
   if (!text) return "";
   return `<aside class="care">
     <p>${esc(text)}</p>
-    <button type="button" class="btn ghost" data-action="dismiss-care">我知道了，今天先收起</button>
+    <button type="button" class="btn ghost" data-action="dismiss-care">${esc(ui.care.dismiss)}</button>
   </aside>`;
 }
 
@@ -225,7 +227,7 @@ function wheelHtml(selectedId) {
   const svg = holder.querySelector("svg");
   if (!svg) return "";
   svg.setAttribute("role", "group");
-  svg.setAttribute("aria-label", "感受之輪");
+  svg.setAttribute("aria-label", ui.picker.wheelLabel);
   for (const path of svg.querySelectorAll("path[id]")) {
     const core = app.feelings.cores.find((item) => item.segment === path.id);
     if (!core) continue;
@@ -262,13 +264,11 @@ function renderPicker(which, entry) {
   const draft = ensureDraft(entry, which);
   const selected = coreById(draft.coreId);
   const fine = feelingByOrder(selected, draft.feelingOrder);
-  const heading = which === "after" ? "讀經之後，此刻的感受是？" : "讀經之前，你帶着甚麼感受？";
-  const lead = which === "after"
-    ? "再揀一次就好。和剛才不同，或是一樣，都可以。"
-    : "點外面一圈，再揀細一點的感受，然後強度。";
+  const heading = which === "after" ? ui.picker.afterTitle : ui.picker.beforeTitle;
+  const lead = which === "after" ? ui.picker.afterLead : ui.picker.beforeLead;
   const feelings = selected
-    ? `<div class="feeling-list" role="group" aria-label="${esc(selected.zh)}的細分感受">
-        <p class="section-label">細一點，比較像……</p>
+    ? `<div class="feeling-list" role="group" aria-label="${esc(fill(ui.picker.fineLabel, { core: selected.zh }))}">
+        <p class="section-label">${esc(ui.picker.finePrompt)}</p>
         ${selected.feelings
           .map((item) => {
             const on = item.order === Number(draft.feelingOrder);
@@ -278,10 +278,10 @@ function renderPicker(which, entry) {
           })
           .join("")}
       </div>`
-    : `<p class="muted center">先在圓環上點一種核心情緒。</p>`;
+    : `<p class="muted center">${esc(ui.picker.chooseCore)}</p>`;
   const intensity = selected
-    ? `<div class="intensity" role="group" aria-label="強度">
-        <p class="section-label">有幾強烈？</p>
+    ? `<div class="intensity" role="group" aria-label="${esc(ui.picker.intensityLabel)}">
+        <p class="section-label">${esc(ui.picker.intensityPrompt)}</p>
         ${app.feelings.intensities
           .map((item) => {
             const on = Number(draft.intensity) === item.level;
@@ -294,9 +294,9 @@ function renderPicker(which, entry) {
     : "";
   const because = fine && draft.intensity
     ? `<label class="field">
-        <span>因為……（可留空）</span>
-        <input type="text" maxlength="80" autocomplete="off" data-field="because" placeholder="只留一句，也可以不寫" value="${esc(draft.because || "")}">
-        <small>這句話只存在這部裝置，不會被送出。</small>
+        <span>${esc(ui.picker.becauseLabel)}</span>
+        <input type="text" maxlength="80" autocomplete="off" data-field="because" placeholder="${esc(ui.picker.becausePlaceholder)}" value="${esc(draft.because || "")}">
+        <small>${esc(ui.picker.becausePrivate)}</small>
       </label>`
     : "";
   const ready = Boolean(pickFromDraft(draft));
@@ -308,20 +308,20 @@ function renderPicker(which, entry) {
     ${intensity}
     ${because}
     <button type="button" class="btn" data-action="${which === "after" ? "save-after" : "save-before"}" ${ready ? "" : "disabled"}>
-      ${which === "after" ? "並排看看" : "記下感受，去讀經"}
+      ${esc(which === "after" ? ui.picker.saveAfter : ui.picker.saveBefore)}
     </button>
   </div>`;
 }
 
 function renderPickColumn(pick, label) {
   if (!pick) {
-    return `<article class="pick-card"><h3>${esc(label)}</h3><p class="muted">尚未記下</p></article>`;
+    return `<article class="pick-card"><h3>${esc(label)}</h3><p class="muted">${esc(ui.compare.empty)}</p></article>`;
   }
   const core = coreById(pick.coreId);
   const color = core?.color || "#E4DCCF";
   const note = String(pick.because || "").trim();
   const because = note
-    ? `<p class="because">${esc(note.startsWith("因為") ? note : `因為${note}`)}</p>`
+    ? `<p class="because">${esc(note.startsWith(ui.picker.becausePrefix) ? note : `${ui.picker.becausePrefix}${note}`)}</p>`
     : "";
   return `<article class="pick-card">
     <div class="swatch" style="background:${esc(color)}"></div>
@@ -329,7 +329,7 @@ function renderPickColumn(pick, label) {
       <h3>${esc(label)}</h3>
       <p class="core-name">${esc(pick.coreZh)}</p>
       <p class="fine">${esc(pick.feelingZh)}</p>
-      <p class="level"><span class="sr-only">強度 ${esc(intensityLabel(pick.intensity))}</span>${esc(intensityLabel(pick.intensity))} ${dots(pick.intensity)}</p>
+      <p class="level"><span class="sr-only">${esc(fill(ui.picker.intensitySpoken, { label: intensityLabel(pick.intensity) }))}</span>${esc(intensityLabel(pick.intensity))} ${dots(pick.intensity)}</p>
       ${because}
     </div>
   </article>`;
@@ -337,19 +337,19 @@ function renderPickColumn(pick, label) {
 
 function renderComparison(entry) {
   return `<div class="card">
-    <h2>讀經之前，讀經之後</h2>
+    <h2>${esc(ui.compare.title)}</h2>
     <p>${esc(comparisonNote(entry.before, entry.after))}</p>
     <div class="compare">
-      ${renderPickColumn(entry.before, "讀經之前")}
-      ${renderPickColumn(entry.after, "讀經之後")}
+      ${renderPickColumn(entry.before, ui.compare.before)}
+      ${renderPickColumn(entry.after, ui.compare.after)}
     </div>
-    <button type="button" class="btn" data-action="next">去反思</button>
-    <button type="button" class="btn ghost" data-action="redo-after">改一改讀經後的感受</button>
+    <button type="button" class="btn" data-action="next">${esc(ui.compare.next)}</button>
+    <button type="button" class="btn ghost" data-action="redo-after">${esc(ui.compare.redo)}</button>
   </div>`;
 }
 
 function feelBit(pick) {
-  if (!pick) return `<span class="muted">未記</span>`;
+  if (!pick) return `<span class="muted">${esc(ui.review.notRecorded)}</span>`;
   const color = coreById(pick.coreId)?.color || "#E4DCCF";
   return `<span class="feel-bit"><i class="dot" style="background:${esc(color)}"></i>${esc(pick.coreZh)} · ${esc(pick.feelingZh)}</span>`;
 }
@@ -383,20 +383,20 @@ function renderReview(day) {
       </div>`;
     })
     .join("");
-  const title = bounds.scope === "season" ? "將臨期總回顧" : "一週感受回顧";
+  const title = bounds.scope === "season" ? ui.review.seasonTitle : ui.review.weekTitle;
   return `<div class="card review">
     <h2>${title}</h2>
     ${paragraphsHtml(day.review.prompt)}
     <p class="summary">${esc(reviewSummary(countCores(beforePicks), countCores(afterPicks)))}</p>
-    ${renderBars(countCores(beforePicks), "讀經前")}
-    ${renderBars(countCores(afterPicks), "讀經後")}
+    ${renderBars(countCores(beforePicks), ui.review.beforeLabel)}
+    ${renderBars(countCores(afterPicks), ui.review.afterLabel)}
     <div class="rev-list">${rows}</div>
-    <button type="button" class="btn" data-action="next">帶着這些去祈禱</button>
+    <button type="button" class="btn" data-action="next">${esc(ui.review.toPrayer)}</button>
   </div>`;
 }
 
 function renderSteps(day, entry, stepId) {
-  return `<nav class="steps" aria-label="今日步驟">${flowSteps(day)
+  return `<nav class="steps" aria-label="${esc(ui.steps.navLabel)}">${flowSteps(day)
     .map((step) => {
       const now = step.id === stepId ? " is-now" : "";
       if (!canOpenStep(day, entry, step.id) && step.id !== stepId) {
@@ -409,18 +409,18 @@ function renderSteps(day, entry, stepId) {
 
 function renderQuiet(day) {
   return `<div class="card quiet">
-    <h2>安靜</h2>
-    <p>用自己的節奏，慢慢呼吸三次。不必趕。</p>
+    <h2>${esc(ui.quiet.title)}</h2>
+    <p>${esc(ui.quiet.lead)}</p>
     <div class="breath" aria-live="polite">
       <div class="breath-orb" id="breath-orb"></div>
-      <p class="breath-label" id="breath-label">準備好就可以開始</p>
-      <p class="breath-count" id="breath-count">一共三次</p>
+      <p class="breath-label" id="breath-label">${esc(ui.quiet.ready)}</p>
+      <p class="breath-count" id="breath-count">${esc(ui.quiet.total)}</p>
     </div>
-    <button type="button" class="btn ghost" data-action="start-breath">開始三次呼吸</button>
-    <h3>開場禱文</h3>
+    <button type="button" class="btn ghost" data-action="start-breath">${esc(ui.quiet.start)}</button>
+    <h3>${esc(ui.quiet.prayerTitle)}</h3>
     <div class="prayer">${paragraphsHtml(day.openingPrayer)}</div>
-    <button type="button" class="btn" id="quiet-next" data-action="next" disabled>三次呼吸之後繼續</button>
-    <button type="button" class="btn ghost" data-action="skip-breath">我已經安靜好了</button>
+    <button type="button" class="btn" id="quiet-next" data-action="next" disabled>${esc(ui.quiet.nextLocked)}</button>
+    <button type="button" class="btn ghost" data-action="skip-breath">${esc(ui.quiet.skip)}</button>
   </div>`;
 }
 
@@ -428,31 +428,35 @@ function renderRead(day) {
   const edition = app.state.edition === "shangdi" ? "shangdi" : "shen";
   const text = day.passage?.[edition] || "";
   return `<div class="card reading">
-    <h2>讀經</h2>
-    <p class="hint">建議慢慢讀兩遍。讀的時候不必分析，讓句子停一停。</p>
-    <div class="segmented" role="group" aria-label="經文版本">
-      <button type="button" data-action="set-edition" data-edition="shen" aria-pressed="${edition === "shen" ? "true" : "false"}">神版</button>
-      <button type="button" data-action="set-edition" data-edition="shangdi" aria-pressed="${edition === "shangdi" ? "true" : "false"}">上帝版</button>
+    <h2>${esc(ui.read.title)}</h2>
+    <p class="hint">${esc(ui.read.hint)}</p>
+    <div class="segmented" role="group" aria-label="${esc(ui.read.editionLabel)}">
+      <button type="button" data-action="set-edition" data-edition="shen" aria-pressed="${edition === "shen" ? "true" : "false"}">${esc(ui.read.shen)}</button>
+      <button type="button" data-action="set-edition" data-edition="shangdi" aria-pressed="${edition === "shangdi" ? "true" : "false"}">${esc(ui.read.shangdi)}</button>
     </div>
-    ${day.focus ? `<p class="focus">今日情感焦點：${esc(day.focus)}</p>` : ""}
+    ${day.focus ? `<p class="focus">${esc(fill(ui.day.focus, { focus: day.focus }))}</p>` : ""}
     ${passageHtml(text)}
-    <button type="button" class="btn" data-action="next">讀完了，再看看感受</button>
+    <button type="button" class="btn" data-action="next">${esc(ui.read.next)}</button>
   </div>`;
 }
 
 function renderReflect(day) {
   const entry = dayState(app.state, day.day);
-  const nextLabel = day.review ? (day.review.scope === "season" ? "看看整段將臨期" : "看看這一週") : "去祈禱";
+  const nextLabel = day.review
+    ? day.review.scope === "season"
+      ? ui.reflect.toSeason
+      : ui.reflect.toWeek
+    : ui.reflect.toPrayer;
   return `<div class="card">
-    <h2>反思</h2>
-    <p>兩個問題都可以只在心裏回答。想寫下來，也只留在這部裝置。</p>
+    <h2>${esc(ui.reflect.title)}</h2>
+    <p>${esc(ui.reflect.lead)}</p>
     <label class="field">
       <span>${esc(day.reflect1)}</span>
-      <textarea rows="3" maxlength="2000" autocomplete="off" data-field="reflect1" placeholder="可留空">${esc(entry.reflect1 || "")}</textarea>
+      <textarea rows="3" maxlength="2000" autocomplete="off" data-field="reflect1" placeholder="${esc(ui.reflect.placeholder)}">${esc(entry.reflect1 || "")}</textarea>
     </label>
     <label class="field">
       <span>${esc(day.reflect2)}</span>
-      <textarea rows="3" maxlength="2000" autocomplete="off" data-field="reflect2" placeholder="可留空">${esc(entry.reflect2 || "")}</textarea>
+      <textarea rows="3" maxlength="2000" autocomplete="off" data-field="reflect2" placeholder="${esc(ui.reflect.placeholder)}">${esc(entry.reflect2 || "")}</textarea>
     </label>
     <button type="button" class="btn" data-action="next">${esc(nextLabel)}</button>
   </div>`;
@@ -460,21 +464,19 @@ function renderReflect(day) {
 
 function renderPrayer(day, entry) {
   if (app.thanksDay === day.day) {
-    const closing = day.day === 27
-      ? "將臨期的二十七日到這裏。願你帶着記在心裏的事，繼續走路。"
-      : "今日到這裏就可以。願你帶着這些感受，繼續走路。";
+    const closing = day.day === 27 ? ui.prayer.doneSeason : ui.prayer.doneDay;
     return `<div class="card thanks">
-      <h2>完成了</h2>
+      <h2>${esc(ui.prayer.doneTitle)}</h2>
       <p>${esc(closing)}</p>
-      <a class="btn" href="#/plan">返回 27 日計劃</a>
-      <a class="btn ghost" href="#/">回到首頁</a>
+      <a class="btn" href="#/plan">${esc(ui.prayer.backToPlan)}</a>
+      <a class="btn ghost" href="#/">${esc(ui.prayer.backHome)}</a>
     </div>`;
   }
   return `<div class="card">
-    <h2>祈禱</h2>
-    <p>下面是一段示範。你可以用自己的話，對神說你真正想說的。</p>
+    <h2>${esc(ui.prayer.title)}</h2>
+    <p>${esc(ui.prayer.lead)}</p>
     <div class="prayer">${paragraphsHtml(day.samplePrayer)}</div>
-    <button type="button" class="btn" data-action="complete">${entry.completed ? "再次儲存" : "完成今日讀經"}</button>
+    <button type="button" class="btn" data-action="complete">${esc(entry.completed ? ui.prayer.saveAgain : ui.prayer.complete)}</button>
   </div>`;
 }
 
@@ -495,19 +497,19 @@ function renderDay(day, requestedStep, today, phase) {
   else if (stepId === "review") body = renderReview(day);
   else body = renderPrayer(day, entry);
   const showBack = stepId !== "quiet" && app.thanksDay !== day.day;
-  setTitle(`第${day.day}日 ${day.title}`);
+  setTitle(fill(ui.day.pageTitle, { day: day.day, title: day.title }));
   main.dataset.day = String(day.day);
   main.dataset.step = stepId;
   main.innerHTML = `<article class="day">
     ${careBanner(today)}
-    <p class="kicker">第 ${day.day} 日 · ${esc(formatFullDate(day.date, day.weekday))}${day.kind && day.kind !== "經文" ? ` · ${esc(day.kind)}` : ""}</p>
+    <p class="kicker">${esc(fill(ui.day.kicker, { day: day.day, date: formatFullDate(day.date, day.weekday) }))}${day.kind && day.kind !== "經文" ? ` · ${esc(day.kind)}` : ""}</p>
     <h1>${esc(day.title)}</h1>
     <p class="ref">${esc(day.reference)}</p>
     ${candleFigure(day.week, `${esc(day.weekLabel)} · ${esc(day.weekTheme)}`)}
-    ${future ? `<p class="future">這一日還沒有到。你仍可以先看，不會被鎖上。</p>` : ""}
+    ${future ? `<p class="future">${esc(ui.day.future)}</p>` : ""}
     ${renderSteps(day, entry, stepId)}
     ${body}
-    ${showBack ? `<button type="button" class="btn ghost back" data-action="back">上一步</button>` : ""}
+    ${showBack ? `<button type="button" class="btn ghost back" data-action="back">${esc(ui.day.back)}</button>` : ""}
   </article>`;
 }
 
@@ -520,9 +522,11 @@ function renderPlan(today, phase, asHome) {
       const items = days
         .map((day) => {
           const entry = app.state.days[String(day.day)];
-          const done = entry?.completed ? `<span class="done">已完成</span>` : "";
+          const done = entry?.completed ? `<span class="done">${esc(ui.plan.done)}</span>` : "";
           const mood = miniDots(entry);
-          const review = day.review ? `<span class="tag">${day.review.scope === "season" ? "總回顧" : "一週回顧"}</span>` : "";
+          const review = day.review
+            ? `<span class="tag">${esc(day.review.scope === "season" ? ui.review.seasonTag : ui.review.weekTag)}</span>`
+            : "";
           return `<a class="day-link" href="#/day/${day.day}">
             <span class="meta">${esc(formatMonthDay(day.date))} · ${esc(day.weekday)} ${done}${review}</span>
             <span class="name">${esc(day.title)}</span>
@@ -543,16 +547,14 @@ function renderPlan(today, phase, asHome) {
       </section>`;
     })
     .join("");
-  const lead = asHome
-    ? `<p class="lead">將臨期的 27 日已經走完。你可以從任何一日再讀。感受仍然只留在這部裝置。</p>`
-    : `<p class="lead">27 日都可以打開。未到的日子也不會鎖上。</p>`;
-  setTitle(asHome ? "整個計劃" : "27 日計劃");
+  const lead = asHome ? `<p class="lead">${esc(ui.plan.afterLead)}</p>` : `<p class="lead">${esc(ui.plan.lead)}</p>`;
+  setTitle(asHome ? ui.plan.afterPageTitle : ui.plan.title);
   delete main.dataset.day;
   delete main.dataset.step;
   main.innerHTML = `<article>
     ${careBanner(today)}
-    <p class="kicker">將臨期情感讀經</p>
-    <h1>${phase === "after" && asHome ? "27 日都在這裏" : "27 日計劃"}</h1>
+    <p class="kicker">${esc(ui.plan.kicker)}</p>
+    <h1>${esc(phase === "after" && asHome ? ui.plan.afterTitle : ui.plan.title)}</h1>
     ${candleFigure(candleWeek, "")}
     ${lead}
     ${groups}
@@ -586,18 +588,18 @@ function renderHome(today) {
       </li>`
     )
     .join("");
-  setTitle("將臨期情感讀經");
+  setTitle(ui.home.title);
   delete main.dataset.day;
   delete main.dataset.step;
   main.innerHTML = `<article class="home">
-    <p class="kicker">香港時間 · ${esc(formatFullDate(start, startDay.weekday))} 開始</p>
-    <h1>將臨期<br>情感讀經</h1>
-    ${candleFigure(0, "將臨期尚未開始")}
-    <p class="countdown"><span class="num">${left}</span><span>日後開始</span></p>
-    <p class="lead">${esc(formatFullDate(start, startDay.weekday))}至${esc(formatFullDate(end, endDay.weekday))}。一共 27 日，每日約 13 分鐘：安靜、留意感受、讀經、反思、祈禱。</p>
+    <p class="kicker">${esc(fill(ui.home.kicker, { date: formatFullDate(start, startDay.weekday) }))}</p>
+    <h1>${esc(ui.home.headingStart)}<br>${esc(ui.home.headingEnd)}</h1>
+    ${candleFigure(0, ui.home.candles)}
+    <p class="countdown"><span class="num">${left}</span><span>${esc(ui.home.countdown)}</span></p>
+    <p class="lead">${esc(fill(ui.home.lead, { start: formatFullDate(start, startDay.weekday), end: formatFullDate(end, endDay.weekday) }))}</p>
     <ol class="week-preview">${cards}</ol>
-    <a class="btn" href="#/plan">看看 27 日計劃</a>
-    <p class="footnote">感受、筆記和反思只留在這部裝置。</p>
+    <a class="btn" href="#/plan">${esc(ui.home.planLink)}</a>
+    <p class="footnote">${esc(ui.home.footnote)}</p>
   </article>`;
 }
 
@@ -605,52 +607,51 @@ function renderAbout(today) {
   const edition = app.state.edition === "shangdi" ? "shangdi" : "shen";
   const share = app.state.shareFeelings === true;
   const contact = activeChurchContact();
-  const stats = statsEnabled()
-    ? `<p>教會開了不使用 cookie 的匿名計數（GoatCounter）。它只計算兩件事：有人打開某個頁面，以及有人按下「完成今日讀經」。這些數字看不到你是誰，也沒有你寫下的字。</p>`
-    : `<p>這個版本沒有填上統計代碼，所以不會載入任何統計程式，也不會送出使用次數。</p>`;
-  setTitle("關於");
+  const stats = statsEnabled() ? `<p>${esc(ui.about.statsOn)}</p>` : `<p>${esc(ui.about.statsOff)}</p>`;
+  const careContact = contact ? `${esc(contact)}。` : "";
+  setTitle(ui.about.title);
   delete main.dataset.day;
   delete main.dataset.step;
   main.innerHTML = `<article class="about">
     ${careBanner(today)}
-    <p class="kicker">關於</p>
-    <h1>這個計劃</h1>
+    <p class="kicker">${esc(ui.about.kicker)}</p>
+    <h1>${esc(ui.about.heading)}</h1>
     <div class="card">
-      <p>將臨期情感讀經是 27 日的同行。每日大約 13 分鐘：先安靜，留意讀經前的感受，慢慢讀一段經文，再留意讀經後的感受，然後反思和祈禱。日期按香港時間計算。</p>
-      <p>感受沒有好壞。讀經前後可以不同，也可以一樣。</p>
+      <p>${esc(ui.about.intro)}</p>
+      <p>${esc(ui.about.noJudgement)}</p>
     </div>
     <div class="card">
-      <h2>經文版本</h2>
-      <p>和合本修訂版有「神」和「上帝」兩個用字，經文內容相同，只是對神的稱呼不同。這裏預設是神版，你可以隨時切換，選擇會記在這部裝置。</p>
-      <div class="segmented" role="group" aria-label="經文版本">
-        <button type="button" data-action="set-edition" data-edition="shen" aria-pressed="${edition === "shen" ? "true" : "false"}">神版</button>
-        <button type="button" data-action="set-edition" data-edition="shangdi" aria-pressed="${edition === "shangdi" ? "true" : "false"}">上帝版</button>
+      <h2>${esc(ui.about.editionTitle)}</h2>
+      <p>${esc(ui.about.editionBody)}</p>
+      <div class="segmented" role="group" aria-label="${esc(ui.read.editionLabel)}">
+        <button type="button" data-action="set-edition" data-edition="shen" aria-pressed="${edition === "shen" ? "true" : "false"}">${esc(ui.read.shen)}</button>
+        <button type="button" data-action="set-edition" data-edition="shangdi" aria-pressed="${edition === "shangdi" ? "true" : "false"}">${esc(ui.read.shangdi)}</button>
       </div>
       <p class="copyright">${esc(SCRIPTURE_COPYRIGHT)}</p>
     </div>
     <div class="card">
-      <h2>私隱</h2>
-      <p>你揀的感受、寫下的「因為……」和反思，都只存在這部裝置的瀏覽器裏。沒有帳號，沒有姓名，這些文字也不會上傳。</p>
-      <button type="button" class="btn ghost" data-action="clear-data">清除這部裝置上的紀錄</button>
+      <h2>${esc(ui.about.privacyTitle)}</h2>
+      <p>${esc(ui.about.privacyBody)}</p>
+      <button type="button" class="btn ghost" data-action="clear-data">${esc(ui.about.clear)}</button>
     </div>
     <div class="card">
-      <h2>匿名統計</h2>
+      <h2>${esc(ui.about.statsTitle)}</h2>
       ${stats}
       <label class="toggle">
         <input type="checkbox" data-setting="shareFeelings" ${share ? "checked" : ""}>
         <span>
-          <strong>匿名分享我今日嘅感受</strong>
-          <small>預設關閉。打開之後，只有在你按下「完成今日讀經」時，才送出該日的日序、讀經前和讀經後的核心情緒、細分感受和強度。不會送出你寫的句子，也沒有任何可以認出你的資料。可以隨時關掉。</small>
+          <strong>${esc(ui.about.shareLabel)}</strong>
+          <small>${esc(ui.about.shareHelp)}</small>
         </span>
       </label>
     </div>
     <div class="card">
-      <h2>加到主畫面</h2>
-      <p>用瀏覽器的分享或選單，選擇「加到主畫面」或「安裝應用程式」。安裝之後，讀過一次的內容可以離線再開。</p>
+      <h2>${esc(ui.about.installTitle)}</h2>
+      <p>${esc(ui.about.installBody)}</p>
     </div>
     <div class="card">
-      <h2>如果你需要人陪</h2>
-      <p>連續幾日感到強烈的悲傷或懼怕時，程式會在畫面上輕輕提醒你找人傾談。${contact ? esc(contact) + "。" : ""}如有即時危險，請致電 999。</p>
+      <h2>${esc(ui.about.careTitle)}</h2>
+      <p>${fill(ui.about.careBody, { contact: careContact })}</p>
     </div>
   </article>`;
 }
@@ -687,8 +688,8 @@ function render() {
   } else if (route.name === "day") {
     const day = app.plan.days.find((item) => item.day === route.day);
     if (!day) {
-      setTitle("找不到這一日");
-      main.innerHTML = `<article class="card"><h1>找不到這一日</h1><p><a href="#/plan">返回 27 日計劃</a></p></article>`;
+      setTitle(ui.day.missingTitle);
+      main.innerHTML = `<article class="card"><h1>${esc(ui.day.missingTitle)}</h1><p><a href="#/plan">${esc(ui.day.missingBody)}</a></p></article>`;
     } else {
       renderDay(day, route.step, today, phase);
       const onToday = phase === "during" && todayDay && todayDay.day === day.day;
@@ -724,25 +725,25 @@ function startBreath() {
   const tick = (phase, cycle) => {
     if (gen !== app.breathGen) return;
     if (phase === "inhale") {
-      label.textContent = reduce ? "吸氣" : "吸氣";
-      count.textContent = `第 ${cycle} 次，共 3 次`;
+      label.textContent = ui.quiet.inhale;
+      count.textContent = fill(ui.quiet.cycle, { cycle });
       orb.classList.remove("is-out");
       orb.classList.add("is-in");
       app.breathTimer = setTimeout(() => tick("exhale", cycle), reduce ? 400 : 4000);
       return;
     }
-    label.textContent = "呼氣";
+    label.textContent = ui.quiet.exhale;
     orb.classList.remove("is-in");
     orb.classList.add("is-out");
     app.breathTimer = setTimeout(() => {
       if (gen !== app.breathGen) return;
       if (cycle >= 3) {
-        label.textContent = "可以了";
-        count.textContent = "三次呼吸已經完成";
+        label.textContent = ui.quiet.doneLabel;
+        count.textContent = ui.quiet.doneCount;
         orb.classList.remove("is-out");
         if (next) {
           next.disabled = false;
-          next.textContent = "去看看讀經前的感受";
+          next.textContent = ui.quiet.next;
         }
         return;
       }
@@ -785,7 +786,7 @@ function onClick(event) {
     return;
   }
   if (action === "clear-data") {
-    const ok = window.confirm("要清除這部裝置上的感受和筆記嗎？這個動作不能還原。");
+    const ok = window.confirm(ui.about.clearConfirm);
     if (!ok) return;
     clearJournal(app.state);
     saveState(app.state);
@@ -952,7 +953,7 @@ async function mainInit() {
         render();
       })
       .catch((error) => {
-        console.warn(`[advent] 試算表更新失敗（${error?.message || error}），繼續用目前的內容。`);
+        console.warn(`[advent] ${fill(ui.errors.sheetRefresh, { detail: error?.message || error })}`);
       });
   }
   if ("serviceWorker" in navigator) {
@@ -961,5 +962,5 @@ async function mainInit() {
 }
 
 mainInit().catch(() => {
-  main.innerHTML = `<article class="card"><h1>未能開啟</h1><p>讀經計劃暫時載入不到。請檢查網絡後再試一次。</p></article>`;
+  main.innerHTML = `<article class="card"><h1>${esc(ui.errors.loadTitle)}</h1><p>${esc(ui.errors.loadBody)}</p></article>`;
 });

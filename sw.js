@@ -3,12 +3,13 @@
    are fetched from the network first so a new deploy shows up online,
    and fall back to this cache when the phone is offline. */
 
-const CACHE = "advent-2026-v2";
+const CACHE = "advent-2026-v3";
 
 const ASSETS = [
   "./",
   "./index.html",
   "./config.js",
+  "./ui-strings.json",
   "./manifest.webmanifest",
   "./css/styles.css",
   "./css/style-tokens.css",
