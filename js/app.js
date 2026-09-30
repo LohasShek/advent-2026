@@ -46,6 +46,7 @@ import {
   trackPage,
 } from "./stats.js";
 import { applySheetCache, loadSheetCache, refreshFromSheet, saveSheetCache } from "./sheet.js";
+import { initDeviceSpeech } from "./speech.js";
 import ui from "../ui-strings.json" with { type: "json" };
 
 const main = document.querySelector("#app");
@@ -1047,6 +1048,7 @@ async function mainInit() {
   app.wheelSvg = wheelSvg;
   app.state = loadState();
   initStats(siteConfig().goatcounter || "");
+  initDeviceSpeech();
   document.addEventListener("selectionchange", () => {
     const text = window.getSelection?.().toString() || "";
     if (text.trim()) app.pendingSelection = text;

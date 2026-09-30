@@ -17,6 +17,7 @@ const ASSETS = [
   "./js/logic.js",
   "./js/storage.js",
   "./js/stats.js",
+  "./js/speech.js",
   "./js/csv.js",
   "./js/sheet.js",
   "./data/plan.json",

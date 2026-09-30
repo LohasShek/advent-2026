@@ -24,6 +24,7 @@ import {
   reviewSummary,
   seasonPhase,
 } from "../js/logic.js";
+import { initDeviceSpeech, speakDeviceText, deviceSpeechSupported, cancelDeviceSpeech } from "../js/speech.js";
 
 const plan = JSON.parse(readFileSync(new URL("../data/plan.json", import.meta.url), "utf8"));
 const feelings = JSON.parse(readFileSync(new URL("../data/feelings.json", import.meta.url), "utf8"));
@@ -164,7 +165,20 @@ assert.equal(activeStepId(reviewDay, entry, "read"), "read");
 entry.completed = true;
 assert.equal(activeStepId(reviewDay, entry, "review"), "review");
 
-assert.match(config, /scriptureCopyright:\s*"經文取自《聖經．和合本修訂版》，香港聖經公會，蒙允准使用。"/);
+const copyright = "經文引自《和合本2010（和合本修訂版）》，版權屬香港聖經公會所有，蒙允准使用。";
+assert.ok(config.includes(`scriptureCopyright: "${copyright}"`));
+assert.equal(config.includes("經文取自"), false);
+assert.equal(appSource.includes("經文取自"), false);
+const spoken = { speak() { throw new Error("不應朗讀"); }, cancel() { throw new Error("不應停止"); } };
+assert.equal(initDeviceSpeech(spoken), true);
+assert.equal(deviceSpeechSupported(), true);
+assert.equal(speakDeviceText("主啊"), false);
+assert.equal(cancelDeviceSpeech(), undefined);
+assert.equal(initDeviceSpeech(null), false);
+assert.equal(deviceSpeechSupported(), false);
+assert.ok(appSource.includes("initDeviceSpeech"));
+assert.equal(appSource.includes("speechSynthesis.speak"), false);
+assert.equal(appSource.includes("new Audio"), false);
 assert.match(passageHtml("1 甲\n2 乙\n7 丙"), /verse-gap">……<\/p>/);
 assert.doesNotMatch(passageHtml("1 甲\n2 乙"), /verse-gap/);
 assert.match(passageHtml("3:4 甲\n4:5 乙"), /verse-gap/);
