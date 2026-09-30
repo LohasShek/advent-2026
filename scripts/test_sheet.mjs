@@ -76,8 +76,8 @@ for (const day of plan.days) {
   assert.equal(parsed.reference, day.reference);
   assert.equal(parsed.passage.shen, day.passage.shen);
   assert.equal(parsed.passage.shangdi, day.passage.shangdi);
-  assert.equal(parsed.segments.shen, "");
-  assert.equal(parsed.segments.shangdi, "");
+  assert.equal(parsed.segments.shen, day.segments.shen);
+  assert.equal(parsed.segments.shangdi, day.segments.shangdi);
 }
 
 const segmentRows = parseCsv(scriptureCsv);
@@ -110,6 +110,8 @@ assert.deepEqual(
 assert.equal(parsedFeelings.cores[0].feelings[0].zh, "興奮");
 assert.equal(parsedFeelings.care.template, feelings.care.template);
 assert.equal(parsedFeelings.care.contact, "歡迎聯絡石守賢傳道");
+assert.equal(parsedFeelings.care.consecutiveDays, 3);
+assert.equal(parsedFeelings.care.template.endsWith("{churchContact}"), true);
 
 assert.equal(
   gvizUrl("abc", "經文"),

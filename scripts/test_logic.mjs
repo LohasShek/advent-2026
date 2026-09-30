@@ -94,7 +94,7 @@ assert.match(config, /churchContact:\s*"歡迎聯絡石守賢傳道"/);
 assert.match(config, /goatcounter:\s*""/);
 assert.equal(
   careMessage(feelings.care.template, "歡迎聯絡石守賢傳道"),
-  "這幾天你好像背著沉重的感受。你不必獨自承受，可以找牧者或信得過的弟兄姊妹傾談。歡迎聯絡石守賢傳道。如有即時危險，請致電 999。"
+  "這幾天你好像背著沉重的感受。你不必獨自承受，可以找牧者或信得過的弟兄姊妹傾談。歡迎聯絡石守賢傳道。"
 );
 
 assert.equal(hongKongDate(new Date("2026-11-28T15:30:00Z")), "2026-11-28");
@@ -191,7 +191,13 @@ assert.equal(segmentMode(sample, segmented), "tokens");
 const tokenHtml = passageHtml(sample, segmented, ["殘幹"]);
 assert.match(tokenHtml, /<sup class="vnum">1<\/sup>/);
 assert.match(tokenHtml, /data-word="殘幹"[^>]*aria-pressed="true"/);
-assert.doesNotMatch(tokenHtml, /<button[^>]*>1<\/button>/);
+assert.doesNotMatch(tokenHtml, /role="button"[^>]*>1<\/span>/);
+const glued = passageHtml("1 側耳而聽！他說，「嫩枝」。", "1 側耳而｜聽｜！｜他｜說｜，｜「｜嫩枝｜」。", ["嫩枝"]);
+assert.match(glued, /class="token-glue"><span[^>]*data-word="聽"[^>]*>聽！<\/span>/);
+assert.match(glued, /class="token-glue"><span[^>]*data-word="說"[^>]*>說，<\/span>/);
+assert.match(glued, /class="token-glue"><span[^>]*data-word="嫩枝"[^>]*aria-pressed="true"[^>]*>「嫩枝」。<\/span>/);
+assert.doesNotMatch(glued, /<\/span>！/);
+assert.doesNotMatch(glued, /<\/span>，/);
 assert.doesNotMatch(passageHtml(sample, "1 耶西的｜別的"), /toggle-word/);
 let marked = [];
 for (const word of ["殘幹", "嫩枝", "必", "長出", "耶西的"]) marked = addWord(marked, word).words;
