@@ -408,7 +408,7 @@ function renderReview(day) {
       const entry = app.state.days[String(item.day)];
       if (entry?.before) beforePicks.push(entry.before);
       if (entry?.after) afterPicks.push(entry.after);
-      const shown = formatMarkedWords(entry?.words, readingSlots(item));
+      const shown = formatMarkedWords(entry?.words, readingSlots(item), currentEdition());
       const wordLine = shown
         ? `<p class="rev-words">${esc(ui.words.reviewLabel)} ${esc(shown)}</p>`
         : "";
@@ -460,16 +460,23 @@ function renderQuiet(day) {
   </div>`;
 }
 
-function readingSlots(day) {
-  const edition = app.state.edition === "shangdi" ? "shangdi" : "shen";
+function currentEdition() {
+  return app.state.edition === "shangdi" ? "shangdi" : "shen";
+}
+
+function slotsFor(day, edition) {
   const text = day?.passage?.[edition] || "";
   const segmented = day?.segments?.[edition] || "";
   return segmentMode(text, segmented) === "tokens" ? passageSlots(text, segmented) : null;
 }
 
+function readingSlots(day) {
+  return slotsFor(day, currentEdition());
+}
+
 function renderWordBar(day, entry, mode) {
   const slots = readingSlots(day);
-  const words = slots ? resolveWords(entry.words, slots) : normalizeWords(entry.words);
+  const words = slots ? resolveWords(entry.words, slots, currentEdition()) : normalizeWords(entry.words);
   const chips = words
     .map((word) => {
       const text = wordLabel(word, slots || undefined);
@@ -519,7 +526,7 @@ function renderRead(day) {
       <button type="button" data-action="set-edition" data-edition="shangdi" aria-pressed="${edition === "shangdi" ? "true" : "false"}">${esc(ui.read.shangdi)}</button>
     </div>
     ${day.focus ? `<p class="focus">${esc(fill(ui.day.focus, { focus: day.focus }))}</p>` : ""}
-    ${passageHtml(text, mode === "tokens" ? segmented : "", entry.words)}
+    ${passageHtml(text, mode === "tokens" ? segmented : "", entry.words, edition)}
     ${renderWordBar(day, entry, mode)}
     ${scriptureCopyright() ? `<p class="copyright">${esc(scriptureCopyright())}</p>` : ""}
     <button type="button" class="btn" data-action="next">${esc(ui.read.next)}</button>
@@ -564,7 +571,7 @@ function renderPrayer(day, entry) {
     </div>`;
   }
   const slots = readingSlots(day);
-  const words = slots ? resolveWords(entry.words, slots) : normalizeWords(entry.words);
+  const words = slots ? resolveWords(entry.words, slots, currentEdition()) : normalizeWords(entry.words);
   const frames = words.length && Array.isArray(app.plan.prayerFrames) ? app.plan.prayerFrames : [];
   const index = frames.length ? Math.min(Math.max(app.frameIndex || 0, 0), frames.length - 1) : 0;
   const tabs = frames
@@ -575,11 +582,17 @@ function renderPrayer(day, entry) {
     .join("");
   const filled = frames.length
     ? prayerFrameHtml(
-        fillPrayerFrame(frames[index].text, { words: entry.words, slots, before: entry.before, after: entry.after })
+        fillPrayerFrame(frames[index].text, {
+          words: entry.words,
+          slots,
+          edition: currentEdition(),
+          before: entry.before,
+          after: entry.after,
+        })
       )
     : "";
   const framesBlock = frames.length
-    ? `<p class="word-recap">${esc(ui.words.recap)} ${esc(formatMarkedWords(entry.words, slots))}</p>
+    ? `<p class="word-recap">${esc(ui.words.recap)} ${esc(formatMarkedWords(entry.words, slots, currentEdition()))}</p>
       <h3>${esc(ui.prayer.framesLabel)}</h3>
       <p class="hint">${esc(ui.prayer.withWords)}</p>
       <div class="frame-tabs" role="tablist" aria-label="${esc(ui.prayer.framesLabel)}">${tabs}</div>
@@ -643,7 +656,7 @@ function renderPlan(today, phase, asHome) {
         .map((day) => {
           const entry = app.state.days[String(day.day)];
           const done = entry?.completed ? `<span class="done">${esc(ui.plan.done)}</span>` : "";
-          const shownWords = formatMarkedWords(entry?.words, readingSlots(day));
+          const shownWords = formatMarkedWords(entry?.words, readingSlots(day), currentEdition());
           const wordLine = shownWords
             ? `<span class="day-words">${esc(shownWords)}</span>`
             : "";
@@ -999,6 +1012,7 @@ function onClick(event) {
     return;
   }
   if (action === "toggle-word" || action === "remove-word") {
+    const edition = currentEdition();
     const slots = readingSlots(day) || [];
     const hasSlot = action === "toggle-word" && button.dataset.slot != null && button.dataset.slot !== "";
     const result =
@@ -1008,9 +1022,22 @@ function onClick(event) {
             button.dataset.from
               ? { verse: button.dataset.verse || "", from: Number(button.dataset.from), to: Number(button.dataset.to) }
               : button.dataset.word,
-            slots
+            slots,
+            edition
           )
-        : toggleWord(entry.words, button.dataset.word, hasSlot ? { slots, slotIndex: Number(button.dataset.slot) } : {});
+        : toggleWord(
+            entry.words,
+            button.dataset.word,
+            hasSlot
+              ? {
+                  slots,
+                  slotIndex: Number(button.dataset.slot),
+                  edition,
+                  shen: slotsFor(day, "shen"),
+                  shangdi: slotsFor(day, "shangdi"),
+                }
+              : {}
+          );
     entry.words = result.words;
     app.wordHintDay = action === "toggle-word" && result.limited ? day.day : 0;
     saveState(app.state);

@@ -348,6 +348,29 @@ function sameMark(left, right) {
   return left.verse === right.verse && left.from === right.from && left.to === right.to;
 }
 
+function copyMark(word) {
+  const mark = { verse: word.verse, from: word.from, to: word.to };
+  if (typeof word.shen === "string" && word.shen) mark.shen = word.shen;
+  if (typeof word.shangdi === "string" && word.shangdi) mark.shangdi = word.shangdi;
+  return mark;
+}
+
+function phraseAt(slots, mark) {
+  if (!Array.isArray(slots) || !slots.length || !rangeFits(mark, annotateSlots(slots))) return "";
+  return wordLabel(mark, slots);
+}
+
+function stampMark(mark, slots, options = {}) {
+  const stamped = copyMark(mark);
+  const shenSource = options.shen || (!options.shangdi ? slots : null);
+  const shangdiSource = options.shangdi || (!options.shen ? slots : null);
+  const shen = shenSource ? phraseAt(shenSource, stamped) : "";
+  const shangdi = shangdiSource ? phraseAt(shangdiSource, stamped) : "";
+  if (shen) stamped.shen = shen;
+  if (shangdi) stamped.shangdi = shangdi;
+  return stamped;
+}
+
 function markCovers(mark, slot) {
   return mark.verse === slot.verse && slot.index >= mark.from && slot.index <= mark.to;
 }
@@ -385,18 +408,39 @@ function rangeFits(mark, slots) {
   return true;
 }
 
+function joinedText(pieces, field) {
+  if (!pieces.length || pieces.some((item) => typeof item[field] !== "string" || !item[field])) return "";
+  return pieces.map((item) => item[field]).join("");
+}
+
 function coalesceMarks(marks, slots) {
   const covered = new Array(slots.length).fill(false);
+  const owners = new Array(slots.length).fill(null);
   for (const mark of marks) {
     if (!rangeFits(mark, slots)) continue;
     slots.forEach((slot, index) => {
-      if (markCovers(mark, slot)) covered[index] = true;
+      if (!markCovers(mark, slot)) return;
+      covered[index] = true;
+      owners[index] = mark;
     });
   }
   const out = [];
   let start = -1;
   const close = (end) => {
-    out.push({ verse: slots[start].verse, from: slots[start].index, to: slots[end].index });
+    const pieces = [];
+    let previous = null;
+    for (let index = start; index <= end; index += 1) {
+      const mark = owners[index];
+      if (!mark || mark === previous) continue;
+      pieces.push(mark);
+      previous = mark;
+    }
+    const mark = { verse: slots[start].verse, from: slots[start].index, to: slots[end].index };
+    const shen = joinedText(pieces, "shen");
+    const shangdi = joinedText(pieces, "shangdi");
+    if (shen) mark.shen = shen;
+    if (shangdi) mark.shangdi = shangdi;
+    out.push(mark);
     start = -1;
   };
   for (let index = 0; index < slots.length; index += 1) {
@@ -431,7 +475,7 @@ export function normalizeWords(words) {
       seen.add(clean);
       list.push(clean);
     } else if (isMark(word)) {
-      const mark = { verse: word.verse, from: word.from, to: word.to };
+      const mark = copyMark(word);
       const key = `${mark.verse}:${mark.from}-${mark.to}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -442,8 +486,37 @@ export function normalizeWords(words) {
   return list;
 }
 
+function recordedPhrases(mark, edition) {
+  const preferred = edition === "shangdi" ? mark.shangdi : mark.shen;
+  const other = edition === "shangdi" ? mark.shen : mark.shangdi;
+  const list = [];
+  if (typeof preferred === "string" && preferred) list.push(preferred);
+  if (typeof other === "string" && other && other !== preferred) list.push(other);
+  return list;
+}
+
+function positionAgrees(mark, slots, edition) {
+  if (!rangeFits(mark, slots)) return false;
+  const current = wordLabel(mark, slots);
+  if (!current) return false;
+  const known = recordedPhrases(mark, edition);
+  if (!known.length) return true;
+  if (edition === "shen" || edition === "shangdi") return current === known[0];
+  return known.includes(current);
+}
+
+function recoverMark(mark, slots, edition) {
+  const phrases = recordedPhrases(mark, edition || "shen");
+  for (const phrase of phrases) {
+    const runs = findRuns(slots, phrase);
+    if (runs.length === 1) return copyMark({ ...mark, ...runs[0] });
+    if (runs.length > 1) return phrase;
+  }
+  return phrases[0] || "";
+}
+
 /** Turn saved strings into verse positions when each phrase occurs once, then merge neighbours. */
-export function resolveWords(words, slots) {
+export function resolveWords(words, slots, edition = "") {
   const input = normalizeWords(words);
   if (!Array.isArray(slots) || !slots.length) return input;
   const ready = annotateSlots(slots);
@@ -451,7 +524,15 @@ export function resolveWords(words, slots) {
   const pending = [];
   for (const item of input) {
     if (isMark(item)) {
-      if (rangeFits(item, ready)) marks.push({ verse: item.verse, from: item.from, to: item.to });
+      if (positionAgrees(item, ready, edition)) {
+        marks.push(copyMark(item));
+        continue;
+      }
+      if (item.shen || item.shangdi) {
+        const recovered = recoverMark(item, ready, edition);
+        if (isMark(recovered)) marks.push(recovered);
+        else if (recovered) pending.push(recovered);
+      }
       continue;
     }
     const runs = findRuns(ready, item);
@@ -474,10 +555,10 @@ export function wordLabel(word, slots) {
   return parts.join("");
 }
 
-function bindWordSlots(words, slots) {
+function bindWordSlots(words, slots, edition = "") {
   const ready = annotateSlots(slots);
   const owners = new Array(ready.length).fill(false);
-  for (const item of resolveWords(words, ready)) {
+  for (const item of resolveWords(words, ready, edition)) {
     if (!isMark(item)) continue;
     ready.forEach((slot, index) => {
       if (markCovers(item, slot)) owners[index] = true;
@@ -505,7 +586,7 @@ export function addWord(words, raw) {
 export function toggleWord(words, raw, options = {}) {
   const clean = String(raw || "").trim();
   const slots = Array.isArray(options.slots) ? annotateSlots(options.slots) : null;
-  const list = slots ? resolveWords(words, slots) : normalizeWords(words);
+  const list = slots ? resolveWords(words, slots, options.edition || "") : normalizeWords(words);
   if (!clean || !isSelectableWord(clean)) return { words: list, limited: false };
   const slotIndex = Number(options.slotIndex);
   const slotted =
@@ -534,11 +615,15 @@ export function toggleWord(words, raw, options = {}) {
       ? list.find((item) => isMark(item) && markCovers(item, nextSlot))
       : null;
   if (!left && !right && list.length >= WORD_LIMIT) return { words: list, limited: true };
-  const merged = {
-    verse: slot.verse,
-    from: left ? left.from : slot.index,
-    to: right ? right.to : slot.index,
-  };
+  const merged = stampMark(
+    {
+      verse: slot.verse,
+      from: left ? left.from : slot.index,
+      to: right ? right.to : slot.index,
+    },
+    slots,
+    options
+  );
   const drop = new Set([left, right].filter(Boolean));
   const next = [];
   let placed = false;
@@ -556,8 +641,8 @@ export function toggleWord(words, raw, options = {}) {
   return { words: normalizeWords(next), limited: false };
 }
 
-export function removeWord(words, target, slots) {
-  const list = Array.isArray(slots) && slots.length ? resolveWords(words, slots) : normalizeWords(words);
+export function removeWord(words, target, slots, edition = "") {
+  const list = Array.isArray(slots) && slots.length ? resolveWords(words, slots, edition) : normalizeWords(words);
   if (isMark(target)) {
     return { words: list.filter((item) => !(isMark(item) && sameMark(item, target))), limited: false };
   }
@@ -565,8 +650,8 @@ export function removeWord(words, target, slots) {
   return { words: list.filter((item) => item !== clean), limited: false };
 }
 
-export function formatMarkedWords(words, slots) {
-  const list = Array.isArray(slots) ? resolveWords(words, slots) : normalizeWords(words);
+export function formatMarkedWords(words, slots, edition = "") {
+  const list = Array.isArray(slots) ? resolveWords(words, slots, edition) : normalizeWords(words);
   return list
     .map((word) => {
       const text = wordLabel(word, slots);
@@ -584,7 +669,7 @@ export function feelingLabel(pick) {
 }
 
 export function fillPrayerFrame(template, context = {}) {
-  const words = formatMarkedWords(context.words, context.slots);
+  const words = formatMarkedWords(context.words, context.slots, context.edition);
   const before = feelingLabel(context.before);
   const after = feelingLabel(context.after);
   let text = String(template || "");
@@ -712,7 +797,7 @@ function tokenBlocks(line) {
   return blocks;
 }
 
-export function passageHtml(text, segmented = "", words = []) {
+export function passageHtml(text, segmented = "", words = [], edition = "") {
   const source = String(text || "");
   if (!source.trim()) {
     return `<p class="placeholder">${esc(ui.passage.placeholder)}</p>`;
@@ -722,7 +807,7 @@ export function passageHtml(text, segmented = "", words = []) {
   let previous = null;
   if (tokens) {
     const slots = passageSlots(source, segmented);
-    const owners = bindWordSlots(words, slots);
+    const owners = bindWordSlots(words, slots, edition);
     const slotState = { index: 0 };
     for (const line of String(segmented).split("\n")) {
       if (!line.trim()) continue;

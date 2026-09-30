@@ -24,6 +24,7 @@ import {
   prayerFrameHtml,
   segmentMode,
   toggleWord,
+  wordLabel,
   parseVerses,
   reviewBounds,
   reviewIntensity,
@@ -230,12 +231,12 @@ let chainWords = toggleWord([], "甲", { slots: chain, slotIndex: 0 }).words;
 chainWords = toggleWord(chainWords, "丙", { slots: chain, slotIndex: 2 }).words;
 assert.equal(chainWords.length, 2);
 assert.deepEqual(chainWords, [
-  { verse: "", from: 1, to: 1 },
-  { verse: "", from: 3, to: 3 },
+  { verse: "", from: 1, to: 1, shen: "甲", shangdi: "甲" },
+  { verse: "", from: 3, to: 3, shen: "丙", shangdi: "丙" },
 ]);
 chainWords = toggleWord(chainWords, "乙", { slots: chain, slotIndex: 1 }).words;
 assert.equal(chainWords.length, 1);
-assert.deepEqual(chainWords, [{ verse: "", from: 1, to: 3 }]);
+assert.deepEqual(chainWords, [{ verse: "", from: 1, to: 3, shen: "甲乙丙", shangdi: "甲乙丙" }]);
 assert.equal(formatMarkedWords(chainWords, chain), "「甲乙丙」");
 assert.deepEqual(toggleWord(chainWords, "甲", { slots: chain, slotIndex: 0 }).words, []);
 assert.deepEqual(toggleWord(chainWords, "乙", { slots: chain, slotIndex: 1 }).words, []);
@@ -427,6 +428,65 @@ assert.equal(shenSlots.find((slot) => slot.verse === "8" && slot.index === god.i
 assert.equal(shenSlots.find((slot) => slot.verse === "8" && slot.index === god.index + 2).text, "話");
 assert.equal(formatMarkedWords(godWords, shenSlots), "「神的話」");
 assert.equal(formatMarkedWords(godWords, shangdiSlots), "「上帝的話」");
+let spokenMark = toggleWord([], "神", {
+  slots: shenSlots,
+  slotIndex: shenSlots.findIndex((slot) => slot.verse === "8" && slot.text === "神"),
+  edition: "shen",
+  shen: shenSlots,
+  shangdi: shangdiSlots,
+}).words;
+spokenMark = toggleWord(spokenMark, "話", {
+  slots: shenSlots,
+  slotIndex: shenSlots.findIndex((slot) => slot.verse === "8" && slot.index === god.index + 2),
+  edition: "shen",
+  shen: shenSlots,
+  shangdi: shangdiSlots,
+}).words;
+spokenMark = toggleWord(spokenMark, "的", {
+  slots: shenSlots,
+  slotIndex: shenSlots.findIndex((slot) => slot.verse === "8" && slot.index === god.index + 1),
+  edition: "shen",
+  shen: shenSlots,
+  shangdi: shangdiSlots,
+}).words;
+assert.equal(spokenMark.length, 1);
+assert.equal(spokenMark[0].shen, "神的話");
+assert.equal(spokenMark[0].shangdi, "上帝的話");
+assert.equal(formatMarkedWords(spokenMark, shangdiSlots, "shangdi"), "「上帝的話」");
+const shiftedText = "1 別字甲量出滿碗。";
+const shiftedSegments = "1 ｜別字｜甲｜量出｜滿碗｜。";
+const shiftedSlots = passageSlots(shiftedText, shiftedSegments);
+const shiftedMark = [{ verse: "1", from: 1, to: 2, shen: "量出滿碗", shangdi: "量出滿碗" }];
+const shifted = resolveWords(shiftedMark, shiftedSlots, "shen");
+assert.equal(shifted.length, 1);
+assert.equal(shifted[0].from, 3);
+assert.equal(shifted[0].to, 4);
+assert.equal(wordLabel(shifted[0], shiftedSlots), "量出滿碗");
+const shiftedHtml = passageHtml(shiftedText, shiftedSegments, shiftedMark, "shen");
+assert.doesNotMatch(shiftedHtml, /data-word="別字"[^>]*aria-pressed="true"/);
+assert.doesNotMatch(shiftedHtml, /data-word="甲"[^>]*aria-pressed="true"/);
+assert.match(shiftedHtml, /data-word="量出"[^>]*aria-pressed="true"/);
+assert.match(shiftedHtml, /data-word="滿碗"[^>]*aria-pressed="true"/);
+const repeatedText = "1 別字量出滿碗量出滿碗。";
+const repeatedSegments = "1 ｜別字｜量出｜滿碗｜量出｜滿碗｜。";
+const repeatedSlots = passageSlots(repeatedText, repeatedSegments);
+const repeatedMark = [{ verse: "1", from: 1, to: 1, shen: "量出滿碗", shangdi: "量出滿碗" }];
+assert.deepEqual(resolveWords(repeatedMark, repeatedSlots, "shen"), ["量出滿碗"]);
+assert.equal(formatMarkedWords(repeatedMark, repeatedSlots, "shen"), "「量出滿碗」");
+assert.doesNotMatch(passageHtml(repeatedText, repeatedSegments, repeatedMark, "shen"), /aria-pressed="true"/);
+const keptText = "1 量出滿碗，量出滿碗。";
+const keptSegments = "1 ｜量出｜滿碗｜，｜量出｜滿碗｜。";
+const keptSlots = passageSlots(keptText, keptSegments);
+const keptMark = [{ verse: "1", from: 1, to: 2, shen: "量出滿碗", shangdi: "量出滿碗" }];
+const kept = resolveWords(keptMark, keptSlots, "shen");
+assert.equal(kept.length, 1);
+assert.equal(kept[0].from, 1);
+assert.equal(kept[0].to, 2);
+const keptHtml = passageHtml(keptText, keptSegments, keptMark, "shen");
+assert.deepEqual(
+  [...keptHtml.matchAll(/data-word="量出"[^>]*aria-pressed="(true|false)"/g)].map((match) => match[1]),
+  ["true", "false"]
+);
 const switched = passageHtml(day7.passage.shangdi, day7.segments.shangdi, godWords);
 assert.equal(
   [...switched.matchAll(/data-word="上帝"[^>]*aria-pressed="(true|false)"/g)].filter((match) => match[1] === "true").length,
