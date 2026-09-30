@@ -13,7 +13,8 @@
  * iOS 在 speechSynthesis 開始或結束時，可能把正在播的 audio 暫停。
  * 只要開關仍然開著，系統暫停會再 play()，朗讀和音樂可以同時聽。
  *
- * 曲目：預設 A。網址 ?bgm=b 用 B，?bgm=old 用舊的 110bpm。
+ * 曲目按讀經週次。預設該週的 a。?week=1..4 強制週次，?bgm=a|b 揀候選，
+ * ?bgm=old 播舊的 110bpm。計劃開始前用第一週，結束後用第四週。
  */
 
 export const BGM_STORAGE_KEY = "advent2026.bgm";
@@ -26,37 +27,122 @@ export const BGM_FADE = 0.12;
 
 const CC0 = "http://creativecommons.org/publicdomain/zero/1.0/";
 
-export const BGM_TRACKS = Object.freeze({
-  a: Object.freeze({
-    id: "a",
-    src: "./assets/bgm-a.mp3",
-    title: "Slow Ethereal Piano loop 80bpm",
-    author: "Boatlanman-",
-    source: "https://freesound.org/people/Boatlanman-/sounds/818034/",
-    license: CC0,
-    licenseName: "CC0 1.0",
+function track(fields) {
+  return Object.freeze({ license: CC0, licenseName: "CC0 1.0", melody: "", ...fields });
+}
+
+export const BGM_WEEKS = Object.freeze({
+  1: Object.freeze({
+    a: track({
+      id: "w1-a",
+      week: 1,
+      slot: "a",
+      src: "./assets/bgm/w1-a.mp3",
+      title: "Piano Drone Loop",
+      author: "kkenny101",
+      source: "https://freesound.org/people/kkenny101/sounds/869196/",
+      weekLabel: "第一週",
+      theme: "在黑暗中等候",
+    }),
+    b: track({
+      id: "w1-b",
+      week: 1,
+      slot: "b",
+      src: "./assets/bgm/w1-b.mp3",
+      title: "Slow Ethereal Piano loop 80bpm",
+      author: "Boatlanman-",
+      source: "https://freesound.org/people/Boatlanman-/sounds/818034/",
+      weekLabel: "第一週",
+      theme: "在黑暗中等候",
+    }),
   }),
-  b: Object.freeze({
-    id: "b",
-    src: "./assets/bgm-b.mp3",
-    title: "Piano Drone Loop",
-    author: "kkenny101",
-    source: "https://freesound.org/people/kkenny101/sounds/869196/",
-    license: CC0,
-    licenseName: "CC0 1.0",
+  2: Object.freeze({
+    a: track({
+      id: "w2-a",
+      week: 2,
+      slot: "a",
+      src: "./assets/bgm/w2-a.mp3",
+      title: "Piano Ambience chord progression 82bpm (sharps keys not quantized, natural)",
+      author: "CVLTIV8R",
+      source: "https://freesound.org/people/CVLTIV8R/sounds/810857/",
+      weekLabel: "第二週",
+      theme: "預備道路",
+    }),
+    b: track({
+      id: "w2-b",
+      week: 2,
+      slot: "b",
+      src: "./assets/bgm/w2-b.mp3",
+      title: "Atmospheric Piano & Violin Music 01",
+      author: "Magmi.Soundtracks",
+      source: "https://freesound.org/people/Magmi.Soundtracks/sounds/478255/",
+      weekLabel: "第二週",
+      theme: "預備道路",
+    }),
   }),
-  old: Object.freeze({
-    id: "old",
-    src: "./assets/bgm.mp3",
-    title: "Light Piano Retro Loop 110bpm",
-    author: "RokZRooM",
-    source: "https://freesound.org/people/RokZRooM/sounds/345310/",
-    license: CC0,
-    licenseName: "CC0 1.0",
+  3: Object.freeze({
+    a: track({
+      id: "w3-a",
+      week: 3,
+      slot: "a",
+      src: "./assets/bgm/w3-a.mp3",
+      title: "Sleepy Upright Piano Seamless Loop",
+      author: "blankie.rest",
+      source: "https://freesound.org/people/blankie.rest/sounds/859607/",
+      weekLabel: "第三週",
+      theme: "等候的人",
+    }),
+    b: track({
+      id: "w3-b",
+      week: 3,
+      slot: "b",
+      src: "./assets/bgm/w3-b.mp3",
+      title: "peaceful ambient pad",
+      author: "jjwoosh",
+      source: "https://freesound.org/people/jjwoosh/sounds/743772/",
+      weekLabel: "第三週",
+      theme: "等候的人",
+    }),
+  }),
+  4: Object.freeze({
+    a: track({
+      id: "w4-a",
+      week: 4,
+      slot: "a",
+      src: "./assets/bgm/w4-a.mp3",
+      title: "SandsShift.wav",
+      author: "Bigvegie",
+      source: "https://freesound.org/people/Bigvegie/sounds/623859/",
+      weekLabel: "第四週",
+      theme: "降生",
+    }),
+    b: track({
+      id: "w4-b",
+      week: 4,
+      slot: "b",
+      src: "./assets/bgm/w4-b.mp3",
+      title: "Piano lullaby",
+      author: "ctribolet",
+      source: "https://freesound.org/people/ctribolet/sounds/713537/",
+      weekLabel: "第四週",
+      theme: "降生",
+    }),
   }),
 });
 
-export const BGM_SRC = BGM_TRACKS.a.src;
+export const BGM_OLD = track({
+  id: "old",
+  week: 0,
+  slot: "old",
+  src: "./assets/bgm.mp3",
+  title: "Light Piano Retro Loop 110bpm",
+  author: "RokZRooM",
+  source: "https://freesound.org/people/RokZRooM/sounds/345310/",
+  weekLabel: "",
+  theme: "",
+});
+
+export const BGM_SRC = BGM_WEEKS[1].a.src;
 
 let audio = null;
 let context = null;
@@ -68,7 +154,8 @@ let gestureStarted = false;
 let audioCtor = null;
 let contextCtor = null;
 let userVolume = BGM_DEFAULT_VOLUME;
-let trackSearch = "";
+let activeSrc = "";
+let reading = { search: "", date: "", days: null, season: null };
 
 export function clampBgmVolume(value) {
   const n = Number(value);
@@ -76,25 +163,59 @@ export function clampBgmVolume(value) {
   return Math.min(1, Math.max(0, Math.round(n * 100) / 100));
 }
 
-export function bgmTrack(search = trackSearch) {
-  const params = new URLSearchParams(String(search || "").replace(/^\?/, ""));
-  const id = params.get("bgm");
-  if (id === "a" || id === "b" || id === "old") return BGM_TRACKS[id];
-  return BGM_TRACKS.a;
-}
-
-export function selectBgmTrack(search = "") {
-  trackSearch = typeof search === "string" ? search : "";
-  const src = bgmTrack(trackSearch).src;
-  if (audio && audio.src !== src) {
-    audio.crossOrigin = "anonymous";
-    audio.src = src;
-    if (wantPlay) {
-      const pending = audio.play?.();
-      pending?.catch?.(() => {});
+export function readingWeek(dateIso, days, season) {
+  const list = Array.isArray(days) ? days : [];
+  const first = list[0]?.week || 1;
+  const last = list[list.length - 1]?.week || 4;
+  if (!dateIso || !season?.start || dateIso < season.start) return first;
+  if (dateIso > season.end) return last;
+  const exact = list.find((day) => day.date === dateIso);
+  if (exact?.week) return exact.week;
+  let nearest = list[0];
+  let best = Infinity;
+  for (const day of list) {
+    const gap = Math.abs(Date.parse(day.date) - Date.parse(dateIso));
+    if (Number.isFinite(gap) && gap < best) {
+      best = gap;
+      nearest = day;
     }
   }
-  return bgmTrack(trackSearch);
+  return nearest?.week || first;
+}
+
+export function resolveBgmTrack(search = "", dateIso = "", days = null, season = null) {
+  const params = new URLSearchParams(String(search || "").replace(/^\?/, ""));
+  if (params.get("bgm") === "old") return BGM_OLD;
+  const forced = Number(params.get("week"));
+  const week = forced >= 1 && forced <= 4 ? forced : readingWeek(dateIso, days, season);
+  const slot = params.get("bgm") === "b" ? "b" : "a";
+  return BGM_WEEKS[week][slot];
+}
+
+export function bgmTrack() {
+  return resolveBgmTrack(reading.search, reading.date, reading.days, reading.season);
+}
+
+export function selectBgmTrack(search = "", dateIso = "", days = null, season = null) {
+  reading = {
+    search: typeof search === "string" ? search : "",
+    date: typeof dateIso === "string" ? dateIso : "",
+    days,
+    season,
+  };
+  const src = bgmTrack().src;
+  if (activeSrc !== src) {
+    activeSrc = src;
+    if (audio) {
+      audio.crossOrigin = "anonymous";
+      audio.src = src;
+      if (wantPlay) {
+        const pending = audio.play?.();
+        pending?.catch?.(() => {});
+      }
+    }
+  }
+  return bgmTrack();
 }
 
 export function bgmLevel(duckedNow, volume = userVolume) {
@@ -149,7 +270,8 @@ export function useBgmDrivers(drivers = {}) {
   resuming = false;
   gestureStarted = false;
   userVolume = BGM_DEFAULT_VOLUME;
-  trackSearch = "";
+  activeSrc = "";
+  reading = { search: "", date: "", days: null, season: null };
 }
 
 export function bgmRoute() {
@@ -221,6 +343,7 @@ function ensureElement() {
   element.loop = true;
   element.preload = "auto";
   element.src = bgmTrack().src;
+  activeSrc = bgmTrack().src;
   element.addEventListener?.("pause", onSystemPause);
   audio = element;
   return element;

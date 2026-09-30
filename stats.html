@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>匿名統計</title>
+    <link rel="stylesheet" href="./css/styles.css">
+    <style>
+      .stats-page { width: min(100%, 480px); margin: 0 auto; padding: 1rem 1rem 2rem; }
+      .stats-page h1 { font-family: var(--font-heading); font-size: 1.6rem; }
+      .stats-page label { display: block; margin: 0.8rem 0 0.3rem; }
+      .stats-page input { width: 100%; min-height: 44px; }
+      .stats-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.8rem 0; }
+      .stats-actions button { min-height: 44px; }
+      .stats-page table { width: 100%; border-collapse: collapse; }
+      .stats-page td { border-bottom: 1px solid var(--c-line); padding: 0.35rem 0; vertical-align: top; }
+      .stats-page td:last-child { text-align: right; white-space: nowrap; }
+      .stats-note { font-size: 0.92rem; }
+    </style>
+  </head>
+  <body>
+    <main class="stats-page" id="stats-root">
+      <h1>匿名統計</h1>
+      <p>這頁不在應用程式的導覽裡。API token 只存在這部裝置的 localStorage，不會寫進程式庫。</p>
+      <p>請在 GoatCounter 把儀表板保持不公開。儀表板本身仍會顯示少於 5 的原始數字；這頁才會把它們寫成「少於 5」。</p>
+      <label for="gc-token">GoatCounter API token</label>
+      <input id="gc-token" data-token type="password" autocomplete="off" spellcheck="false">
+      <div class="stats-actions">
+        <button type="button" class="btn" data-load>讀取統計</button>
+        <button type="button" class="btn ghost" data-demo>用示例數字</button>
+      </div>
+      <p data-status class="stats-note" aria-live="polite"></p>
+      <div data-report></div>
+    </main>
+    <script src="./config.js"></script>
+    <script type="module" src="./js/stats-page.js"></script>
+  </body>
+</html>

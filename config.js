@@ -5,7 +5,9 @@
 // 留空就只用網站內建的經文和引導，不會連去試算表。
 // scriptureCopyright 是畫面上唯一的版權句，關於頁和讀經頁都用這一句。
 window.ADVENT_CONFIG = {
-  goatcounter: "",
+  goatcounter: "lohasshek",
+  // true 時，打開頁面和完成讀經也要在關於頁打開「匿名統計」才送出。預設 false。
+  statsRequireOptIn: false,
   churchContact: "歡迎聯絡石守賢傳道",
   sheetId: "1KpW6fsjUaHnj17MiKtIjLS7ybe4geqMr-rkPkSqB-DU",
   scriptureCopyright: "經文引自《和合本2010（和合本修訂版）》，版權屬香港聖經公會所有，蒙允准使用。",

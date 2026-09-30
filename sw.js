@@ -3,7 +3,7 @@
    are fetched from the network first so a new deploy shows up online,
    and fall back to this cache when the phone is offline. */
 
-const CACHE = "advent-2026-v5";
+const CACHE = "advent-2026-v6";
 
 const ASSETS = [
   "./",
@@ -39,9 +39,6 @@ const ASSETS = [
   "./assets/candles_week3.png",
   "./assets/candles_week4.png",
   "./assets/style-tokens.json",
-  "./assets/bgm.mp3",
-  "./assets/bgm-a.mp3",
-  "./assets/bgm-b.mp3",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/icon-512-maskable.png",
@@ -63,6 +60,9 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+/* Background music is not in ASSETS. A played mp3 is cached here on the
+   first successful fetch, so only tracks the reader has heard stay offline. */
+
 function isImage(url) {
   return /\.(png|svg|webp|jpe?g)$/i.test(url.pathname);
 }
@@ -74,14 +74,17 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === "navigate") {
+    const statsPage = url.pathname.endsWith("/stats.html");
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put("./index.html", copy));
+          if (!statsPage && response && response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE).then((cache) => cache.put("./index.html", copy));
+          }
           return response;
         })
-        .catch(() => caches.match("./index.html"))
+        .catch(() => caches.match(statsPage ? request : "./index.html"))
     );
     return;
   }

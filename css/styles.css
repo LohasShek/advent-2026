@@ -147,6 +147,8 @@ body {
 
 .bgm-panel .bgm-credit { margin: 0.15rem 0 0; }
 
+.bgm-week { display: block; }
+
 .bgm-panel .bgm-credit a {
   display: inline-flex;
   align-items: center;

@@ -257,6 +257,9 @@ assert.match(syncWorkflow, /create-pull-request/);
 assert.match(readFileSync(new URL("scripts/sync-from-sheet.mjs", root), "utf8"), /禱文框架/);
 assert.match(readFileSync(new URL("README.md", root), "utf8"), /分詞（神版）/);
 assert.match(readFileSync(new URL("README.md", root), "utf8"), /分詞（上帝版）/);
-assert.equal(readFileSync(new URL("README.md", root), "utf8").includes("stats.html"), false);
+const readme = readFileSync(new URL("README.md", root), "utf8");
+assert.match(readme, /stats\.html/);
+assert.match(readme, /不公開/);
+assert.equal(readFileSync(new URL("index.html", root), "utf8").includes("stats.html"), false);
 
 console.log("sheet tests passed");

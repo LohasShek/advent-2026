@@ -52,6 +52,8 @@ import {
   bgmLevel,
   bgmRoute,
   bgmTrack,
+  readingWeek,
+  resolveBgmTrack,
   readBgmEnabled,
   readBgmVolume,
   writeBgmEnabled,
@@ -67,8 +69,11 @@ import {
   BGM_DEFAULT_VOLUME,
   BGM_FADE,
   BGM_SRC,
-  BGM_TRACKS,
+  BGM_WEEKS,
+  BGM_OLD,
 } from "../js/bgm.js";
+import { statsPolicy } from "../js/stats.js";
+import { DEMO_HITS, UNDER_FIVE, shownCount, summarizeStats } from "../js/stats-report.js";
 
 const plan = JSON.parse(readFileSync(new URL("../data/plan.json", import.meta.url), "utf8"));
 const feelings = JSON.parse(readFileSync(new URL("../data/feelings.json", import.meta.url), "utf8"));
@@ -135,7 +140,8 @@ assert.equal(feelings.care.minIntensity, 4);
 assert.deepEqual(feelings.care.coreIds, ["sad", "scared"]);
 assert.match(feelings.care.template, /\{churchContact\}/);
 assert.match(config, /churchContact:\s*"歡迎聯絡石守賢傳道"/);
-assert.match(config, /goatcounter:\s*""/);
+assert.match(config, /goatcounter:\s*"lohasshek"/);
+assert.match(config, /statsRequireOptIn:\s*false/);
 assert.equal(
   careMessage(feelings.care.template, "歡迎聯絡石守賢傳道"),
   "這幾天你好像背著沉重的感受。你不必獨自承受，可以找牧者或信得過的弟兄姊妹傾談。歡迎聯絡石守賢傳道。如果想找人傾談，也可以致電明愛向晴熱線 18288（24 小時）。"
@@ -304,30 +310,66 @@ writeBgmEnabled(true, memory);
 assert.equal(readBgmEnabled(memory), true);
 writeBgmVolume(0.4, memory);
 assert.equal(readBgmVolume(memory), 0.4);
-assert.equal(bgmTrack("").id, "a");
-assert.equal(bgmTrack("?bgm=a").src, BGM_SRC);
-assert.equal(bgmTrack("?bgm=b").title, "Piano Drone Loop");
-assert.equal(bgmTrack("?bgm=b").author, "kkenny101");
-assert.equal(bgmTrack("?bgm=b").src, "./assets/bgm-b.mp3");
-assert.equal(bgmTrack("?bgm=old").title, "Light Piano Retro Loop 110bpm");
-assert.equal(bgmTrack("?bgm=old").src, "./assets/bgm.mp3");
-assert.equal(bgmTrack("?bgm=nope").id, "a");
-assert.equal(BGM_TRACKS.a.title, "Slow Ethereal Piano loop 80bpm");
-assert.equal(BGM_TRACKS.a.author, "Boatlanman-");
-assert.equal(BGM_TRACKS.old.author, "RokZRooM");
-assert.match(credits, /Slow Ethereal Piano loop 80bpm/);
-assert.match(credits, /Boatlanman-/);
-assert.match(credits, /https:\/\/freesound\.org\/people\/Boatlanman-\/sounds\/818034\//);
-assert.match(credits, /Piano Drone Loop/);
-assert.match(credits, /kkenny101/);
-assert.match(credits, /https:\/\/freesound\.org\/people\/kkenny101\/sounds\/869196\//);
+const season = plan.season;
+const pickTrack = (search, date) => resolveBgmTrack(search, date, plan.days, season);
+assert.equal(readingWeek("2026-11-01", plan.days, season), 1);
+assert.equal(readingWeek("2026-11-29", plan.days, season), 1);
+assert.equal(readingWeek("2026-12-05", plan.days, season), 1);
+assert.equal(readingWeek("2026-12-06", plan.days, season), 2);
+assert.equal(readingWeek("2026-12-12", plan.days, season), 2);
+assert.equal(readingWeek("2026-12-13", plan.days, season), 3);
+assert.equal(readingWeek("2026-12-19", plan.days, season), 3);
+assert.equal(readingWeek("2026-12-20", plan.days, season), 4);
+assert.equal(readingWeek("2026-12-25", plan.days, season), 4);
+assert.equal(readingWeek("2026-12-26", plan.days, season), 4);
+assert.equal(pickTrack("", "2026-11-29").id, "w1-a");
+assert.equal(pickTrack("", "2026-11-29").src, BGM_SRC);
+assert.equal(pickTrack("?bgm=b", "2026-11-29").id, "w1-b");
+assert.equal(pickTrack("?week=2", "2026-11-29").id, "w2-a");
+assert.equal(pickTrack("?week=2&bgm=b", "2026-11-01").id, "w2-b");
+assert.equal(pickTrack("?week=3&bgm=a", "2026-12-25").week, 3);
+assert.equal(pickTrack("?bgm=b", "2026-12-15").id, "w3-b");
+assert.equal(pickTrack("?bgm=old", "2026-12-24").id, "old");
+assert.equal(pickTrack("?bgm=old", "2026-12-24").src, "./assets/bgm.mp3");
+assert.equal(pickTrack("?bgm=nope", "2026-12-08").slot, "a");
+assert.equal(pickTrack("?week=9", "2026-12-08").week, 2);
+assert.equal(BGM_WEEKS[1].a.title, "Piano Drone Loop");
+assert.equal(BGM_WEEKS[1].b.author, "Boatlanman-");
+assert.equal(BGM_OLD.author, "RokZRooM");
+assert.equal(bgmTrack().id, "w1-a");
+for (const week of [1, 2, 3, 4]) {
+  for (const slot of ["a", "b"]) {
+    const item = BGM_WEEKS[week][slot];
+    assert.match(credits, new RegExp(item.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.match(credits, new RegExp(item.source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.equal(item.licenseName, "CC0 1.0");
+  }
+}
 assert.match(credits, /Light Piano Retro Loop 110bpm/);
-assert.match(credits, /RokZRooM/);
-assert.match(credits, /https:\/\/freesound\.org\/people\/RokZRooM\/sounds\/345310\//);
 assert.match(credits, /http:\/\/creativecommons\.org\/publicdomain\/zero\/1\.0\//);
 assert.match(credits, /CC0/);
 assert.match(credits, /\?bgm=b/);
-assert.match(credits, /\?bgm=old/);
+assert.match(credits, /\?week=/);
+assert.equal(sw.includes("./assets/bgm/w1-a.mp3"), false);
+assert.equal(statsPolicy({ code: "lohasshek", requireOptIn: false, optedIn: false, search: "" }).usage, true);
+assert.equal(statsPolicy({ code: "lohasshek", requireOptIn: true, optedIn: false, search: "" }).usage, false);
+assert.equal(statsPolicy({ code: "lohasshek", requireOptIn: true, optedIn: true, search: "" }).usage, true);
+assert.equal(statsPolicy({ code: "lohasshek", requireOptIn: false, optedIn: false, search: "?stats=optin" }).mustOpt, true);
+assert.equal(statsPolicy({ code: "lohasshek", requireOptIn: false, optedIn: false, search: "?asof=2026-11-29&stats=optin" }).usage, false);
+assert.equal(statsPolicy({ code: "", requireOptIn: false, optedIn: true, search: "" }).usage, false);
+const summary = summarizeStats(DEMO_HITS);
+assert.equal(summary.opens.find((row) => row.key === "2026-11-29").label, "14");
+assert.equal(summary.completes.find((row) => row.key === "2026-11-30").label, "3");
+assert.equal(summary.cores.find((row) => row.key === "joy").label, "2");
+assert.equal(summary.cores.find((row) => row.key === "sad").count, 8);
+assert.equal(summary.feelings.find((row) => row.key === "hopeful").label, UNDER_FIVE);
+assert.equal(summary.feelings.find((row) => row.key === "lonely").label, "8");
+assert.equal(summary.intensities.find((row) => row.key === "3").label, UNDER_FIVE);
+assert.equal(summary.intensities.find((row) => row.key === "4").label, "6");
+assert.equal(shownCount(4, "feeling"), UNDER_FIVE);
+assert.equal(shownCount(4, "core"), "4");
+assert.ok(appSource.includes('data-setting="statsOptIn"'));
+assert.ok(appSource.includes("statsRequireOptIn"));
 
 function mockAudio() {
   const element = {
@@ -496,15 +538,15 @@ duckBgm();
 assert.equal(offGraph.targets.at(-1).value, 0.1);
 restoreBgm();
 assert.equal(offGraph.targets.at(-1).value, 0.4);
-selectBgmTrack("?bgm=b");
+selectBgmTrack("?bgm=b", "2026-12-06", plan.days, plan.season);
 const trackAudio = mockAudio();
 const trackGraph = mockContext();
 useBgmDrivers({ Audio: trackAudio.AudioMock, AudioContext: trackGraph.AudioContextMock });
-selectBgmTrack("?bgm=b");
+selectBgmTrack("?week=2&bgm=b", "2026-11-29", plan.days, plan.season);
 assert.equal(setBgmEnabled(true, armed), true);
-assert.equal(trackAudio.element.src, BGM_TRACKS.b.src);
-selectBgmTrack("?bgm=old");
-assert.equal(trackAudio.element.src, BGM_TRACKS.old.src);
+assert.equal(trackAudio.element.src, BGM_WEEKS[2].b.src);
+selectBgmTrack("?bgm=old", "2026-12-06", plan.days, plan.season);
+assert.equal(trackAudio.element.src, BGM_OLD.src);
 useBgmDrivers({});
 assert.match(passageHtml("1 甲\n2 乙\n7 丙"), /verse-gap">……<\/p>/);
 assert.doesNotMatch(passageHtml("1 甲\n2 乙"), /verse-gap/);

@@ -47,7 +47,9 @@ import {
 } from "./storage.js";
 import {
   initStats,
+  setUsageOptIn,
   statsEnabled,
+  statsPolicy,
   trackComplete,
   trackFeelings,
   trackPage,
@@ -211,6 +213,14 @@ function maybeTrack(path) {
   if (path === app.lastTracked) return;
   app.lastTracked = path;
   trackPage(path);
+}
+
+function currentTrackPath() {
+  const route = parseRoute();
+  if (route.name === "about") return "/about";
+  if (route.name === "plan") return "/plan";
+  if (route.name === "day") return `/day/${route.day}`;
+  return "/";
 }
 
 function careText(today) {
@@ -542,7 +552,10 @@ function bgmToggle() {
 
 function bgmCreditLine() {
   const credit = bgmTrack();
-  return `<p class="bgm-credit">${esc(fill(ui.bgm.creditLine, { title: credit.title, author: credit.author }))}
+  const week = credit.weekLabel
+    ? `<span class="bgm-week">${esc(fill(ui.bgm.weekLine, { week: credit.weekLabel, theme: credit.theme }))}</span> `
+    : "";
+  return `<p class="bgm-credit">${week}${esc(fill(ui.bgm.creditLine, { title: credit.title, author: credit.author }))}
     <a href="${esc(credit.source)}" target="_blank" rel="noopener noreferrer">${esc(ui.bgm.sourceLink)}</a>
     <a href="${esc(credit.license)}" target="_blank" rel="noopener noreferrer">${esc(ui.bgm.licenseLink)}</a>
   </p>`;
@@ -857,8 +870,27 @@ function renderHome(today) {
 function renderAbout(today) {
   const edition = app.state.edition === "shangdi" ? "shangdi" : "shen";
   const share = app.state.shareFeelings === true;
+  const policy = statsPolicy({
+    code: siteConfig().goatcounter || "",
+    requireOptIn: siteConfig().statsRequireOptIn,
+    optedIn: app.state.statsOptIn === true,
+    search: location.search || "",
+  });
+  const usageOn = app.state.statsOptIn === true;
   const contact = activeChurchContact();
-  const stats = statsEnabled() ? `<p>${esc(ui.about.statsOn)}</p>` : `<p>${esc(ui.about.statsOff)}</p>`;
+  const stats = !statsEnabled()
+    ? `<p>${esc(ui.about.statsOff)}</p>`
+    : policy.mustOpt
+      ? `<p>${esc(ui.about.statsOptInBody)}</p>
+      <label class="toggle">
+        <input type="checkbox" data-setting="statsOptIn" ${usageOn ? "checked" : ""}>
+        <span class="switch" aria-hidden="true"></span>
+        <span>
+          <strong>${esc(ui.about.statsOptInLabel)}</strong>
+          <small>${esc(ui.about.statsOptInHelp)}</small>
+        </span>
+      </label>`
+      : `<p>${esc(ui.about.statsOn)}</p>`;
   const careContact = contact ? (contact.endsWith("。") ? contact : `${contact}。`) : "";
   setTitle(ui.about.title);
   delete main.dataset.day;
@@ -902,6 +934,7 @@ function renderAbout(today) {
       <p>${esc(ui.bgm.aboutBody)}</p>
       <p>${esc(ui.bgm.duckNote)}</p>
       <dl class="credit-list">
+        ${bgmTrack().weekLabel ? `<div><dt>${esc(ui.bgm.weekLabel)}</dt><dd>${esc(fill(ui.bgm.weekLine, { week: bgmTrack().weekLabel, theme: bgmTrack().theme }))}</dd></div>` : ""}
         <div><dt>${esc(ui.bgm.titleLabel)}</dt><dd>${esc(bgmTrack().title)}</dd></div>
         <div><dt>${esc(ui.bgm.authorLabel)}</dt><dd>${esc(bgmTrack().author)}</dd></div>
         <div><dt>${esc(ui.bgm.sourceLink)}</dt><dd><a href="${esc(bgmTrack().source)}" target="_blank" rel="noopener noreferrer">${esc(bgmTrack().source)}</a></dd></div>
@@ -976,6 +1009,7 @@ function announce(message) {
 }
 
 function render() {
+  if (app.plan) selectBgmTrack(location.search || "", todayISO(), app.plan.days, app.plan.season);
   paintBgmHeader();
   stopBreath();
   const route = parseRoute();
@@ -1082,8 +1116,7 @@ function finishDay(day) {
   captureFields();
   const entry = dayState(app.state, day.day);
   entry.completed = true;
-  if (!entry.completionSent) {
-    trackComplete(day.day);
+  if (!entry.completionSent && trackComplete(day.day)) {
     entry.completionSent = true;
   }
   if (app.state.shareFeelings && !entry.feelingShared) {
@@ -1336,7 +1369,11 @@ async function mainInit() {
   app.feelings = initial.feelings;
   app.wheelSvg = wheelSvg;
   app.state = loadState();
-  initStats(siteConfig().goatcounter || "");
+  initStats(siteConfig().goatcounter || "", {
+    requireOptIn: siteConfig().statsRequireOptIn,
+    optedIn: app.state.statsOptIn === true,
+    search: location.search || "",
+  });
   let booted = false;
   initDeviceSpeech(undefined, () => {
     if (booted) rerenderKeepingPlace();
@@ -1394,6 +1431,17 @@ async function mainInit() {
       saveState(app.state);
       return;
     }
+    const usage = event.target.closest("[data-setting='statsOptIn']");
+    if (usage) {
+      app.state.statsOptIn = usage.checked === true;
+      saveState(app.state);
+      setUsageOptIn(app.state.statsOptIn);
+      if (app.state.statsOptIn) {
+        const path = currentTrackPath();
+        app.lastTracked = path;
+        trackPage(path);
+      }
+    }
   });
   document.addEventListener("click", (event) => {
     const opener = event.target.closest?.("[data-action='bgm-panel']");
@@ -1422,7 +1470,6 @@ async function mainInit() {
     const button = document.querySelector("[data-action='bgm-panel']");
     if (button) button.setAttribute("aria-label", bgmStatusLabel());
   });
-  selectBgmTrack(location.search || "");
   bindBgmGesture(document);
   window.addEventListener("hashchange", () => {
     app.thanksDay = 0;

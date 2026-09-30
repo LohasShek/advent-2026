@@ -5,14 +5,28 @@
  * day number, core id, finer-feeling id, and intensity — never notes.
  *
  * Counts stay in the GoatCounter dashboard, which needs a login.
- * This site has no stats page and never requests the stats API.
+ * stats.html is unlisted and reads the API in the browser; the app itself
+ * only sends counts through count.js and never includes notes or words.
  */
 
 import ui from "../ui-strings.json" with { type: "json" };
 import { fill } from "./logic.js";
 
 let enabled = false;
+let mustOpt = false;
+let usageAllowed = false;
 const queue = [];
+
+export function statsPolicy({ code, requireOptIn, optedIn, search }) {
+  const configured = Boolean(String(code || "").trim());
+  const trial = new URLSearchParams(String(search || "").replace(/^\?/, "")).get("stats") === "optin";
+  const must = trial || requireOptIn === true;
+  return {
+    configured,
+    mustOpt: must,
+    usage: configured && (!must || optedIn === true),
+  };
+}
 
 function endpointFor(code) {
   const site = String(code || "").trim();
@@ -33,7 +47,15 @@ function send(payload) {
   flush();
 }
 
-export function initStats(code) {
+export function initStats(code, options = {}) {
+  const policy = statsPolicy({
+    code,
+    requireOptIn: options.requireOptIn,
+    optedIn: options.optedIn,
+    search: options.search || "",
+  });
+  mustOpt = policy.mustOpt;
+  usageAllowed = policy.usage;
   const endpoint = endpointFor(code);
   if (!endpoint) return;
   enabled = true;
@@ -54,20 +76,32 @@ export function statsEnabled() {
   return enabled;
 }
 
+export function statsCountsUsage() {
+  return usageAllowed;
+}
+
+export function setUsageOptIn(on) {
+  usageAllowed = enabled && (!mustOpt || on === true);
+}
+
 export function trackPage(path) {
+  if (!usageAllowed) return false;
   send({
     path: path.startsWith("/") ? path : `/${path}`,
     title: document.title,
     event: false,
   });
+  return true;
 }
 
 export function trackComplete(dayNumber) {
+  if (!usageAllowed) return false;
   send({
     path: `complete-reading/${dayNumber}`,
     title: fill(ui.stats.completeTitle, { day: dayNumber }),
     event: true,
   });
+  return true;
 }
 
 export function trackFeelings(payload) {
