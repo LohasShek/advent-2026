@@ -11,6 +11,7 @@ CC0 曲目的授權都在 Freesound 的聲音頁核實：頁面寫「Creative Co
 旋律屬公有領域，不代表錄音屬公有領域。第一至三週採用的是錄音本身的 CC0。
 沒有使用 Pixabay。第四週的 Silent Night 是明確採用的 CC BY 3.0，其餘不是 CC-BY、CC-BY-SA 或來源不明的音樂。
 
+音樂：07 Worms Cathedral organ practice.wav，blaukreuz。來源頁 CC0 授權
 第一週 a（預設）assets/bgm/w1-a.mp3　「在黑暗中等候」
 曲名：07 Worms Cathedral organ practice.wav
 旋律：不是 Veni Emmanuel。沃爾姆斯主教座堂裏的管風琴練習，慢，連續，音區有低音，沒有節拍。
@@ -21,6 +22,7 @@ CC0 曲目的授權都在 Freesound 的聲音頁核實：頁面寫「Creative Co
 長度：約 129 秒。來源頁標 2:08.512，沒有標 bpm。開頭和結尾都有聲音，循環沒有靜音段。
 來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
 
+音樂：Harmonium Drone2，easy_thunder。來源頁 CC0 授權
 第一週 b　assets/bgm/w1-b.mp3
 曲名：Harmonium Drone2
 旋律：不是 Veni Emmanuel。印度簧風琴的持續音，比同一作者的 Drone1 再低一點，慢，安靜，沒有旋律。
@@ -31,6 +33,7 @@ CC0 曲目的授權都在 Freesound 的聲音頁核實：頁面寫「Creative Co
 長度：約 87 秒。來源頁標 1:33.859。錄音結尾有淡出，使用時剪去淡出並做交叉淡入，循環沒有靜音，也沒有硬接。
 來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
 
+音樂：upright_piano_loop_7000924_083bpm.wav，stixthule。來源頁 CC0 授權
 第二週 a（預設）assets/bgm/w2-a.mp3　「預備道路」
 曲名：upright_piano_loop_7000924_083bpm.wav
 旋律：不是 On Jordan's Bank 或 Comfort, Comfort Ye My People。直立鋼琴的輕柔循環，和第三週不是同一首，也不是同一位作者。
@@ -41,6 +44,7 @@ CC0 曲目的授權都在 Freesound 的聲音頁核實：頁面寫「Creative Co
 長度：約 69 秒。來源頁標 1:09.397，曲名標明 083bpm。錄音本身可以無縫循環。
 來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
 
+音樂：Calm Ambient Piano Loop，Jadis0x。來源頁 CC0 授權
 第二週 b　assets/bgm/w2-b.mp3
 曲名：Calm Ambient Piano Loop
 旋律：不是上述詩歌。簡單的輕柔鋼琴循環。
@@ -51,6 +55,7 @@ CC0 曲目的授權都在 Freesound 的聲音頁核實：頁面寫「Creative Co
 長度：約 84 秒。來源頁標 1:26.399。循環位做了交叉淡入，沒有靜音段。
 來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
 
+音樂：Sleepy Upright Piano Seamless Loop，blankie.rest。來源頁 CC0 授權
 第三週 a（預設，只有這一首）assets/bgm/w3-a.mp3　「等候的人」
 曲名：Sleepy Upright Piano Seamless Loop
 旋律：不是尊主頌。直立鋼琴，比前兩週暖一點，仍保持安靜。
@@ -61,6 +66,7 @@ CC0 曲目的授權都在 Freesound 的聲音頁核實：頁面寫「Creative Co
 長度：約 116 秒。來源頁沒有標 bpm。錄音本身可以無縫循環，開頭和結尾都有聲音。
 來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
 
+音樂：Silent Night，Kevin MacLeod（incompetech.com）。已剪輯。來源頁 CC BY 3.0
 第四週（只有這一首）assets/bgm/w4.mp3　「降生」
 曲名：Silent Night
 旋律：Kevin MacLeod 的 Silent Night，ISRC USUAN1100075。
@@ -72,8 +78,6 @@ CC0 曲目的授權都在 Freesound 的聲音頁核實：頁面寫「Creative Co
 來源頁的類別是 CC-BY-3.0，授權名稱是 Creative Commons Attribution 3.0。
 
 六首播出來的響度都在整合響度約 -29.3 至 -29.8 LUFS。
-
-Service worker 不會預先下載這些音樂。播過的檔案會在第一次成功取得後留在快取。
 
 朗讀使用裝置內建的 Web Speech API（speechSynthesis）。
 不收錄、不產生、不發佈任何朗讀聲檔。

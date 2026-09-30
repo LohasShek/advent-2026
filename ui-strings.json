@@ -228,6 +228,7 @@
     "toggle": "播放輕柔背景音樂",
     "help": "預設開啟，音量兩成。第一次點按後開始播放。可在頁頂關掉，並會記住。",
     "creditLine": "音樂：{title}，{author}。",
+    "creditEdited": "音樂：{title}，{author}。已剪輯。",
     "weekLine": "{week}，{theme}",
     "weekLabel": "週次",
     "sourceLink": "來源頁",
@@ -240,7 +241,7 @@
     "stateOn": "已開",
     "stateOff": "已關",
     "volumeLabel": "音量",
-    "volumeValue": "音量 {percent}%",
+    "volumeValue": "背景音樂音量 {percent}%",
     "status": "背景音樂，{state}，音量 {percent}%",
     "panelLabel": "背景音樂控制"
   },

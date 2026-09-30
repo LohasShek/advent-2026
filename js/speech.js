@@ -6,7 +6,7 @@
  * 1. 粵語：語言標籤 zh-HK 或 yue，或聲音名稱含 Cantonese／粵語
  * 2. 台灣國語 zh-TW，或其他繁體中文 zh-Hant
  * 3. 大陸國語 zh-CN、簡體 zh-Hans，最後才是任何 zh
- * 裝置完全沒有中文聲音時，不朗讀，畫面改顯示一句說明。
+ * 裝置沒有 speechSynthesis，或完全沒有中文聲音時，不顯示朗讀按鈕。
  *
  * voiceschanged 可能在頁面開啟之後才把聲音清單載入，所以不能只在啟動時讀一次。
  * iOS Safari 讀長句時可能中途停止，因此按句各建立一個 utterance。

@@ -46,7 +46,7 @@ for (const edition of ["shen", "shangdi"]) {
     );
   }
 }
-const markup = `<!DOCTYPE html><html lang="zh-Hant"><head><link rel="stylesheet" href="${base}/css/styles.css"></head><body><main>${sections.join("")}</main></body></html>`;
+const markup = `<!DOCTYPE html><html lang="zh-Hant"><head><link rel="stylesheet" href="${base}/css/styles.css"></head><body><div class="app"><main><article class="day"><div class="card reading">${sections.join("")}</div></article></main></div></body></html>`;
 
 const browser = await chromium.launch({
   executablePath: "/usr/bin/google-chrome",
@@ -54,6 +54,7 @@ const browser = await chromium.launch({
 });
 const widths = [390, 360, 412];
 const failures = [];
+const heightChanges = [];
 let measured = 0;
 const page = await browser.newPage();
 await page.route(/goatcounter\.com|zgo\.at/i, (route) => route.abort());
@@ -68,10 +69,29 @@ for (const width of widths) {
   });
   await page.evaluate(() => document.fonts?.ready);
   const result = await page.evaluate(() => {
+    const linesOf = (verse) => {
+      const visual = verse.querySelector(".verse-visual") || verse;
+      const range = document.createRange();
+      range.selectNodeContents(visual);
+      const tops = [];
+      for (const rect of range.getClientRects()) {
+        if (rect.height < 2) continue;
+        if (!tops.some((top) => Math.abs(top - rect.top) < 3)) tops.push(rect.top);
+      }
+      return tops.length;
+    };
     const bad = [];
     let count = 0;
+    let heightChanged = 0;
+    let linesChanged = 0;
     for (const verse of document.querySelectorAll("p.verse")) {
+      const beforeHeight = verse.getBoundingClientRect().height;
+      const beforeLines = linesOf(verse);
       verse.classList.add("is-speaking");
+      const afterHeight = verse.getBoundingClientRect().height;
+      const afterLines = linesOf(verse);
+      if (Math.abs(afterHeight - beforeHeight) >= 0.5) heightChanged += 1;
+      if (afterLines !== beforeLines) linesChanged += 1;
       const num = verse.querySelector(".vnum");
       if (!num) {
         bad.push("missing vnum");
@@ -101,9 +121,12 @@ for (const width of widths) {
         });
       }
     }
-    return { count, bad };
+    return { count, bad, heightChanged, linesChanged };
   });
   measured = result.count;
+  heightChanges.push({ width, heightChanged: result.heightChanged, linesChanged: result.linesChanged });
+  assert.equal(result.heightChanged, 0, `${width}px height changes`);
+  assert.equal(result.linesChanged, 0, `${width}px line changes`);
   if (result.bad.length) failures.push({ width, bad: result.bad.slice(0, 8), total: result.bad.length });
   if (width === 390) {
     const day19 = await page.evaluate(() => {
@@ -165,6 +188,54 @@ await page.keyboard.press("Escape");
 assert.equal(await page.evaluate(() => document.activeElement?.dataset?.action), "bgm-panel");
 assert.equal(await page.locator("#bgm-panel").getAttribute("hidden"), "");
 
+await page.goto(`${base}/?asof=2026-12-24&week=4#/about`, { waitUntil: "domcontentloaded" });
+await page.waitForSelector("#music-credit");
+const creditText = (await page.locator("#music-credit .bgm-credit").innerText()).replace(/\s+/g, " ");
+assert.match(creditText, /音樂：Silent Night，Kevin MacLeod（incompetech\.com）。已剪輯。來源頁 CC BY 3\.0/);
+const creditLinks = page.locator("#music-credit .bgm-credit a");
+assert.equal(await creditLinks.nth(0).getAttribute("href"), "https://commons.wikimedia.org/wiki/File:Silent_Night_(ISRC_USUAN1100075).mp3");
+assert.equal(await creditLinks.nth(1).getAttribute("href"), "https://creativecommons.org/licenses/by/3.0/");
+assert.equal(await page.locator("#music-credit dd").nth(1).innerText(), "Silent Night");
+assert.doesNotMatch(await page.locator("#music-credit").innerText(), /\.wav|07 /);
+const editionName = await page.locator("[data-edition='shen']").getAttribute("aria-label");
+assert.equal(editionName, "神版");
+assert.doesNotMatch(editionName, /✓/);
+await page.locator("#music-credit").screenshot({ path: "/tmp/about-music-credits-390.png" });
+await copyFile("/tmp/about-music-credits-390.png", "/opt/cursor/artifacts/screenshots/about-music-credits-390.png");
+
+await page.locator("[data-action='bgm-panel']").click();
+const volume = page.locator("[data-setting='bgm-volume']");
+assert.equal(await volume.getAttribute("aria-label"), "背景音樂音量 20%");
+assert.equal(await volume.getAttribute("aria-valuetext"), "背景音樂音量 20%");
+const panelText = (await page.locator("#bgm-panel .bgm-credit").innerText()).replace(/\s+/g, " ");
+assert.match(panelText, /音樂：Silent Night，Kevin MacLeod（incompetech\.com）。已剪輯。來源頁 CC BY 3\.0/);
+assert.doesNotMatch(await page.locator("#bgm-panel").innerText(), /\.wav|07 /);
+await page.locator("#bgm-panel").screenshot({ path: "/tmp/bgm-panel-390.png" });
+await copyFile("/tmp/bgm-panel-390.png", "/opt/cursor/artifacts/screenshots/bgm-panel-390.png");
+
+const bare = await browser.newPage();
+await bare.addInitScript(() => {
+  localStorage.setItem(
+    "advent2026.v1",
+    JSON.stringify({ edition: "shen", shareFeelings: false, days: { 1: { reached: "read", words: [] } } })
+  );
+  const synth = window.speechSynthesis;
+  const voices = () => [{ name: "English", lang: "en-US", default: true, localService: true, voiceURI: "en-US" }];
+  if (synth) {
+    try {
+      Object.defineProperty(synth, "getVoices", { configurable: true, value: voices });
+    } catch {
+      synth.getVoices = voices;
+    }
+  }
+});
+await bare.setViewportSize({ width: 390, height: 844 });
+await bare.goto(`${base}/?asof=2026-11-29#/day/1/read`, { waitUntil: "domcontentloaded" });
+await bare.waitForSelector("article h1");
+assert.equal(await bare.locator("[data-speak-bar]").count(), 0);
+assert.equal(await bare.locator(".speak-note").count(), 0);
+
 await browser.close();
 server.close();
+console.log(`verse height unchanged: ${heightChanges.map((row) => `${row.width}px height ${row.heightChanged}, lines ${row.linesChanged}`).join("; ")}`);
 console.log(`review tests passed: ${measured} verses at ${widths.join(", ")}`);

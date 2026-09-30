@@ -73,6 +73,7 @@ import {
   BGM_FADE,
   BGM_SRC,
   BGM_WEEKS,
+  screenTrackTitle,
 } from "../js/bgm.js";
 import { withoutMarkLock } from "../js/storage.js";
 import {
@@ -400,7 +401,12 @@ assert.equal(pickTrack("?bgm=old", "2026-12-24").src, BGM_WEEKS[4].a.src);
 assert.equal(pickTrack("?bgm=nope", "2026-12-08").slot, "a");
 assert.equal(pickTrack("?week=9", "2026-12-08").week, 2);
 assert.equal(BGM_WEEKS[1].a.title, "07 Worms Cathedral organ practice.wav");
+assert.equal(screenTrackTitle(BGM_WEEKS[1].a.title), "Worms Cathedral organ practice");
+assert.equal(screenTrackTitle(BGM_WEEKS[2].a.title), "Upright piano loop");
+assert.equal(screenTrackTitle("Harmonium Drone2"), "Harmonium Drone2");
 assert.equal(BGM_WEEKS[1].b.title, "Harmonium Drone2");
+assert.equal(BGM_WEEKS[4].a.creditAuthor, "Kevin MacLeod（incompetech.com）");
+assert.equal(BGM_WEEKS[4].a.edited, true);
 assert.equal(BGM_WEEKS[2].a.author, "stixthule");
 assert.equal(BGM_WEEKS[2].b.author, "Jadis0x");
 assert.equal(BGM_WEEKS[3].b, undefined);
@@ -421,6 +427,23 @@ for (const week of [1, 2, 3, 4]) {
   }
 }
 assert.equal(credits.includes("已轉換"), false);
+assert.equal(credits.includes("播過的檔案"), false);
+assert.match(credits, /音樂：Silent Night，Kevin MacLeod（incompetech\.com）。已剪輯。來源頁 CC BY 3\.0/);
+assert.match(credits, /音樂：07 Worms Cathedral organ practice\.wav，blaukreuz。來源頁 CC0 授權/);
+assert.match(credits, /音樂：upright_piano_loop_7000924_083bpm\.wav，stixthule。來源頁 CC0 授權/);
+const speakingCss = readFileSync(new URL("../css/styles.css", import.meta.url), "utf8");
+const speakingRule = speakingCss.slice(speakingCss.indexOf(".verse.is-speaking"), speakingCss.indexOf(".verse-gap"));
+assert.match(speakingRule, /background/);
+assert.match(speakingRule, /box-shadow/);
+assert.equal(/padding|margin/.test(speakingRule), false);
+assert.match(speakingCss, /\.verse \{[^}]*padding: 0\.7em 0\.28em 0\.2em 0\.85em;/s);
+assert.equal(appSource.includes("speak-note"), false);
+assert.equal(appSource.includes("speakMissing"), false);
+assert.ok(appSource.includes('speechVoiceStatus() !== "ready"'));
+assert.ok(appSource.includes('aria-label="${esc(volumeText)}"'));
+assert.match(readFileSync(new URL("../ui-strings.json", import.meta.url), "utf8"), /背景音樂音量 \{percent\}%/);
+assert.ok(appSource.includes('class="tick" aria-hidden="true"'));
+assert.equal(speakingCss.includes('content: "✓ '), false);
 assert.equal(credits.includes("Light Piano Retro Loop 110bpm"), false);
 assert.equal(credits.includes("?bgm=old"), false);
 assert.equal(credits.includes("RokZRooM"), false);

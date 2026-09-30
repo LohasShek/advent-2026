@@ -48,7 +48,7 @@ import {
 import { initStats, trackComplete, trackFeelings, trackOpen } from "./stats.js";
 import { applySheetCache, loadSheetCache, refreshFromSheet, saveSheetCache } from "./sheet.js";
 import { initDeviceSpeech, speechVoiceStatus, speechPhase, speechRate, setSpeechRate, speechRates, speakPassage, pauseSpeech, resumeSpeech, stopSpeech, passageUtterances, speechCursor } from "./speech.js";
-import { bgmTrack, readBgmEnabled, readBgmVolume, setBgmEnabled, setBgmVolume, selectBgmTrack, bindBgmGesture, duckBgm, restoreBgm } from "./bgm.js";
+import { bgmTrack, screenTrackTitle, readBgmEnabled, readBgmVolume, setBgmEnabled, setBgmVolume, selectBgmTrack, bindBgmGesture, duckBgm, restoreBgm } from "./bgm.js";
 import ui from "../ui-strings.json" with { type: "json" };
 
 const main = document.querySelector("#app");
@@ -541,12 +541,13 @@ function bgmToggle() {
 function bgmCreditLine() {
   const credit = bgmTrack();
   const week = credit.weekLabel
-    ? `<span class="bgm-week">${esc(fill(ui.bgm.weekLine, { week: credit.weekLabel, theme: credit.theme }))}</span> `
+    ? `<span class="bgm-week">${esc(fill(ui.bgm.weekLine, { week: credit.weekLabel, theme: credit.theme }))}</span>`
     : "";
-  return `<p class="bgm-credit">${week}${esc(fill(ui.bgm.creditLine, { title: credit.title, author: credit.author }))}
-    <a href="${esc(credit.source)}" target="_blank" rel="noopener noreferrer">${esc(ui.bgm.sourceLink)}</a>
-    <a href="${esc(credit.license)}" target="_blank" rel="noopener noreferrer">${esc(credit.licenseLabel || ui.bgm.licenseLink)}</a>
-  </p>`;
+  const sentence = fill(credit.edited ? ui.bgm.creditEdited : ui.bgm.creditLine, {
+    title: screenTrackTitle(credit.title),
+    author: credit.creditAuthor || credit.author,
+  });
+  return `<p class="bgm-credit">${week}${esc(sentence)}<a href="${esc(credit.source)}" target="_blank" rel="noopener noreferrer">${esc(ui.bgm.sourceLink)}</a> <a href="${esc(credit.license)}" target="_blank" rel="noopener noreferrer">${esc(credit.licenseLabel || ui.bgm.licenseLink)}</a></p>`;
 }
 
 function bgmSpeakerIcon(on) {
@@ -567,7 +568,7 @@ function bgmHeaderHtml() {
       ${bgmToggle()}
       <label class="bgm-volume">
         <span>${esc(ui.bgm.volumeLabel)}</span>
-        <input type="range" min="0" max="100" step="1" value="${percent}" data-setting="bgm-volume" aria-valuetext="${esc(volumeText)}">
+        <input type="range" min="0" max="100" step="1" value="${percent}" data-setting="bgm-volume" aria-label="${esc(volumeText)}" aria-valuetext="${esc(volumeText)}">
       </label>
       ${bgmCreditLine()}
     </div>`;
@@ -586,9 +587,7 @@ function paintBgmHeader(options = {}) {
 }
 
 function renderSpeakBar() {
-  if (speechVoiceStatus() === "missing") {
-    return `<p class="speak-note">${esc(ui.read.speakMissing)}</p>`;
-  }
+  if (speechVoiceStatus() !== "ready") return "";
   const phase = speechPhase();
   const playing = phase === "playing";
   const paused = phase === "paused";
@@ -619,6 +618,15 @@ function paintSpeakingVerse() {
   }
 }
 
+function editionSwitch(edition) {
+  const button = (id, label) => {
+    const on = edition === id;
+    const mark = on ? `<span class="tick" aria-hidden="true">✓</span>` : "";
+    return `<button type="button" data-action="set-edition" data-edition="${id}" aria-pressed="${on ? "true" : "false"}" aria-label="${esc(label)}">${mark}${esc(label)}</button>`;
+  };
+  return `<div class="segmented" role="group" aria-label="${esc(ui.read.editionLabel)}">${button("shen", ui.read.shen)}${button("shangdi", ui.read.shangdi)}</div>`;
+}
+
 function renderRead(day) {
   const edition = app.state.edition === "shangdi" ? "shangdi" : "shen";
   const editionLabel = edition === "shangdi" ? ui.read.shangdi : ui.read.shen;
@@ -640,10 +648,7 @@ function renderRead(day) {
     <h2>${esc(ui.read.title)}</h2>
     <p class="hint">${esc(ui.read.hint)}</p>
     <p class="hint" data-live-hint aria-live="polite">${esc(markHint)}</p>
-    <div class="segmented" role="group" aria-label="${esc(ui.read.editionLabel)}">
-      <button type="button" data-action="set-edition" data-edition="shen" aria-pressed="${edition === "shen" ? "true" : "false"}">${esc(ui.read.shen)}</button>
-      <button type="button" data-action="set-edition" data-edition="shangdi" aria-pressed="${edition === "shangdi" ? "true" : "false"}">${esc(ui.read.shangdi)}</button>
-    </div>
+    ${editionSwitch(edition)}
     ${renderSpeakBar()}
     ${day.focus ? `<p class="focus">${esc(shown(fill(ui.day.focus, { focus: day.focus })))}</p>` : ""}
     ${passageHtml(text, mode === "tokens" ? segmented : "", entry.words, edition, { speakingVerse: speechCursor()?.verse || "" })}
@@ -880,10 +885,7 @@ function renderAbout(today) {
     <div class="card">
       <h2>${esc(ui.about.editionTitle)}</h2>
       <p>${esc(ui.about.editionBody)}</p>
-      <div class="segmented" role="group" aria-label="${esc(ui.read.editionLabel)}">
-        <button type="button" data-action="set-edition" data-edition="shen" aria-pressed="${edition === "shen" ? "true" : "false"}">${esc(ui.read.shen)}</button>
-        <button type="button" data-action="set-edition" data-edition="shangdi" aria-pressed="${edition === "shangdi" ? "true" : "false"}">${esc(ui.read.shangdi)}</button>
-      </div>
+      ${editionSwitch(edition)}
       <p class="copyright">${esc(scriptureCopyright())}</p>
     </div>
     <div class="card">
@@ -908,7 +910,7 @@ function renderAbout(today) {
       <p>${esc(ui.bgm.duckNote)}</p>
       <dl class="credit-list">
         ${bgmTrack().weekLabel ? `<div><dt>${esc(ui.bgm.weekLabel)}</dt><dd>${esc(fill(ui.bgm.weekLine, { week: bgmTrack().weekLabel, theme: bgmTrack().theme }))}</dd></div>` : ""}
-        <div><dt>${esc(ui.bgm.titleLabel)}</dt><dd>${esc(bgmTrack().title)}</dd></div>
+        <div><dt>${esc(ui.bgm.titleLabel)}</dt><dd>${esc(screenTrackTitle(bgmTrack().title))}</dd></div>
         <div><dt>${esc(ui.bgm.authorLabel)}</dt><dd>${esc(bgmTrack().author)}</dd></div>
         <div><dt>${esc(ui.bgm.sourceLink)}</dt><dd><a href="${esc(bgmTrack().source)}" target="_blank" rel="noopener noreferrer">${esc(bgmTrack().source)}</a></dd></div>
         <div><dt>${esc(bgmTrack().licenseLabel || ui.bgm.licenseLink)}</dt><dd><a href="${esc(bgmTrack().license)}" target="_blank" rel="noopener noreferrer">${esc(bgmTrack().licenseName)}</a></dd></div>
@@ -1431,6 +1433,7 @@ async function mainInit() {
     if (!range) return;
     const percent = setBgmVolume(Number(range.value) / 100);
     const volumeText = fill(ui.bgm.volumeValue, { percent: String(percent) });
+    range.setAttribute("aria-label", volumeText);
     range.setAttribute("aria-valuetext", volumeText);
     const button = document.querySelector("[data-action='bgm-panel']");
     if (button) button.setAttribute("aria-label", bgmStatusLabel());

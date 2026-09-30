@@ -39,6 +39,19 @@ function track(fields) {
   });
 }
 
+/** On-screen name: no leading index, no file extension, no catalogue id or bpm token. */
+export function screenTrackTitle(title) {
+  let text = String(title || "")
+    .replace(/^\d+\s+/, "")
+    .replace(/\.(wav|mp3|ogg|oga|flac)$/i, "")
+    .replace(/_/g, " ")
+    .replace(/\b\d{5,}\b/g, "")
+    .replace(/\b\d{2,3}\s*bpm\b/gi, "");
+  text = text.replace(/\s+/g, " ").trim();
+  if (!text) return String(title || "");
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 const BY = "https://creativecommons.org/licenses/by/3.0/";
 
 export const BGM_WEEKS = Object.freeze({
@@ -111,6 +124,8 @@ export const BGM_WEEKS = Object.freeze({
       src: "./assets/bgm/w4.mp3",
       title: "Silent Night",
       author: "Kevin MacLeod",
+      creditAuthor: "Kevin MacLeod（incompetech.com）",
+      edited: true,
       source: "https://commons.wikimedia.org/wiki/File:Silent_Night_(ISRC_USUAN1100075).mp3",
       license: BY,
       licenseName: "CC BY 3.0",

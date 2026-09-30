@@ -371,7 +371,7 @@ a { color: var(--c-purple); }
   border-bottom-color: var(--c-gold);
 }
 
-.steps .is-locked { opacity: 0.38; }
+.steps .is-locked { opacity: 1; color: #726a84; }
 
 .btn {
   display: flex;
@@ -401,7 +401,7 @@ a { color: var(--c-purple); }
 
 .btn:disabled {
   opacity: 1;
-  background: var(--c-greyblue);
+  background: #5a7186;
   color: var(--c-paper);
   border-color: transparent;
   cursor: not-allowed;
@@ -409,8 +409,8 @@ a { color: var(--c-purple); }
 
 .btn.ghost:disabled {
   background: transparent;
-  color: var(--c-greyblue);
-  border-color: var(--c-greyblue);
+  color: #5a7186;
+  border-color: #5a7186;
 }
 
 .btn.back { margin-top: 0.45rem; }
@@ -441,8 +441,8 @@ a { color: var(--c-purple); }
   text-underline-offset: 0.18em;
 }
 
-.segmented button[aria-pressed="true"]::before {
-  content: "✓ ";
+.segmented button .tick {
+  margin-right: 0.2em;
 }
 
 .breath { text-align: center; margin: 0.4rem 0 0.2rem; }
@@ -495,18 +495,14 @@ a { color: var(--c-purple); }
   line-height: 1.85;
   line-break: strict;
   word-break: normal;
+  /* Always reserved, so the speaking highlight does not change the line breaks. */
+  padding: 0.7em 0.28em 0.2em 0.85em;
+  border-radius: 0.45rem;
 }
 
 .verse.is-speaking {
   background: rgba(100, 84, 126, 0.1);
-  border-radius: 0.45rem;
   box-shadow: inset 3px 0 0 var(--c-purple);
-  /* The bar stays in the padding, clear of the verse number.
-     Padding above covers the raised superscript. */
-  padding: 0.7em 0.28em 0.2em 0.85em;
-  margin-top: -0.7em;
-  margin-right: -0.28em;
-  margin-left: -0.45em;
 }
 
 .verse-gap {
