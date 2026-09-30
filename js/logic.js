@@ -310,7 +310,7 @@ function blankHtml(line) {
     .map((part, index) => {
       const blank =
         index < parts.length - 1
-          ? `<span class="pray-blank" role="img" aria-label="${esc(ui.prayer.blank)}"></span>`
+          ? `<span class="pray-blank" role="img" aria-label="${esc(ui.prayer.blank)}">&nbsp;</span>`
           : "";
       return `${esc(part)}${blank}`;
     })

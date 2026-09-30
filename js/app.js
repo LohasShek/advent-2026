@@ -455,7 +455,7 @@ function renderWordBar(day, entry, mode) {
   const chips = words
     .map(
       (word) =>
-        `<button type="button" class="word-chip" data-action="remove-word" data-word="${esc(word)}" aria-label="${esc(fill(ui.words.remove, { word }))}">${esc(word)}</button>`
+        `<button type="button" class="word-chip" data-action="remove-word" data-word="${esc(word)}" aria-label="${esc(fill(ui.words.remove, { word }))}">${esc(word)} <span aria-hidden="true">×</span></button>`
     )
     .join("");
   const list = chips
@@ -748,6 +748,12 @@ function renderAbout(today) {
   </article>`;
 }
 
+function rerenderKeepingPlace() {
+  const y = window.scrollY;
+  render();
+  window.scrollTo(0, y);
+}
+
 function render() {
   stopBreath();
   const route = parseRoute();
@@ -963,7 +969,7 @@ function onClick(event) {
     entry.words = result.words;
     app.wordHintDay = action === "toggle-word" && result.limited ? day.day : 0;
     saveState(app.state);
-    render();
+    rerenderKeepingPlace();
     return;
   }
   if (action === "add-word") {
@@ -977,7 +983,7 @@ function onClick(event) {
     app.pendingSelection = "";
     saveState(app.state);
     window.getSelection?.()?.removeAllRanges?.();
-    render();
+    rerenderKeepingPlace();
     return;
   }
   if (action === "redo-after") {
