@@ -1,0 +1,42 @@
+{
+  "colors": {
+    "paper": "#FAF6EF",
+    "lavender": "#C9B8DC",
+    "purple": "#7A6A9E",
+    "ink": "#4A4060",
+    "greyblue": "#A9BCD0",
+    "gold": "#D9B56A",
+    "flame": "#F2C66D",
+    "line": "#E4DCCF"
+  },
+  "emotion_colors": {
+    "joy": {
+      "zh": "喜樂",
+      "hex": "#F3D98B"
+    },
+    "peace": {
+      "zh": "平安",
+      "hex": "#BFD8B8"
+    },
+    "powerful": {
+      "zh": "有力",
+      "hex": "#A9C4DE"
+    },
+    "sad": {
+      "zh": "悲傷",
+      "hex": "#B8BCC8"
+    },
+    "scared": {
+      "zh": "懼怕",
+      "hex": "#C9B8DC"
+    },
+    "mad": {
+      "zh": "憤怒",
+      "hex": "#EDB98A"
+    }
+  },
+  "fonts": {
+    "heading": "LXGW WenKai TC (霞鶩文楷 TC, Google Fonts)",
+    "body": "Noto Serif TC (思源宋體, Google Fonts)"
+  }
+}
