@@ -1,0 +1,55 @@
+name: Sync sheet content
+
+on:
+  workflow_dispatch:
+    inputs:
+      sheet_id:
+        description: "試算表網址中 /d/ 與 /edit 之間的 ID"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Download the sheet and rebuild JSON
+        env:
+          SHEET_ID: ${{ inputs.sheet_id }}
+        run: node scripts/sync-from-sheet.mjs
+
+      - name: Test
+        run: |
+          node scripts/test_logic.mjs
+          node scripts/test_sheet.mjs
+
+      - name: Open a pull request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: sheet-content-sync
+          base: main
+          add-paths: |
+            content/**
+            data/**
+            config.js
+          commit-message: "從 Google 試算表更新內建經文與引導"
+          title: "從 Google 試算表更新內建經文與引導"
+          body: |
+            這份更新由試算表同步產生，用來刷新網站離線時使用的內建內容。
+
+            請校對者再看一次經文、禱文和感受用詞，確認後才合併。
+          delete-branch: true

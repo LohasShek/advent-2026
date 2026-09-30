@@ -38,6 +38,7 @@ import {
   trackFeelings,
   trackPage,
 } from "./stats.js";
+import { applySheetCache, loadSheetCache, refreshFromSheet, saveSheetCache } from "./sheet.js";
 
 const main = document.querySelector("#app");
 const tabbar = document.querySelector(".tabbar");
@@ -56,6 +57,16 @@ const app = {
 
 function siteConfig() {
   return window.ADVENT_CONFIG || {};
+}
+
+function activeChurchContact() {
+  const fromSheet = String(app.feelings?.care?.contact || "").trim();
+  if (fromSheet) return fromSheet;
+  return String(siteConfig().churchContact || "").trim();
+}
+
+function contentSignature(plan, feelings) {
+  return JSON.stringify({ plan, feelings });
 }
 
 function todayISO() {
@@ -177,7 +188,7 @@ function careText(today) {
   const streak = careStreak(entriesByDate(app.plan.days, app.state), today, app.feelings.care);
   if (!streak) return "";
   if (app.state.careDismissedOn === today) return "";
-  return careMessage(app.feelings.care.template, siteConfig().churchContact || "");
+  return careMessage(app.feelings.care.template, activeChurchContact());
 }
 
 function careBanner(today) {
@@ -593,7 +604,7 @@ function renderHome(today) {
 function renderAbout(today) {
   const edition = app.state.edition === "shangdi" ? "shangdi" : "shen";
   const share = app.state.shareFeelings === true;
-  const contact = String(siteConfig().churchContact || "").trim();
+  const contact = activeChurchContact();
   const stats = statsEnabled()
     ? `<p>教會開了不使用 cookie 的匿名計數（GoatCounter）。它只計算兩件事：有人打開某個頁面，以及有人按下「完成今日讀經」。這些數字看不到你是誰，也沒有你寫下的字。</p>`
     : `<p>這個版本沒有填上統計代碼，所以不會載入任何統計程式，也不會送出使用次數。</p>`;
@@ -902,8 +913,11 @@ async function mainInit() {
       return response.text();
     }),
   ]);
-  app.plan = plan;
-  app.feelings = feelings;
+  const sheetId = String(siteConfig().sheetId || "").trim();
+  const sheetCache = sheetId ? loadSheetCache() : null;
+  const initial = sheetId ? applySheetCache(plan, feelings, sheetCache) : { plan, feelings };
+  app.plan = initial.plan;
+  app.feelings = initial.feelings;
   app.wheelSvg = wheelSvg;
   app.state = loadState();
   initStats(siteConfig().goatcounter || "");
@@ -920,6 +934,27 @@ async function mainInit() {
     render();
   });
   render();
+  if (sheetId) {
+    refreshFromSheet({
+      sheetId,
+      bundledPlan: plan,
+      bundledFeelings: feelings,
+      cache: sheetCache,
+      fetchImpl: (url) => fetch(url, { cache: "no-store" }),
+      warn: (message) => console.warn(message),
+    })
+      .then((next) => {
+        saveSheetCache(next.cache);
+        if (contentSignature(app.plan, app.feelings) === contentSignature(next.plan, next.feelings)) return;
+        captureFields();
+        app.plan = next.plan;
+        app.feelings = next.feelings;
+        render();
+      })
+      .catch((error) => {
+        console.warn(`[advent] 試算表更新失敗（${error?.message || error}），繼續用目前的內容。`);
+      });
+  }
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js").catch(() => {});
   }

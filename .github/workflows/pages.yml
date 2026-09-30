@@ -33,7 +33,9 @@ jobs:
         run: python3 scripts/convert_csv.py
 
       - name: Test date logic and plan data
-        run: node scripts/test_logic.mjs
+        run: |
+          node scripts/test_logic.mjs
+          node scripts/test_sheet.mjs
 
       - name: Assemble site
         run: |
