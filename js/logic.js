@@ -326,10 +326,20 @@ export function prayerFrameHtml(text) {
     .join("");
 }
 
+const CLOSING_PUNCT = /^[！，。？、；：」』）)…\.!?;:]+$/;
+const OPENING_PUNCT = /^[「『（(]+$/;
+
 function verseBodyHtml(verse) {
   const spoken = verse.n ? `<span class="sr-only">${esc(verseSpoken(verse.n))}。</span>` : "";
   const num = verse.n ? `<sup class="vnum">${esc(verse.n)}</sup>` : "";
-  return `<p class="verse">${num}${spoken}${esc(verse.text)}</p>`;
+  return `<p class="verse">${spoken}${num}${esc(verse.text)}</p>`;
+}
+
+function tokenButton(token, selected, prefix = "", suffix = "") {
+  const value = token.text.trim();
+  const on = selected.has(value);
+  const button = `<span role="button" tabindex="0" class="token${on ? " is-on" : ""}" data-action="toggle-word" data-word="${esc(value)}" aria-pressed="${on ? "true" : "false"}">${esc(prefix)}${esc(token.text)}${esc(suffix)}</span>`;
+  return prefix || suffix ? `<span class="token-glue">${button}</span>` : button;
 }
 
 function tokenLineHtml(line, selected) {
@@ -338,18 +348,46 @@ function tokenLineHtml(line, selected) {
   let index = 0;
   if (tokens[0] && !tokens[0].selectable && /^\d+(?::\d+)?$/.test(tokens[0].text)) {
     const n = tokens[0].text;
-    html += `<sup class="vnum">${esc(n)}</sup><span class="sr-only">${esc(verseSpoken(n))}。</span>`;
+    html += `<span class="sr-only">${esc(verseSpoken(n))}。</span><sup class="vnum">${esc(n)}</sup>`;
     index = 1;
     if (tokens[1] && !tokens[1].selectable && /^\s+$/.test(tokens[1].text)) index = 2;
   }
-  for (const token of tokens.slice(index)) {
+  const body = tokens.slice(index);
+  for (let cursor = 0; cursor < body.length; cursor += 1) {
+    const token = body[cursor];
+    const trimmed = token.text.trim();
+    if (!token.selectable && CLOSING_PUNCT.test(trimmed)) {
+      html += esc(token.text);
+      continue;
+    }
+    if (!token.selectable && OPENING_PUNCT.test(trimmed)) {
+      const next = body[cursor + 1];
+      if (next?.selectable) {
+        let suffix = "";
+        let look = cursor + 2;
+        while (look < body.length && !body[look].selectable && CLOSING_PUNCT.test(body[look].text.trim())) {
+          suffix += body[look].text;
+          look += 1;
+        }
+        html += tokenButton(next, selected, token.text, suffix);
+        cursor = look - 1;
+        continue;
+      }
+      html += esc(token.text);
+      continue;
+    }
     if (!token.selectable) {
       html += esc(token.text);
       continue;
     }
-    const value = token.text.trim();
-    const on = selected.has(value);
-    html += `<button type="button" class="token${on ? " is-on" : ""}" data-action="toggle-word" data-word="${esc(value)}" aria-pressed="${on ? "true" : "false"}">${esc(token.text)}</button>`;
+    let suffix = "";
+    let look = cursor + 1;
+    while (look < body.length && !body[look].selectable && CLOSING_PUNCT.test(body[look].text.trim())) {
+      suffix += body[look].text;
+      look += 1;
+    }
+    html += tokenButton(token, selected, "", suffix);
+    cursor = look - 1;
   }
   return `<p class="verse">${html}</p>`;
 }
