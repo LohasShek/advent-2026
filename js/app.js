@@ -413,7 +413,7 @@ function renderReview(day) {
         ? `<p class="rev-words">${esc(ui.words.reviewLabel)} ${esc(formatMarkedWords(words))}</p>`
         : "";
       return `<div class="rev-row">
-        <a href="#/day/${item.day}">${esc(formatMonthDay(item.date))} · ${esc(item.title)}</a>
+        <a href="#/day/${item.day}">${esc(formatMonthDay(item.date))} · ${esc(shown(item.title))}</a>
         <div class="rev-feel">${feelBit(entry?.before)} <span aria-hidden="true">→</span> ${feelBit(entry?.after)}</div>
         ${wordLine}
       </div>`;
