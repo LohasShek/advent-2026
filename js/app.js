@@ -48,7 +48,7 @@ import {
 import { initStats, trackComplete, trackFeelings, trackOpen } from "./stats.js";
 import { applySheetCache, loadSheetCache, refreshFromSheet, saveSheetCache } from "./sheet.js";
 import { initDeviceSpeech, speechVoiceStatus, speechPhase, speechRate, setSpeechRate, speechRates, speakPassage, pauseSpeech, resumeSpeech, stopSpeech, passageUtterances, speechCursor } from "./speech.js";
-import { bgmTrack, screenTrackTitle, readBgmEnabled, readBgmVolume, setBgmEnabled, setBgmVolume, selectBgmTrack, bindBgmGesture, duckBgm, restoreBgm } from "./bgm.js";
+import { BGM_WEEKS, bgmTrack, screenTrackTitle, readBgmEnabled, readBgmVolume, setBgmEnabled, setBgmVolume, selectBgmTrack, bindBgmGesture, duckBgm, restoreBgm } from "./bgm.js";
 import ui from "../ui-strings.json" with { type: "json" };
 
 const main = document.querySelector("#app");
@@ -538,8 +538,7 @@ function bgmToggle() {
   </label>`;
 }
 
-function bgmCreditLine() {
-  const credit = bgmTrack();
+function bgmCreditLine(credit = bgmTrack()) {
   const week = credit.weekLabel
     ? `<span class="bgm-week">${esc(fill(ui.bgm.weekLine, { week: credit.weekLabel, theme: credit.theme }))}</span>`
     : "";
@@ -548,6 +547,17 @@ function bgmCreditLine() {
     author: credit.creditAuthor || credit.author,
   });
   return `<p class="bgm-credit">${week}${esc(sentence)}<a href="${esc(credit.source)}" target="_blank" rel="noopener noreferrer">${esc(ui.bgm.sourceLink)}</a> <a href="${esc(credit.license)}" target="_blank" rel="noopener noreferrer">${esc(credit.licenseLabel || ui.bgm.licenseLink)}</a></p>`;
+}
+
+function aboutMusicCredits() {
+  const lines = [];
+  for (const week of [1, 2, 3, 4]) {
+    for (const slot of ["a", "b"]) {
+      const credit = BGM_WEEKS[week]?.[slot];
+      if (credit) lines.push(bgmCreditLine(credit));
+    }
+  }
+  return `<div class="about-credits">${lines.join("")}</div>`;
 }
 
 function bgmSpeakerIcon(on) {
@@ -908,14 +918,7 @@ function renderAbout(today) {
       <h2>${esc(ui.bgm.aboutTitle)}</h2>
       <p>${esc(ui.bgm.aboutBody)}</p>
       <p>${esc(ui.bgm.duckNote)}</p>
-      <dl class="credit-list">
-        ${bgmTrack().weekLabel ? `<div><dt>${esc(ui.bgm.weekLabel)}</dt><dd>${esc(fill(ui.bgm.weekLine, { week: bgmTrack().weekLabel, theme: bgmTrack().theme }))}</dd></div>` : ""}
-        <div><dt>${esc(ui.bgm.titleLabel)}</dt><dd>${esc(screenTrackTitle(bgmTrack().title))}</dd></div>
-        <div><dt>${esc(ui.bgm.authorLabel)}</dt><dd>${esc(bgmTrack().author)}</dd></div>
-        <div><dt>${esc(ui.bgm.sourceLink)}</dt><dd><a href="${esc(bgmTrack().source)}" target="_blank" rel="noopener noreferrer">${esc(bgmTrack().source)}</a></dd></div>
-        <div><dt>${esc(bgmTrack().licenseLabel || ui.bgm.licenseLink)}</dt><dd><a href="${esc(bgmTrack().license)}" target="_blank" rel="noopener noreferrer">${esc(bgmTrack().licenseName)}</a></dd></div>
-      </dl>
-      ${bgmCreditLine()}
+      ${aboutMusicCredits()}
     </div>
     <div class="card">
       <h2>${esc(ui.about.installTitle)}</h2>

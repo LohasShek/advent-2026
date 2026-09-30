@@ -188,15 +188,43 @@ await page.keyboard.press("Escape");
 assert.equal(await page.evaluate(() => document.activeElement?.dataset?.action), "bgm-panel");
 assert.equal(await page.locator("#bgm-panel").getAttribute("hidden"), "");
 
+await page.addInitScript(() => {
+  const synth = window.speechSynthesis;
+  if (!synth) return;
+  const voices = () => [{ name: "Cantonese", lang: "zh-HK", default: true, localService: true, voiceURI: "zh-HK" }];
+  try {
+    Object.defineProperty(synth, "getVoices", { configurable: true, value: voices });
+  } catch {
+    synth.getVoices = voices;
+  }
+  synth.addEventListener = (type, listener, options) => {
+    if (type === "voiceschanged") return undefined;
+    return EventTarget.prototype.addEventListener.call(synth, type, listener, options);
+  };
+});
 await page.goto(`${base}/?asof=2026-12-24&week=4#/about`, { waitUntil: "domcontentloaded" });
 await page.waitForSelector("#music-credit");
-const creditText = (await page.locator("#music-credit .bgm-credit").innerText()).replace(/\s+/g, " ");
-assert.match(creditText, /音樂：Silent Night，Kevin MacLeod（incompetech\.com）。已剪輯。來源頁 CC BY 3\.0/);
-const creditLinks = page.locator("#music-credit .bgm-credit a");
-assert.equal(await creditLinks.nth(0).getAttribute("href"), "https://commons.wikimedia.org/wiki/File:Silent_Night_(ISRC_USUAN1100075).mp3");
-assert.equal(await creditLinks.nth(1).getAttribute("href"), "https://creativecommons.org/licenses/by/3.0/");
-assert.equal(await page.locator("#music-credit dd").nth(1).innerText(), "Silent Night");
-assert.doesNotMatch(await page.locator("#music-credit").innerText(), /\.wav|07 /);
+const cardText = await page.locator("#music-credit").innerText();
+assert.doesNotMatch(cardText, /https?:\/\//);
+assert.doesNotMatch(cardText, /\.wav|07 /);
+assert.equal(await page.locator("#music-credit dd, #music-credit dt").count(), 0);
+const night = page.locator("#music-credit .bgm-credit", { hasText: "Silent Night" });
+const nightText = (await night.innerText()).replace(/\s+/g, " ");
+assert.match(nightText, /音樂：Silent Night，Kevin MacLeod（incompetech\.com）。已剪輯。來源頁 CC BY 3\.0/);
+assert.equal((nightText.match(/CC BY 3\.0/g) || []).length, 1);
+const nightLinks = night.locator("a");
+assert.equal(await nightLinks.nth(0).innerText(), "來源頁");
+assert.equal(await nightLinks.nth(0).getAttribute("href"), "https://commons.wikimedia.org/wiki/File:Silent_Night_(ISRC_USUAN1100075).mp3");
+assert.equal(await nightLinks.nth(1).innerText(), "CC BY 3.0");
+assert.equal(await nightLinks.nth(1).getAttribute("href"), "https://creativecommons.org/licenses/by/3.0/");
+const cc0 = page.locator("#music-credit .bgm-credit", { hasText: "Worms Cathedral organ practice" });
+const cc0Text = (await cc0.innerText()).replace(/\s+/g, " ");
+assert.match(cc0Text, /音樂：Worms Cathedral organ practice，blaukreuz。來源頁 CC0 授權/);
+assert.equal((cc0Text.match(/CC0/g) || []).length, 1);
+assert.equal(await cc0.locator("a").nth(0).innerText(), "來源頁");
+assert.equal(await cc0.locator("a").nth(1).innerText(), "CC0 授權");
+assert.equal(await cc0.locator("a").nth(1).getAttribute("href"), "http://creativecommons.org/publicdomain/zero/1.0/");
+assert.equal(await page.locator("#music-credit .bgm-credit").count(), 6);
 const editionName = await page.locator("[data-edition='shen']").getAttribute("aria-label");
 assert.equal(editionName, "神版");
 assert.doesNotMatch(editionName, /✓/);

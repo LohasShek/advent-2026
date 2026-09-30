@@ -969,10 +969,12 @@ article.about a[href^="tel:"] {
 }
 .speak-status { min-height: 1.4em; margin: 0.35rem 0 0; color: var(--c-purple); }
 .bgm-credit a { margin-right: 0.7rem; }
-.credit-list { margin: 0.4rem 0 0; }
-.credit-list div { margin: 0.35rem 0; }
-.credit-list dt { font-family: var(--font-heading); }
-.credit-list dd { margin: 0.1rem 0 0; overflow-wrap: anywhere; }
+.about-credits { margin-top: 0.2rem; }
+.about-credits .bgm-credit {
+  margin: 0;
+  padding: 0.75rem 0 0.15rem;
+  border-top: 1px solid var(--c-line);
+}
 .verse, .passage, h1, h2, h3 { overflow-wrap: anywhere; }
 
 .loading, .noscript {
