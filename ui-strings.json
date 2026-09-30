@@ -230,15 +230,21 @@
   "bgm": {
     "label": "背景音樂",
     "toggle": "播放輕柔背景音樂",
-    "help": "預設關閉。打開後會循環播放，選擇會記在這部裝置。",
+    "help": "預設開啟，音量兩成。第一次點按或按鍵後開始播放。關掉會記在這部裝置。",
     "creditLine": "音樂：{title}，{author}。",
     "sourceLink": "來源頁",
     "licenseLink": "CC0 授權",
     "aboutTitle": "背景音樂",
-    "aboutBody": "讀經時可以打開一段輕柔鋼琴。預設關閉，只有你按下開關才會播放。朗讀經文時，音樂會自動降低音量，停止後回復。",
+    "aboutBody": "讀經時會播放一段輕柔的音樂，預設開啟，音量是兩成。第一次點按畫面或按下按鍵後才會出聲，不會另外彈出提示。關掉之後會記住。頁頂可以開關，也可以調音量。朗讀經文時，音量會降到你所選音量的大約四分之一，停止後回復。",
     "titleLabel": "曲名",
     "authorLabel": "作者",
-    "duckNote": "朗讀時音量會降到兩成。"
+    "duckNote": "朗讀時音量會降到所選音量的大約四分之一。",
+    "stateOn": "已開",
+    "stateOff": "已關",
+    "volumeLabel": "音量",
+    "volumeValue": "音量 {percent}%",
+    "status": "背景音樂，{state}，音量 {percent}%",
+    "panelLabel": "背景音樂控制"
   },
   "care": {
     "dismiss": "我知道了，今天先收起"

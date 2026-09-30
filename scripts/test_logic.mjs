@@ -51,17 +51,23 @@ import {
 import {
   bgmLevel,
   bgmRoute,
+  bgmTrack,
   readBgmEnabled,
+  readBgmVolume,
   writeBgmEnabled,
+  writeBgmVolume,
   setBgmEnabled,
+  setBgmVolume,
+  selectBgmTrack,
+  handleBgmGesture,
   duckBgm,
   restoreBgm,
   useBgmDrivers,
-  BGM_DUCK_VOLUME,
-  BGM_VOLUME,
+  BGM_DUCK_RATIO,
+  BGM_DEFAULT_VOLUME,
   BGM_FADE,
   BGM_SRC,
-  BGM_CREDIT,
+  BGM_TRACKS,
 } from "../js/bgm.js";
 
 const plan = JSON.parse(readFileSync(new URL("../data/plan.json", import.meta.url), "utf8"));
@@ -280,23 +286,48 @@ assert.match(bgmSource, /createMediaElementSource/);
 assert.match(bgmSource, /setTargetAtTime/);
 assert.match(bgmSource, /crossOrigin = "anonymous"/);
 assert.match(bgmSource, /webkitAudioContext/);
-assert.equal(BGM_VOLUME, 1);
-assert.equal(BGM_DUCK_VOLUME, 0.2);
-assert.equal(bgmLevel(true), 0.2);
-assert.equal(bgmLevel(false), 1);
+assert.match(bgmSource, /pointerdown/);
+assert.match(bgmSource, /keydown/);
+assert.match(bgmSource, /touchend/);
+assert.equal(BGM_DEFAULT_VOLUME, 0.2);
+assert.equal(BGM_DUCK_RATIO, 0.25);
+assert.equal(bgmLevel(true), 0.05);
+assert.equal(bgmLevel(false), 0.2);
+assert.equal(bgmLevel(true, 0.4), 0.1);
+assert.equal(bgmLevel(false, 0.4), 0.4);
 const memory = { store: {}, getItem(key) { return this.store[key] ?? null; }, setItem(key, value) { this.store[key] = String(value); } };
+assert.equal(readBgmEnabled(memory), true);
+assert.equal(readBgmVolume(memory), 0.2);
+writeBgmEnabled(false, memory);
 assert.equal(readBgmEnabled(memory), false);
 writeBgmEnabled(true, memory);
 assert.equal(readBgmEnabled(memory), true);
-writeBgmEnabled(false, memory);
-assert.equal(readBgmEnabled(memory), false);
-assert.equal(BGM_CREDIT.title, "Light Piano Retro Loop 110bpm");
-assert.equal(BGM_CREDIT.author, "RokZRooM");
+writeBgmVolume(0.4, memory);
+assert.equal(readBgmVolume(memory), 0.4);
+assert.equal(bgmTrack("").id, "a");
+assert.equal(bgmTrack("?bgm=a").src, BGM_SRC);
+assert.equal(bgmTrack("?bgm=b").title, "Piano Drone Loop");
+assert.equal(bgmTrack("?bgm=b").author, "kkenny101");
+assert.equal(bgmTrack("?bgm=b").src, "./assets/bgm-b.mp3");
+assert.equal(bgmTrack("?bgm=old").title, "Light Piano Retro Loop 110bpm");
+assert.equal(bgmTrack("?bgm=old").src, "./assets/bgm.mp3");
+assert.equal(bgmTrack("?bgm=nope").id, "a");
+assert.equal(BGM_TRACKS.a.title, "Slow Ethereal Piano loop 80bpm");
+assert.equal(BGM_TRACKS.a.author, "Boatlanman-");
+assert.equal(BGM_TRACKS.old.author, "RokZRooM");
+assert.match(credits, /Slow Ethereal Piano loop 80bpm/);
+assert.match(credits, /Boatlanman-/);
+assert.match(credits, /https:\/\/freesound\.org\/people\/Boatlanman-\/sounds\/818034\//);
+assert.match(credits, /Piano Drone Loop/);
+assert.match(credits, /kkenny101/);
+assert.match(credits, /https:\/\/freesound\.org\/people\/kkenny101\/sounds\/869196\//);
 assert.match(credits, /Light Piano Retro Loop 110bpm/);
 assert.match(credits, /RokZRooM/);
 assert.match(credits, /https:\/\/freesound\.org\/people\/RokZRooM\/sounds\/345310\//);
 assert.match(credits, /http:\/\/creativecommons\.org\/publicdomain\/zero\/1\.0\//);
 assert.match(credits, /CC0/);
+assert.match(credits, /\?bgm=b/);
+assert.match(credits, /\?bgm=old/);
 
 function mockAudio() {
   const element = {
@@ -389,11 +420,11 @@ assert.equal(gained.element.src, BGM_SRC);
 assert.equal(gained.element.loop, true);
 assert.equal(bgmRoute(), "gain");
 assert.equal(gained.element.volume, 1);
-assert.equal(graph.targets.at(-1).value, BGM_VOLUME);
+assert.equal(graph.targets.at(-1).value, BGM_DEFAULT_VOLUME);
 assert.equal(graph.targets.at(-1).time, 4);
 assert.equal(graph.targets.at(-1).constant, BGM_FADE);
 duckBgm();
-assert.equal(graph.targets.at(-1).value, BGM_DUCK_VOLUME);
+assert.equal(graph.targets.at(-1).value, bgmLevel(true));
 assert.equal(gained.element.volume, 1);
 assert.equal(gained.element.paused, false);
 gained.element.paused = true;
@@ -402,7 +433,7 @@ assert.equal(gained.element.paused, false);
 assert.equal(gained.element.plays, 2);
 gained.element.paused = true;
 restoreBgm();
-assert.equal(graph.targets.at(-1).value, BGM_VOLUME);
+assert.equal(graph.targets.at(-1).value, BGM_DEFAULT_VOLUME);
 assert.equal(gained.element.paused, false);
 const playsAfterSpeech = gained.element.plays;
 setBgmEnabled(false, memoryBgm);
@@ -420,12 +451,60 @@ assert.equal(setBgmEnabled(true, memoryBgm), true);
 assert.equal(bgmRoute(), "volume");
 assert.equal(volumeOnly.element.crossOrigin, "anonymous");
 duckBgm();
-assert.equal(volumeOnly.element.volume, BGM_DUCK_VOLUME);
+assert.equal(volumeOnly.element.volume, bgmLevel(true));
 restoreBgm();
-assert.equal(volumeOnly.element.volume, BGM_VOLUME);
+assert.equal(volumeOnly.element.volume, BGM_DEFAULT_VOLUME);
 volumeOnly.element.paused = true;
 volumeOnly.element.listeners.pause();
 assert.equal(volumeOnly.element.paused, false);
+
+const remembered = { store: {}, getItem(key) { return this.store[key] ?? null; }, setItem(key, value) { this.store[key] = String(value); } };
+const rememberedAudio = mockAudio();
+const rememberedGraph = mockContext();
+useBgmDrivers({ Audio: rememberedAudio.AudioMock, AudioContext: rememberedGraph.AudioContextMock });
+assert.equal(handleBgmGesture({ target: { closest() { return null; } } }, remembered), true);
+assert.equal(rememberedGraph.count(), 1);
+assert.equal(remembered.store["advent2026.bgm"], "on");
+assert.equal(rememberedAudio.element.src, BGM_SRC);
+assert.equal(handleBgmGesture({ target: { closest() { return null; } } }, remembered), false);
+assert.equal(rememberedAudio.element.plays, 1);
+writeBgmEnabled(false, remembered);
+const offAudio = mockAudio();
+const offGraph = mockContext();
+useBgmDrivers({ Audio: offAudio.AudioMock, AudioContext: offGraph.AudioContextMock });
+assert.equal(handleBgmGesture({ target: { closest() { return null; } } }, remembered), false);
+assert.equal(offGraph.count(), 0);
+const switchRoot = {
+  querySelector(selector) {
+    return selector === "[data-setting='bgm']" ? { checked: true } : null;
+  },
+};
+const switchTarget = {
+  closest(selector) {
+    if (selector === ".toggle") return switchRoot;
+    return null;
+  },
+};
+const armed = { store: {}, getItem(key) { return this.store[key] ?? null; }, setItem(key, value) { this.store[key] = String(value); } };
+assert.equal(handleBgmGesture({ target: switchTarget }, armed), false);
+assert.equal(offGraph.count(), 0);
+assert.equal(handleBgmGesture({ target: { closest() { return null; } } }, armed), true);
+assert.equal(offGraph.count(), 1);
+setBgmVolume(0.4, armed);
+assert.equal(readBgmVolume(armed), 0.4);
+duckBgm();
+assert.equal(offGraph.targets.at(-1).value, 0.1);
+restoreBgm();
+assert.equal(offGraph.targets.at(-1).value, 0.4);
+selectBgmTrack("?bgm=b");
+const trackAudio = mockAudio();
+const trackGraph = mockContext();
+useBgmDrivers({ Audio: trackAudio.AudioMock, AudioContext: trackGraph.AudioContextMock });
+selectBgmTrack("?bgm=b");
+assert.equal(setBgmEnabled(true, armed), true);
+assert.equal(trackAudio.element.src, BGM_TRACKS.b.src);
+selectBgmTrack("?bgm=old");
+assert.equal(trackAudio.element.src, BGM_TRACKS.old.src);
 useBgmDrivers({});
 assert.match(passageHtml("1 甲\n2 乙\n7 丙"), /verse-gap">……<\/p>/);
 assert.doesNotMatch(passageHtml("1 甲\n2 乙"), /verse-gap/);
@@ -858,6 +937,10 @@ assert.ok(appSource.includes("scriptureCopyright"));
 assert.match(readFileSync(new URL("../.github/workflows/pages.yml", import.meta.url), "utf8"), /deploy-pages/);
 assert.ok(appSource.includes('data-action="toggle-marking"'));
 assert.ok(appSource.includes('data-setting="bgm"'));
+assert.ok(appSource.includes('data-setting="bgm-volume"'));
+assert.ok(appSource.includes("aria-valuetext"));
+assert.ok(appSource.includes("bindBgmGesture"));
+assert.ok(appSource.includes("selectBgmTrack"));
 const day1mark = plan.days[0];
 const plainVerse = passageHtml(day1mark.passage.shen, day1mark.segments.shen, [], "shen");
 assert.match(plainVerse, /class="sr-only">第5節，你以/);

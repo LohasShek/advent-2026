@@ -1,16 +1,41 @@
 背景音樂
 
+試聽期間有三首，關於頁顯示當時正在用的那一首。
+預設是 A。網址加上 ?bgm=b 改播 B，?bgm=old 改播下面的舊曲。選定之後會刪去用不到的檔案。
+
+A（預設）assets/bgm-a.mp3
+曲名：Slow Ethereal Piano loop 80bpm
+作者：Boatlanman-
+來源頁：https://freesound.org/people/Boatlanman-/sounds/818034/
+授權：CC0 1.0 Universal（公眾領域貢獻）
+授權頁：http://creativecommons.org/publicdomain/zero/1.0/
+長度：約 48 秒，曲名標明 80bpm，可循環的輕柔鋼琴。
+來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
+本倉庫的 MP3 是該頁同一段 CC0 錄音（高品質預覽再壓成約 128kbps）。原 WAV 約 17.6MB。
+
+B　assets/bgm-b.mp3
+曲名：Piano Drone Loop
+作者：kkenny101
+來源頁：https://freesound.org/people/kkenny101/sounds/869196/
+授權：CC0 1.0 Universal（公眾領域貢獻）
+授權頁：http://creativecommons.org/publicdomain/zero/1.0/
+長度：約 87 秒。來源頁沒有標 bpm。作者把鋼琴和弦大幅拉長再放慢，做成沒有明顯節拍的持續音。
+來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
+本倉庫的 MP3 是該頁同一段 CC0 錄音（高品質預覽再壓成約 112kbps）。原 FLAC 約 3.9MB。
+
+舊曲（?bgm=old）assets/bgm.mp3
 曲名：Light Piano Retro Loop 110bpm
 作者：RokZRooM
 來源頁：https://freesound.org/people/RokZRooM/sounds/345310/
 授權：CC0 1.0 Universal（公眾領域貢獻）
 授權頁：http://creativecommons.org/publicdomain/zero/1.0/
-
+長度：約 20 秒，110bpm，可循環。節奏偏快，只留來比較。
 來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
 作者在說明中把這段可循環的輕柔鋼琴放進公眾領域（CC0）。
-本倉庫的 assets/bgm.mp3 是該頁發佈的同一段錄音（高品質 MP3，約 20 秒，可循環）。
-原 WAV 約 3.4MB，超過建議大小，因此採用同一 CC0 錄音的 MP3。
-沒有使用 Pixabay，也沒有使用來源或授權不明的音樂。
+本倉庫的 assets/bgm.mp3 是該頁發佈的同一段錄音（高品質 MP3）。
+原 WAV 約 3.4MB，因此採用同一 CC0 錄音的 MP3。
+
+沒有使用 Pixabay，也沒有使用 CC-BY 或來源、授權不明的音樂。
 
 朗讀使用裝置內建的 Web Speech API（speechSynthesis）。
 不收錄、不產生、不發佈任何朗讀聲檔。

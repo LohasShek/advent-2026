@@ -54,7 +54,7 @@ import {
 } from "./stats.js";
 import { applySheetCache, loadSheetCache, refreshFromSheet, saveSheetCache } from "./sheet.js";
 import { initDeviceSpeech, speechVoiceStatus, speechPhase, speechRate, setSpeechRate, speechRates, speakPassage, pauseSpeech, resumeSpeech, stopSpeech, passageUtterances } from "./speech.js";
-import { BGM_CREDIT, readBgmEnabled, setBgmEnabled, duckBgm, restoreBgm } from "./bgm.js";
+import { bgmTrack, readBgmEnabled, readBgmVolume, setBgmEnabled, setBgmVolume, selectBgmTrack, bindBgmGesture, duckBgm, restoreBgm } from "./bgm.js";
 import ui from "../ui-strings.json" with { type: "json" };
 
 const main = document.querySelector("#app");
@@ -77,6 +77,7 @@ const app = {
   frameDay: 0,
   touchStart: null,
   marking: false,
+  bgmOpen: false,
 };
 
 function siteConfig() {
@@ -515,23 +516,68 @@ function renderWordBar(day, entry, mode) {
   return `${list}${add}${hint}`;
 }
 
+function bgmPercent() {
+  return Math.round(readBgmVolume() * 100);
+}
+
+function bgmStatusLabel() {
+  const on = readBgmEnabled();
+  return fill(ui.bgm.status, {
+    state: on ? ui.bgm.stateOn : ui.bgm.stateOff,
+    percent: String(bgmPercent()),
+  });
+}
+
 function bgmToggle() {
   const on = readBgmEnabled();
   return `<label class="toggle">
     <input type="checkbox" data-setting="bgm" ${on ? "checked" : ""}>
     <span class="switch" aria-hidden="true"></span>
     <span>
-      <strong>${esc(ui.bgm.toggle)}</strong>
+      <strong>${esc(on ? ui.bgm.stateOn : ui.bgm.stateOff)}</strong>
       <small>${esc(ui.bgm.help)}</small>
     </span>
   </label>`;
 }
 
 function bgmCreditLine() {
-  return `<p class="bgm-credit">${esc(fill(ui.bgm.creditLine, { title: BGM_CREDIT.title, author: BGM_CREDIT.author }))}
-    <a href="${esc(BGM_CREDIT.source)}" target="_blank" rel="noopener noreferrer">${esc(ui.bgm.sourceLink)}</a>
-    <a href="${esc(BGM_CREDIT.license)}" target="_blank" rel="noopener noreferrer">${esc(ui.bgm.licenseLink)}</a>
+  const credit = bgmTrack();
+  return `<p class="bgm-credit">${esc(fill(ui.bgm.creditLine, { title: credit.title, author: credit.author }))}
+    <a href="${esc(credit.source)}" target="_blank" rel="noopener noreferrer">${esc(ui.bgm.sourceLink)}</a>
+    <a href="${esc(credit.license)}" target="_blank" rel="noopener noreferrer">${esc(ui.bgm.licenseLink)}</a>
   </p>`;
+}
+
+function bgmSpeakerIcon(on) {
+  const waves = on
+    ? `<path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M16 9.2a3.6 3.6 0 010 5.6M18.4 7a6.4 6.4 0 010 10"/>`
+    : `<path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M16 9.5l5 5M21 9.5l-5 5"/>`;
+  return `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M3.5 9.2h3.2L12 4.6v14.8l-5.3-4.6H3.5z"/>${waves}</svg>`;
+}
+
+function bgmHeaderHtml() {
+  const on = readBgmEnabled();
+  const percent = bgmPercent();
+  const volumeText = fill(ui.bgm.volumeValue, { percent: String(percent) });
+  const open = app.bgmOpen ? "true" : "false";
+  const hidden = app.bgmOpen ? "" : " hidden";
+  return `<button type="button" class="bgm-speaker" data-action="bgm-panel" aria-expanded="${open}" aria-controls="bgm-panel" aria-label="${esc(bgmStatusLabel())}">${bgmSpeakerIcon(on)}</button>
+    <div id="bgm-panel" class="bgm-panel" role="group" aria-label="${esc(ui.bgm.panelLabel)}"${hidden}>
+      ${bgmToggle()}
+      <label class="bgm-volume">
+        <span>${esc(ui.bgm.volumeLabel)}</span>
+        <input type="range" min="0" max="100" step="1" value="${percent}" data-setting="bgm-volume" aria-valuetext="${esc(volumeText)}">
+      </label>
+      ${bgmCreditLine()}
+    </div>`;
+}
+
+function paintBgmHeader() {
+  const root = document.getElementById("bgm-control");
+  if (!root) return;
+  const restoreFocus = Boolean(document.activeElement?.closest?.("[data-action='bgm-panel']"));
+  root.innerHTML = bgmHeaderHtml();
+  if (restoreFocus) root.querySelector("[data-action='bgm-panel']")?.focus();
 }
 
 function renderSpeakBar() {
@@ -592,10 +638,6 @@ function renderRead(day) {
       <button type="button" data-action="set-edition" data-edition="shangdi" aria-pressed="${edition === "shangdi" ? "true" : "false"}">${esc(ui.read.shangdi)}</button>
     </div>
     ${renderSpeakBar()}
-    <div class="bgm" data-bgm-bar>
-      ${bgmToggle()}
-      ${bgmCreditLine()}
-    </div>
     ${day.focus ? `<p class="focus">${esc(shown(fill(ui.day.focus, { focus: day.focus })))}</p>` : ""}
     ${passageHtml(text, mode === "tokens" ? segmented : "", entry.words, edition, { marking: mode === "tokens" && app.marking })}
     ${renderWordBar(day, entry, mode)}
@@ -859,12 +901,11 @@ function renderAbout(today) {
       <h2>${esc(ui.bgm.aboutTitle)}</h2>
       <p>${esc(ui.bgm.aboutBody)}</p>
       <p>${esc(ui.bgm.duckNote)}</p>
-      ${bgmToggle()}
       <dl class="credit-list">
-        <div><dt>${esc(ui.bgm.titleLabel)}</dt><dd>${esc(BGM_CREDIT.title)}</dd></div>
-        <div><dt>${esc(ui.bgm.authorLabel)}</dt><dd>${esc(BGM_CREDIT.author)}</dd></div>
-        <div><dt>${esc(ui.bgm.sourceLink)}</dt><dd><a href="${esc(BGM_CREDIT.source)}" target="_blank" rel="noopener noreferrer">${esc(BGM_CREDIT.source)}</a></dd></div>
-        <div><dt>${esc(ui.bgm.licenseLink)}</dt><dd><a href="${esc(BGM_CREDIT.license)}" target="_blank" rel="noopener noreferrer">${esc(BGM_CREDIT.licenseName)}</a></dd></div>
+        <div><dt>${esc(ui.bgm.titleLabel)}</dt><dd>${esc(bgmTrack().title)}</dd></div>
+        <div><dt>${esc(ui.bgm.authorLabel)}</dt><dd>${esc(bgmTrack().author)}</dd></div>
+        <div><dt>${esc(ui.bgm.sourceLink)}</dt><dd><a href="${esc(bgmTrack().source)}" target="_blank" rel="noopener noreferrer">${esc(bgmTrack().source)}</a></dd></div>
+        <div><dt>${esc(ui.bgm.licenseLink)}</dt><dd><a href="${esc(bgmTrack().license)}" target="_blank" rel="noopener noreferrer">${esc(bgmTrack().licenseName)}</a></dd></div>
       </dl>
       ${bgmCreditLine()}
     </div>
@@ -935,6 +976,7 @@ function announce(message) {
 }
 
 function render() {
+  paintBgmHeader();
   stopBreath();
   const route = parseRoute();
   const today = todayISO();
@@ -1352,9 +1394,36 @@ async function mainInit() {
       saveState(app.state);
       return;
     }
-    const bgm = event.target.closest("[data-setting='bgm']");
-    if (bgm) setBgmEnabled(bgm.checked === true);
   });
+  document.addEventListener("click", (event) => {
+    const opener = event.target.closest?.("[data-action='bgm-panel']");
+    if (opener) {
+      app.bgmOpen = !app.bgmOpen;
+      paintBgmHeader();
+      return;
+    }
+    if (app.bgmOpen && !event.target.closest?.("#bgm-control")) {
+      app.bgmOpen = false;
+      paintBgmHeader();
+    }
+  });
+  document.addEventListener("change", (event) => {
+    const bgm = event.target.closest?.("[data-setting='bgm']");
+    if (!bgm) return;
+    setBgmEnabled(bgm.checked === true);
+    paintBgmHeader();
+  });
+  document.addEventListener("input", (event) => {
+    const range = event.target.closest?.("[data-setting='bgm-volume']");
+    if (!range) return;
+    const percent = setBgmVolume(Number(range.value) / 100);
+    const volumeText = fill(ui.bgm.volumeValue, { percent: String(percent) });
+    range.setAttribute("aria-valuetext", volumeText);
+    const button = document.querySelector("[data-action='bgm-panel']");
+    if (button) button.setAttribute("aria-label", bgmStatusLabel());
+  });
+  selectBgmTrack(location.search || "");
+  bindBgmGesture(document);
   window.addEventListener("hashchange", () => {
     app.thanksDay = 0;
     render();
