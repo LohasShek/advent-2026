@@ -213,8 +213,12 @@ function careText(today) {
   return careMessage(app.feelings.care.template, activeChurchContact());
 }
 
+function shown(text) {
+  return editionGuide(text, app.state.edition);
+}
+
 function careBanner(today) {
-  const text = careText(today);
+  const text = shown(careText(today));
   if (!text) return "";
   return `<aside class="care">
     <p>${careHtml(text)}</p>
@@ -363,7 +367,7 @@ function renderComparison(day, entry) {
     : ui.compare.next;
   return `<div class="card">
     <h2>${esc(ui.compare.title)}</h2>
-    <p>${esc(comparisonNote(entry.before, entry.after))}</p>
+    <p>${esc(shown(comparisonNote(entry.before, entry.after)))}</p>
     <div class="compare">
       ${renderPickColumn(entry.before, ui.compare.before)}
       ${renderPickColumn(entry.after, ui.compare.after)}
@@ -418,7 +422,7 @@ function renderReview(day) {
   const title = bounds.scope === "season" ? ui.review.seasonTitle : ui.review.weekTitle;
   return `<div class="card review">
     <h2>${title}</h2>
-    ${paragraphsHtml(day.review.prompt)}
+    ${paragraphsHtml(shown(day.review?.prompt))}
     <p class="summary">${esc(reviewSummary(countCores(beforePicks), countCores(afterPicks)))}</p>
     ${renderBars(countCores(beforePicks), ui.review.beforeLabel)}
     ${renderBars(countCores(afterPicks), ui.review.afterLabel)}
@@ -450,7 +454,7 @@ function renderQuiet(day) {
     </div>
     <button type="button" class="btn ghost" data-action="start-breath">${esc(ui.quiet.start)}</button>
     <h3>${esc(ui.quiet.prayerTitle)}</h3>
-    <div class="prayer">${paragraphsHtml(day.openingPrayer)}</div>
+    <div class="prayer">${paragraphsHtml(shown(day.openingPrayer))}</div>
     <button type="button" class="btn" id="quiet-next" data-action="next" disabled>${esc(ui.quiet.nextLocked)}</button>
     <button type="button" class="btn ghost" data-action="skip-breath">${esc(ui.quiet.skip)}</button>
   </div>`;
@@ -501,7 +505,7 @@ function renderRead(day) {
       <button type="button" data-action="set-edition" data-edition="shen" aria-pressed="${edition === "shen" ? "true" : "false"}">${esc(ui.read.shen)}</button>
       <button type="button" data-action="set-edition" data-edition="shangdi" aria-pressed="${edition === "shangdi" ? "true" : "false"}">${esc(ui.read.shangdi)}</button>
     </div>
-    ${day.focus ? `<p class="focus">${esc(fill(ui.day.focus, { focus: day.focus }))}</p>` : ""}
+    ${day.focus ? `<p class="focus">${esc(shown(fill(ui.day.focus, { focus: day.focus })))}</p>` : ""}
     ${passageHtml(text, mode === "tokens" ? segmented : "", entry.words)}
     ${renderWordBar(day, entry, mode)}
     ${scriptureCopyright() ? `<p class="copyright">${esc(scriptureCopyright())}</p>` : ""}
@@ -510,7 +514,7 @@ function renderRead(day) {
 }
 
 function renderExperience(day) {
-  const text = editionGuide(day.experience, app.state.edition);
+  const text = shown(day.experience);
   if (!text) return "";
   return `<aside class="experience">
     <h3>${esc(ui.reflect.experienceTitle)}</h3>
@@ -524,11 +528,11 @@ function renderReflect(day) {
     <h2>${esc(ui.reflect.title)}</h2>
     <p>${esc(ui.reflect.lead)}</p>
     <label class="field">
-      <span>${esc(day.reflect1)}</span>
+      <span>${esc(shown(day.reflect1))}</span>
       <textarea rows="3" maxlength="2000" autocomplete="off" data-field="reflect1" placeholder="${esc(ui.reflect.placeholder)}">${esc(entry.reflect1 || "")}</textarea>
     </label>
     <label class="field">
-      <span>${esc(day.reflect2)}</span>
+      <span>${esc(shown(day.reflect2))}</span>
       <textarea rows="3" maxlength="2000" autocomplete="off" data-field="reflect2" placeholder="${esc(ui.reflect.placeholder)}">${esc(entry.reflect2 || "")}</textarea>
     </label>
     ${renderExperience(day)}
@@ -557,7 +561,7 @@ function renderPrayer(day, entry) {
     .join("");
   const filled = frames.length
     ? prayerFrameHtml(
-        fillPrayerFrame(frames[index].text, { words, before: entry.before, after: entry.after })
+        fillPrayerFrame(shown(frames[index].text), { words, before: entry.before, after: entry.after })
       )
     : "";
   const framesBlock = frames.length
@@ -569,9 +573,9 @@ function renderPrayer(day, entry) {
     : "";
   return `<div class="card">
     <h2>${esc(ui.prayer.title)}</h2>
-    <p>${esc(ui.prayer.lead)}</p>
+    <p>${esc(shown(ui.prayer.lead))}</p>
     <h3>${esc(ui.prayer.sampleTitle)}</h3>
-    <div class="prayer">${paragraphsHtml(day.samplePrayer)}</div>
+    <div class="prayer">${paragraphsHtml(shown(day.samplePrayer))}</div>
     ${framesBlock}
     <button type="button" class="btn" data-action="complete">${esc(entry.completed ? ui.prayer.saveAgain : ui.prayer.complete)}</button>
   </div>`;
@@ -598,16 +602,16 @@ function renderDay(day, requestedStep, today, phase) {
   else if (stepId === "review") body = renderReview(day);
   else body = renderPrayer(day, entry);
   const showBack = stepId !== "quiet" && app.thanksDay !== day.day;
-  setTitle(fill(ui.day.pageTitle, { day: day.day, title: day.title }));
+  setTitle(fill(ui.day.pageTitle, { day: day.day, title: shown(day.title) }));
   main.dataset.day = String(day.day);
   main.dataset.step = stepId;
   main.innerHTML = `<article class="day">
     ${careBanner(today)}
     <p class="kicker">${esc(fill(ui.day.kicker, { day: day.day, date: formatFullDate(day.date, day.weekday) }))}</p>
     ${day.kind && day.kind !== "經文" ? `<p class="kicker kind">${esc(day.kind)}</p>` : ""}
-    <h1>${esc(day.title)}</h1>
+    <h1>${esc(shown(day.title))}</h1>
     <p class="ref">${esc(day.reference)}</p>
-    ${candleFigure(day.week, `${esc(day.weekLabel)} · ${esc(day.weekTheme)}`)}
+    ${candleFigure(day.week, `${esc(day.weekLabel)} · ${esc(shown(day.weekTheme))}`)}
     ${future ? `<p class="future">${esc(ui.day.future)}</p>` : ""}
     ${renderSteps(day, entry, stepId)}
     ${body}
@@ -635,7 +639,7 @@ function renderPlan(today, phase, asHome) {
             : "";
           return `<a class="day-link" href="#/day/${day.day}">
             <span class="meta">${esc(formatMonthDay(day.date))} · ${esc(day.weekday)} ${done}${review}</span>
-            <span class="name">${esc(day.title)}</span>
+            <span class="name">${esc(shown(day.title))}</span>
             <span class="passage-ref">${esc(day.reference)}${mood}</span>
             ${wordLine}
           </a>`;
@@ -646,7 +650,7 @@ function renderPlan(today, phase, asHome) {
           <img src="./assets/candles_week${week.week}.svg" alt="" width="120" height="74">
           <div>
             <h2>${esc(week.label)}</h2>
-            <p>${esc(week.theme)}</p>
+            <p>${esc(shown(week.theme))}</p>
             <p class="muted">${esc(formatMonthDay(week.start))} – ${esc(formatMonthDay(week.end))}</p>
           </div>
         </div>

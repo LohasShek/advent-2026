@@ -4,10 +4,67 @@ import ui from "../ui-strings.json" with { type: "json" };
 
 export const TIMEZONE = "Asia/Hong_Kong";
 
+/** 「神」留在這些詞裏面。不用前後字猜測。清單沒有「神奇」和「天神」。 */
+export const SHEN_KEEP_WORDS = Object.freeze([
+  "精神",
+  "神聖",
+  "神蹟",
+  "神情",
+  "神秘",
+  "心神",
+  "神采",
+  "留神",
+  "出神",
+  "失神",
+  "傳神",
+  "神經",
+]);
+
+function shieldPhrase(source, phrase, slots) {
+  if (!phrase || !source.includes(phrase)) return source;
+  let out = "";
+  let index = 0;
+  while (index < source.length) {
+    if (source.startsWith(phrase, index)) {
+      out += `\u0000${slots.length}\u0000`;
+      slots.push(phrase);
+      index += phrase.length;
+    } else {
+      out += source[index];
+      index += 1;
+    }
+  }
+  return out;
+}
+
+/**
+ * 上帝版把團隊文字裏的「神」轉成「上帝」。神版原樣返回。
+ * 先保住已經寫好的「上帝」和排除詞，避免「上上帝」「上帝帝」。
+ */
 export function editionGuide(text, edition) {
-  const raw = String(text || "").trim();
-  if (!raw || edition !== "shangdi") return raw;
-  return raw.replace(/上帝|神/g, "上帝");
+  const raw = text == null ? "" : String(text);
+  if (edition !== "shangdi") return raw;
+  const slots = [];
+  let working = shieldPhrase(raw, "上帝", slots);
+  const keeps = [...SHEN_KEEP_WORDS].sort((left, right) => right.length - left.length);
+  for (const word of keeps) working = shieldPhrase(working, word, slots);
+  working = working.split("神").join("上帝");
+  return working.replace(/\u0000(\d+)\u0000/g, (_, index) => slots[Number(index)]);
+}
+
+/** 一日裏面要隨版本顯示的團隊文字。經文全文不在這裏。 */
+export function teamTextEntries(day) {
+  return [
+    ["情感焦點", day.focus || ""],
+    ["開場禱文", day.openingPrayer || ""],
+    ["反思一", day.reflect1 || ""],
+    ["反思二", day.reflect2 || ""],
+    ["小體驗", day.experience || ""],
+    ["示範禱文", day.samplePrayer || ""],
+    ["回顧", day.review?.prompt || ""],
+    ["標題", day.title || ""],
+    ["週主題", day.weekTheme || ""],
+  ];
 }
 
 /** Saved intensity 1–5, or "" when that side has no number to show. */
