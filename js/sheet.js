@@ -2,6 +2,7 @@
  * Google Sheet content. sheetId empty = off.
  * A failed tab never blanks a day: network errors keep the last good
  * cache for that tab, and invalid sheets fall back to the bundled JSON.
+ * 分詞 columns and the 禱文框架 tab are optional.
  */
 
 import { addDays } from "./logic.js";
@@ -13,6 +14,7 @@ export const SHEET_TABS = {
   scripture: "經文",
   guide: "每日引導",
   feelings: "感受詞彙",
+  prayers: "禱文框架",
 };
 
 const SEASON_START = "2026-11-29";
@@ -80,6 +82,7 @@ const SCRIPTURE_KEYS = [
   "title",
   "kind",
   "passage",
+  "segments",
 ];
 
 const GUIDE_KEYS = ["focus", "openingPrayer", "reflect1", "reflect2", "samplePrayer", "review"];
@@ -97,7 +100,7 @@ export function gvizUrl(sheetId, tabName) {
 }
 
 export function emptySheetCache() {
-  return { scripture: null, guide: null, feelings: null };
+  return { scripture: null, guide: null, feelings: null, prayers: null };
 }
 
 function seasonDates() {
@@ -173,6 +176,10 @@ export function parseScriptureCsv(text) {
       title: record["標題"],
       kind: record["類型"],
       passage: { shen, shangdi },
+      segments: {
+        shen: cleanPassage(record["分詞（神版）"] || ""),
+        shangdi: cleanPassage(record["分詞（上帝版）"] || ""),
+      },
     };
   });
 }
@@ -188,7 +195,7 @@ export function parseGuideCsv(text) {
     }
     const prompt = record["一週感受回顧提示"] || "";
     const review = prompt
-      ? { scope: prompt.includes("總回顧") ? "season" : "week", prompt }
+      ? { scope: day === 27 || prompt.includes("總回顧") ? "season" : "week", prompt }
       : null;
     return {
       day,
@@ -287,6 +294,24 @@ export function parseFeelingsCsv(text) {
   return { cores, intensities, care: parseCare(rows) };
 }
 
+const PRAYER_HEADERS = ["編號", "名稱", "框架文字"];
+
+export function parsePrayerCsv(text) {
+  const { header, records } = rowsToRecords(parseCsv(text));
+  requireHeaders(header, PRAYER_HEADERS, SHEET_TABS.prayers);
+  const frames = records
+    .map((record) => ({
+      id: String(record["編號"] || "").trim(),
+      name: String(record["名稱"] || "").trim(),
+      text: String(record["框架文字"] || "").trim(),
+    }))
+    .filter((item) => item.id || item.name || item.text);
+  if (!frames.length || frames.some((item) => !item.id || !item.name || !item.text)) {
+    throw new SheetError(`「${SHEET_TABS.prayers}」的編號、名稱或框架文字是空的`, "invalid");
+  }
+  return frames;
+}
+
 function assertScripture(days) {
   if (!Array.isArray(days) || days.length !== 27) throw new SheetError("經文快取無效", "invalid");
   const expected = seasonDates();
@@ -311,6 +336,13 @@ function assertFeelings(data) {
   }
 }
 
+function assertPrayers(frames) {
+  if (!Array.isArray(frames) || !frames.length) throw new SheetError("禱文框架快取無效", "invalid");
+  if (frames.some((item) => !item?.id || !item?.name || !item?.text)) {
+    throw new SheetError("禱文框架快取無效", "invalid");
+  }
+}
+
 export function sanitizeSheetCache(raw) {
   const cache = emptySheetCache();
   if (!raw || typeof raw !== "object") return cache;
@@ -331,6 +363,12 @@ export function sanitizeSheetCache(raw) {
     cache.feelings = raw.feelings;
   } catch {
     cache.feelings = null;
+  }
+  try {
+    assertPrayers(raw.prayers);
+    cache.prayers = raw.prayers;
+  } catch {
+    cache.prayers = null;
   }
   return cache;
 }
@@ -357,7 +395,16 @@ export function mergeSheetContent(bundledPlan, bundledFeelings, parts) {
     for (const day of plan.days) {
       const source = parts.scripture.find((item) => item.day === day.day);
       if (!source) continue;
-      for (const key of SCRIPTURE_KEYS) day[key] = source[key];
+      for (const key of SCRIPTURE_KEYS) {
+        if (key === "segments") {
+          day.segments = {
+            shen: String(source.segments?.shen || ""),
+            shangdi: String(source.segments?.shangdi || ""),
+          };
+        } else {
+          day[key] = source[key];
+        }
+      }
     }
   }
   if (parts?.guide) {
@@ -372,6 +419,13 @@ export function mergeSheetContent(bundledPlan, bundledFeelings, parts) {
     feelings.intensities = parts.feelings.intensities;
     feelings.care = parts.feelings.care;
   }
+  if (Array.isArray(parts?.prayers) && parts.prayers.length) {
+    plan.prayerFrames = parts.prayers.map((item) => ({
+      id: String(item.id),
+      name: String(item.name),
+      text: String(item.text),
+    }));
+  }
   return { plan, feelings };
 }
 
@@ -384,10 +438,12 @@ const TAB_JOBS = [
   { key: "scripture", sheet: SHEET_TABS.scripture, parse: parseScriptureCsv },
   { key: "guide", sheet: SHEET_TABS.guide, parse: parseGuideCsv },
   { key: "feelings", sheet: SHEET_TABS.feelings, parse: parseFeelingsCsv },
+  { key: "prayers", sheet: SHEET_TABS.prayers, parse: parsePrayerCsv },
 ];
 
 /**
- * Fetch the three tabs. Does not touch the network when sheetId is empty.
+ * Fetch the content tabs. 禱文框架 is optional: a missing tab keeps the bundled frames.
+ * Does not touch the network when sheetId is empty.
  * `cache` is the last good parsed tabs, used only when a download fails.
  */
 export async function refreshFromSheet({
@@ -408,7 +464,7 @@ export async function refreshFromSheet({
     };
   }
 
-  const parts = { scripture: null, guide: null, feelings: null };
+  const parts = { scripture: null, guide: null, feelings: null, prayers: null };
   const nextCache = { ...safeCache };
 
   await Promise.all(TAB_JOBS.map(async (job) => {

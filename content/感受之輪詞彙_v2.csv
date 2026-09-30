@@ -1,47 +1,45 @@
-﻿核心情緒,Core (EN),細分感受,Feeling (EN),序號
-喜樂,Joyful,興奮,Excited,1
-喜樂,Joyful,期待,Expectant,2
-喜樂,Joyful,雀躍,Cheerful,3
-喜樂,Joyful,充滿活力,Energetic,4
-喜樂,Joyful,有創意,Creative,5
-喜樂,Joyful,有盼望,Hopeful,6
-平安,Peaceful,被關顧,Cared for,1
-平安,Peaceful,信任,Trusting,2
-平安,Peaceful,被愛,Loved,3
-平安,Peaceful,親密,Close,4
-平安,Peaceful,沉靜,Thoughtful,5
-平安,Peaceful,知足,Content,6
-有力,Powerful,清醒,Aware,1
-有力,Powerful,自豪,Proud,2
-有力,Powerful,受尊重,Respected,3
-有力,Powerful,被欣賞,Appreciated,4
-有力,Powerful,被重視,Valued,5
-有力,Powerful,忠心,Faithful,6
-悲傷,Sad,內疚,Guilty,1
-悲傷,Sad,羞愧,Ashamed,2
-悲傷,Sad,沮喪,Depressed,3
-悲傷,Sad,孤單,Lonely,4
-悲傷,Sad,無聊,Bored,5
-悲傷,Sad,疲累,Tired,6
-懼怕,Scared,被拒絕,Rejected,1
-懼怕,Scared,困惑,Confused,2
-懼怕,Scared,無助,Helpless,3
-懼怕,Scared,退縮,Withdrawn,4
-懼怕,Scared,不安,Insecure,5
-懼怕,Scared,焦慮,Anxious,6
-憤怒,Mad,受傷,Hurt,1
-憤怒,Mad,敵意,Hostile,2
-憤怒,Mad,生氣,Angry,3
-憤怒,Mad,嫉妒,Jealous,4
-憤怒,Mad,怨恨,Resentful,5
-憤怒,Mad,挑剔,Critical,6
-
-強度,說明
-1,輕微
-2,有少少
-3,明顯
-4,強烈
-5,非常強烈
-
-關懷提示（連續 3 日揀悲傷或懼怕、強度 4 或以上時顯示）
-這幾天你好像背着沉重的感受。你不必獨自承受，可以找牧者或信得過的弟兄姊妹傾談。歡迎聯絡石守賢傳道。如有即時危險，請致電 999。
+﻿"核心情緒","Core (EN)","細分感受","Feeling (EN)","序號"
+"喜樂","Joyful","興奮","Excited","1"
+"喜樂","Joyful","期待","Expectant","2"
+"喜樂","Joyful","雀躍","Cheerful","3"
+"喜樂","Joyful","充滿活力","Energetic","4"
+"喜樂","Joyful","有創意","Creative","5"
+"喜樂","Joyful","有盼望","Hopeful","6"
+"平安","Peaceful","被關顧","Cared for","1"
+"平安","Peaceful","信任","Trusting","2"
+"平安","Peaceful","被愛","Loved","3"
+"平安","Peaceful","親密","Close","4"
+"平安","Peaceful","沉靜","Thoughtful","5"
+"平安","Peaceful","知足","Content","6"
+"有力","Powerful","清醒","Aware","1"
+"有力","Powerful","自豪","Proud","2"
+"有力","Powerful","受尊重","Respected","3"
+"有力","Powerful","被欣賞","Appreciated","4"
+"有力","Powerful","被重視","Valued","5"
+"有力","Powerful","忠心","Faithful","6"
+"悲傷","Sad","內疚","Guilty","1"
+"悲傷","Sad","羞愧","Ashamed","2"
+"悲傷","Sad","沮喪","Depressed","3"
+"悲傷","Sad","孤單","Lonely","4"
+"悲傷","Sad","無聊","Bored","5"
+"悲傷","Sad","疲累","Tired","6"
+"懼怕","Scared","被拒絕","Rejected","1"
+"懼怕","Scared","困惑","Confused","2"
+"懼怕","Scared","無助","Helpless","3"
+"懼怕","Scared","退縮","Withdrawn","4"
+"懼怕","Scared","不安","Insecure","5"
+"懼怕","Scared","焦慮","Anxious","6"
+"憤怒","Mad","受傷","Hurt","1"
+"憤怒","Mad","敵意","Hostile","2"
+"憤怒","Mad","生氣","Angry","3"
+"憤怒","Mad","嫉妒","Jealous","4"
+"憤怒","Mad","怨恨","Resentful","5"
+"憤怒","Mad","挑剔","Critical","6"
+"強度","說明","","",""
+"1","輕微","","",""
+"2","少許","","",""
+"3","明顯","","",""
+"4","強烈","","",""
+"5","非常強烈","","",""
+"關懷提示（連續 3 日圈選悲傷或懼怕、強度 4 或以上時顯示）","","","",""
+"這幾天你好像背著沉重的感受。你不必獨自承受，可以找牧者或信得過的弟兄姊妹傾談。歡迎聯絡石守賢傳道。如有即時危險，請致電 999。","","","",""

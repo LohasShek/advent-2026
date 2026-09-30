@@ -10,6 +10,7 @@ import {
   loadSheetCache,
   parseFeelingsCsv,
   parseGuideCsv,
+  parsePrayerCsv,
   parseScriptureCsv,
   refreshFromSheet,
   saveSheetCache,
@@ -75,7 +76,25 @@ for (const day of plan.days) {
   assert.equal(parsed.reference, day.reference);
   assert.equal(parsed.passage.shen, day.passage.shen);
   assert.equal(parsed.passage.shangdi, day.passage.shangdi);
+  assert.equal(parsed.segments.shen, "");
+  assert.equal(parsed.segments.shangdi, "");
 }
+
+const segmentRows = parseCsv(scriptureCsv);
+segmentRows[0].push("分詞（神版）", "分詞（上帝版）");
+segmentRows[1].push("不｜相符", "不｜相符");
+const segmentCsv = segmentRows
+  .map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","))
+  .join("\n");
+const withSegments = parseScriptureCsv(segmentCsv);
+assert.equal(withSegments[0].segments.shen, "不｜相符");
+assert.equal(withSegments[1].segments.shen, "");
+assert.equal(withSegments[0].passage.shen, parsedDays[0].passage.shen);
+
+const prayerCsv = readFileSync(new URL("content/禱文框架.csv", root), "utf8");
+const prayerFrames = parsePrayerCsv(prayerCsv);
+assert.deepEqual(plan.prayerFrames, prayerFrames);
+const sheetPrayers = prayerCsv.replace("字詞觸動", "字詞觸動試");
 
 const parsedGuide = parseGuideCsv(guideCsv);
 assert.equal(parsedGuide[1].openingPrayer, plan.days[1].openingPrayer);
@@ -109,12 +128,13 @@ const idle = await refreshFromSheet({
 assert.equal(idle.fetched, false);
 assert.equal(idle.plan.days[1].title, "願你破天而降");
 
-const titled = scriptureCsv.replace(",願你破天而降,經文,", ",願你破天而降（試算表）,經文,");
-const labeled = feelingsCsv.replace("喜樂,Joyful,興奮,Excited,1", "喜樂,Joyful,興奮試,Excited,1");
+const titled = scriptureCsv.replace('"願你破天而降","經文"', '"願你破天而降（試算表）","經文"');
+const labeled = feelingsCsv.replace('"喜樂","Joyful","興奮","Excited","1"', '"喜樂","Joyful","興奮試","Excited","1"');
 const successFetch = fetchByTab({
   [SHEET_TABS.scripture]: titled,
   [SHEET_TABS.guide]: guideCsv,
   [SHEET_TABS.feelings]: labeled,
+  [SHEET_TABS.prayers]: sheetPrayers,
 });
 const successStorage = memoryStorage();
 const success = await refreshFromSheet({
@@ -127,11 +147,12 @@ const success = await refreshFromSheet({
   },
 });
 assert.equal(success.fetched, true);
-assert.equal(successFetch.calls.length, 3);
+assert.equal(successFetch.calls.length, 4);
 assert.equal(success.plan.days[1].title, "願你破天而降（試算表）");
 assert.equal(success.plan.days[1].passage.shen, plan.days[1].passage.shen);
 assert.equal(success.plan.days[0].openingPrayer, plan.days[0].openingPrayer);
 assert.equal(success.feelings.cores[0].feelings[0].zh, "興奮試");
+assert.equal(success.plan.prayerFrames[0].name, "字詞觸動試");
 assert.equal(success.feelings.care.contact, "歡迎聯絡石守賢傳道");
 saveSheetCache(success.cache, successStorage);
 assert.equal(JSON.parse(successStorage.getItem(SHEET_CACHE_KEY)).scripture[1].title, "願你破天而降（試算表）");
@@ -148,7 +169,8 @@ const offline = await refreshFromSheet({
 });
 assert.equal(offline.plan.days[1].title, "願你破天而降");
 assert.equal(offline.plan.days[1].passage.shen.length > 0, true);
-assert.equal(offlineWarnings.length, 3);
+assert.equal(offlineWarnings.length, 4);
+assert.equal(offline.plan.prayerFrames[0].name, "字詞觸動");
 assert.match(offlineWarnings.join("\n"), /經文/);
 assert.match(offlineWarnings.join("\n"), /內建/);
 
@@ -218,10 +240,14 @@ assert.equal(painted.plan.days[0].title, plan.days[0].title);
 const reloaded = loadSheetCache(successStorage);
 assert.equal(reloaded.scripture[1].title, "願你破天而降（試算表）");
 
-assert.match(config, /sheetId:\s*""/);
+assert.match(config, /sheetId:\s*"1KpW6fsjUaHnj17MiKtIjLS7ybe4geqMr-rkPkSqB-DU"/);
 assert.match(pages, /test_sheet\.mjs/);
 assert.match(syncWorkflow, /workflow_dispatch/);
 assert.match(syncWorkflow, /sheet_id/);
 assert.match(syncWorkflow, /create-pull-request/);
+assert.match(readFileSync(new URL("scripts/sync-from-sheet.mjs", root), "utf8"), /禱文框架/);
+assert.match(readFileSync(new URL("README.md", root), "utf8"), /分詞（神版）/);
+assert.match(readFileSync(new URL("README.md", root), "utf8"), /分詞（上帝版）/);
+assert.equal(readFileSync(new URL("README.md", root), "utf8").includes("stats.html"), false);
 
 console.log("sheet tests passed");

@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 /**
- * Download the three content tabs and regenerate the bundled JSON.
+ * Download the content tabs and regenerate the bundled JSON.
+ * 經文, 每日引導 and 感受詞彙 are required.
+ * 禱文框架 is optional: if that tab is missing, the bundled file stays.
  *
  *   node scripts/sync-from-sheet.mjs --sheet-id SHEET_ID
  *
  * The id can also come from SHEET_ID or config.js. This does not write
- * sheetId into config.js. All three tabs must validate before any file changes.
+ * sheetId into config.js. The three required tabs must validate before any file changes.
  */
 
 import { spawnSync } from "node:child_process";
@@ -18,6 +20,7 @@ import {
   gvizUrl,
   parseFeelingsCsv,
   parseGuideCsv,
+  parsePrayerCsv,
   parseScriptureCsv,
 } from "../js/sheet.js";
 
@@ -40,37 +43,44 @@ if (!sheetId) {
 }
 
 const jobs = [
-  { tab: SHEET_TABS.scripture, file: "將臨期每日經文_v2.csv", parse: parseScriptureCsv },
-  { tab: SHEET_TABS.guide, file: "將臨期每日情感引導_v2.csv", parse: parseGuideCsv },
-  { tab: SHEET_TABS.feelings, file: "感受之輪詞彙_v2.csv", parse: parseFeelingsCsv },
+  { tab: SHEET_TABS.scripture, file: "將臨期每日經文_v2.csv", parse: parseScriptureCsv, optional: false },
+  { tab: SHEET_TABS.guide, file: "將臨期每日情感引導_v2.csv", parse: parseGuideCsv, optional: false },
+  { tab: SHEET_TABS.feelings, file: "感受之輪詞彙_v2.csv", parse: parseFeelingsCsv, optional: false },
+  { tab: SHEET_TABS.prayers, file: "禱文框架.csv", parse: parsePrayerCsv, optional: true },
 ];
 
-const downloads = [];
-for (const job of jobs) {
+async function downloadTab(job) {
   const url = gvizUrl(sheetId, job.tab);
   let response;
   try {
     response = await fetch(url);
   } catch (error) {
-    console.error(`下載「${job.tab}」失敗：${error?.message || error}`);
-    process.exit(1);
+    return { ok: false, detail: error?.message || String(error) };
   }
-  if (!response.ok) {
-    console.error(`下載「${job.tab}」失敗：HTTP ${response.status}`);
-    process.exit(1);
-  }
+  if (!response.ok) return { ok: false, detail: `HTTP ${response.status}` };
   const text = await response.text();
-  if (!text || /^\s*</.test(text)) {
-    console.error(`「${job.tab}」的回應不是 CSV。請確認試算表已設為「知道連結的人可以查看」，而且分頁名稱沒有改過。`);
-    process.exit(1);
-  }
+  if (!text || /^\s*</.test(text)) return { ok: false, detail: "回應不是 CSV" };
   try {
     job.parse(text);
   } catch (error) {
-    console.error(error?.message || error);
+    return { ok: false, detail: error?.message || String(error) };
+  }
+  return { ok: true, text };
+}
+
+const downloads = [];
+for (const job of jobs) {
+  const result = await downloadTab(job);
+  if (!result.ok) {
+    const message = `「${job.tab}」未能使用：${result.detail}`;
+    if (job.optional) {
+      console.warn(`${message}。繼續使用內建的禱文框架。`);
+      continue;
+    }
+    console.error(`${message}。請確認試算表已設為「知道連結的人可以查看」，而且分頁名稱沒有改過。`);
     process.exit(1);
   }
-  downloads.push({ file: job.file, text });
+  downloads.push({ file: job.file, text: result.text });
 }
 
 for (const item of downloads) {

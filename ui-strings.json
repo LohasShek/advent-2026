@@ -1,0 +1,221 @@
+{
+  "_note": "畫面上的介面文字都在這份檔案。經文、禱文、反思和感受詞彙來自試算表，不在這裡。",
+  "shell": {
+    "documentTitle": "將臨期情感讀經 2026",
+    "titleSuffix": "將臨期情感讀經",
+    "description": "將臨期情感讀經 2026。27 日，每日約 13 分鐘。感受只留在這部裝置。",
+    "appleTitle": "將臨讀經",
+    "brand": "將臨期",
+    "brandYear": "情感讀經 2026",
+    "loading": "正在打開……",
+    "navLabel": "主要",
+    "navHome": "首頁",
+    "navPlan": "27 日",
+    "navAbout": "關於",
+    "noscript": "這個讀經計劃需要開啟 JavaScript，內容仍然只留在你的裝置上。"
+  },
+  "pwa": {
+    "name": "將臨期情感讀經 2026",
+    "shortName": "將臨讀經",
+    "description": "27 日將臨期情感讀經。感受只留在這部裝置。"
+  },
+  "weekdays": {
+    "日": "星期日",
+    "一": "星期一",
+    "二": "星期二",
+    "三": "星期三",
+    "四": "星期四",
+    "五": "星期五",
+    "六": "星期六"
+  },
+  "steps": {
+    "navLabel": "今天的步驟",
+    "quiet": "安靜",
+    "before": "讀經前",
+    "read": "讀經",
+    "after": "讀經後",
+    "reflect": "反思",
+    "reviewWeek": "回顧",
+    "reviewSeason": "總回顧",
+    "prayer": "祈禱"
+  },
+  "candles": [
+    "四枝蠟燭都未點著",
+    "點著一枝蠟燭",
+    "點著兩枝蠟燭",
+    "點著三枝蠟燭",
+    "四枝蠟燭都點著了"
+  ],
+  "passage": {
+    "placeholder": "經文全文尚未放進這一日。請按上面的出處打開聖經，慢慢讀兩遍。",
+    "skip": "……",
+    "verse": "第{n}節",
+    "chapterVerse": "第{chapter}章{verse}節"
+  },
+  "comparison": {
+    "same": "讀經前後的感受很接近。一樣的感受，也可以安然放在神面前。",
+    "sameCore": "核心的感受還在，細節或強度有一點不同。這裏只是並排看著，沒有好壞。",
+    "different": "讀經前後的感受不一樣。兩種都是真實的，可以一起交給神。"
+  },
+  "review": {
+    "weekTitle": "一週感受回顧",
+    "seasonTitle": "將臨期總回顧",
+    "weekTag": "一週回顧",
+    "seasonTag": "總回顧",
+    "beforeLabel": "讀經前",
+    "afterLabel": "讀經後",
+    "topMany": "{label}較常出現的是{names}",
+    "topOne": "{label}出現得最多的是{name}",
+    "empty": "這段日子還沒有感受紀錄。沒有紀錄也沒有關係，你可以安靜回想，或回到其中一天補記。",
+    "notRecorded": "未記",
+    "toPrayer": "帶著這些去祈禱"
+  },
+  "home": {
+    "kicker": "香港時間 · {date} 開始",
+    "title": "將臨期情感讀經",
+    "headingStart": "將臨期",
+    "headingEnd": "情感讀經",
+    "candles": "將臨期尚未開始",
+    "countdown": "日後開始",
+    "lead": "{start}至{end}。一共 27 日，每日約 13 分鐘：安靜、讀經前感受、慢讀經文、反思、讀經後感受、祈禱。",
+    "planLink": "看看 27 日計劃",
+    "footnote": "感受、字詞、筆記和反思只留在這部裝置。"
+  },
+  "plan": {
+    "kicker": "將臨期情感讀經",
+    "title": "27 日計劃",
+    "afterTitle": "27 日都在這裏",
+    "afterPageTitle": "整個計劃",
+    "afterLead": "將臨期的 27 日已經走完。你可以從任何一日再讀。感受仍然只留在這部裝置。",
+    "lead": "27 日都可以打開。未到的日子也不會鎖上。",
+    "done": "已完成"
+  },
+  "day": {
+    "kicker": "第 {day} 日 · {date}",
+    "pageTitle": "第{day}日 {title}",
+    "missingTitle": "找不到這一日",
+    "missingBody": "返回 27 日計劃",
+    "future": "這一日還沒有到。你仍可以先看，不會被鎖上。",
+    "back": "上一步",
+    "focus": "今天的情感焦點：{focus}"
+  },
+  "quiet": {
+    "title": "安靜",
+    "lead": "用自己的節奏，慢慢呼吸三次。不必趕。",
+    "ready": "準備好就可以開始",
+    "total": "一共三次",
+    "start": "開始三次呼吸",
+    "prayerTitle": "開場禱文",
+    "nextLocked": "三次呼吸之後繼續",
+    "skip": "我已經安靜好了",
+    "inhale": "吸氣",
+    "exhale": "呼氣",
+    "cycle": "第 {cycle} 次，共 3 次",
+    "doneLabel": "可以了",
+    "doneCount": "三次呼吸已經完成",
+    "next": "去看看讀經前的感受"
+  },
+  "picker": {
+    "beforeTitle": "讀經之前，你帶著甚麼感受？",
+    "afterTitle": "讀經之後，此刻的感受是？",
+    "beforeLead": "點外面一圈，再選更細緻的感受，然後強度。",
+    "afterLead": "再選一次就好。和剛才不同，或是一樣，都可以。",
+    "wheelLabel": "感受之輪",
+    "fineLabel": "{core}的細分感受",
+    "finePrompt": "細一點，比較像……",
+    "chooseCore": "先在圓環上點一種核心情緒。",
+    "intensityLabel": "強度",
+    "intensityPrompt": "有多強烈？",
+    "intensitySpoken": "強度 {label}",
+    "becauseLabel": "因為……（可留空）",
+    "becausePlaceholder": "只留一句，也可以不寫",
+    "becausePrivate": "這句話只存在這部裝置，不會被送出。",
+    "becausePrefix": "因為",
+    "saveBefore": "記下感受，去讀經",
+    "saveAfter": "並排看看"
+  },
+  "compare": {
+    "title": "讀經之前，讀經之後",
+    "before": "讀經之前",
+    "after": "讀經之後",
+    "empty": "尚未記下",
+    "next": "去祈禱",
+    "redo": "改一改讀經後的感受"
+  },
+  "read": {
+    "title": "慢讀經文",
+    "hint": "建議慢慢讀兩遍。讀的時候不必分析，讓句子停一停。",
+    "tokenHint": "點一下字詞就可以記下，再點一下就取消。最多 5 個。",
+    "selectHint": "按住經文，拖選字詞，再按「加入字詞」。最多 5 個。",
+    "editionLabel": "經文版本",
+    "shen": "神版",
+    "shangdi": "上帝版",
+    "next": "讀完了，去反思"
+  },
+  "reflect": {
+    "title": "反思",
+    "lead": "兩個問題都可以只在心裏回答。想寫下來，也只留在這部裝置。",
+    "placeholder": "可留空",
+    "toAfter": "看看讀經後的感受",
+    "toWeek": "看看這一週",
+    "toSeason": "看看整段將臨期",
+    "toPrayer": "去祈禱"
+  },
+  "prayer": {
+    "title": "祈禱",
+    "lead": "下面是一段示範。你可以用自己的話，對神說你真正想說的。",
+    "sampleTitle": "示範禱文",
+    "framesLabel": "可以跟著說",
+    "blank": "這裏留白，用自己的話繼續",
+    "withWords": "選了字詞之後，可以跟著下面的框架，用自己的話把留白說完。",
+    "complete": "完成今天的讀經",
+    "saveAgain": "再次儲存",
+    "doneTitle": "完成了",
+    "doneSeason": "將臨期的二十七日到這裏。願你帶著記在心裏的事，繼續走路。",
+    "doneDay": "今天到這裏就可以。願你帶著這些感受，繼續走路。",
+    "backToPlan": "返回 27 日計劃",
+    "backHome": "回到首頁"
+  },
+  "words": {
+    "add": "加入字詞",
+    "limit": "最多選 5 個",
+    "listLabel": "已選字詞",
+    "remove": "移除{word}",
+    "recap": "今天的字詞",
+    "reviewLabel": "字詞"
+  },
+  "about": {
+    "title": "關於",
+    "kicker": "關於",
+    "heading": "這個計劃",
+    "intro": "將臨期情感讀經是 27 日的同行。每日大約 13 分鐘：先安靜，留意讀經前的感受，慢慢讀一段經文，反思，再留意讀經後的感受，然後祈禱。日期按香港時間計算。",
+    "noJudgement": "感受沒有好壞。讀經前後可以不同，也可以一樣。",
+    "editionTitle": "經文版本",
+    "editionBody": "和合本修訂版有「神」和「上帝」兩個用字，經文內容相同，只是對神的稱呼不同。這裏預設是神版，你可以隨時切換，選擇會記在這部裝置。",
+    "privacyTitle": "私隱",
+    "privacyBody": "你選的感受、字詞、寫下的「因為……」和反思，都只存在這部裝置的瀏覽器裏。沒有帳號，沒有姓名，這些文字也不會上傳。",
+    "clear": "清除這部裝置上的紀錄",
+    "clearConfirm": "要清除這部裝置上的感受和筆記嗎？這個動作不能還原。",
+    "statsTitle": "匿名統計",
+    "statsOn": "教會開了不使用 cookie 的匿名計數（GoatCounter）。它只計算兩件事：有人打開某個頁面，以及有人按下「完成今天的讀經」。這些數字看不到你是誰，也沒有你寫下的字。",
+    "statsOff": "這個版本沒有填上統計代碼，所以不會載入任何統計程式，也不會送出使用次數。",
+    "shareLabel": "匿名分享我今天的感受",
+    "shareHelp": "預設關閉。打開之後，只有在你按下「完成今天的讀經」時，才送出該日的日序、讀經前和讀經後的核心情緒、細分感受和強度。不會送出你寫的句子，也沒有任何可以認出你的資料。可以隨時關閉。",
+    "installTitle": "加到主畫面",
+    "installBody": "用瀏覽器的分享或選單，選擇「加到主畫面」或「安裝應用程式」。安裝之後，讀過一次的內容可以離線再開。",
+    "careTitle": "如果你需要人陪",
+    "careBody": "連續幾日感到強烈的悲傷或懼怕時，程式會在畫面上輕輕提醒你找人傾談。{contact}如有即時危險，請致電 999。"
+  },
+  "care": {
+    "dismiss": "我知道了，今天先收起"
+  },
+  "errors": {
+    "loadTitle": "未能開啟",
+    "loadBody": "讀經計劃暫時載入不到。請檢查網絡後再試一次。",
+    "sheetRefresh": "試算表更新失敗（{detail}），繼續用目前的內容。"
+  },
+  "stats": {
+    "completeTitle": "完成第{day}日",
+    "feelingTitle": "匿名感受"
+  }
+}

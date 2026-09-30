@@ -1,18 +1,16 @@
 /** Date, care, and passage helpers. No network and no scripture text. */
 
-export const TIMEZONE = "Asia/Hong_Kong";
-export const SCRIPTURE_COPYRIGHT =
-  "經文取自《聖經．和合本修訂版》，香港聖經公會，蒙允准使用。";
+import ui from "../ui-strings.json" with { type: "json" };
 
-const WEEKDAY_LABEL = {
-  日: "星期日",
-  一: "星期一",
-  二: "星期二",
-  三: "星期三",
-  四: "星期四",
-  五: "星期五",
-  六: "星期六",
-};
+export const TIMEZONE = "Asia/Hong_Kong";
+
+export function fill(template, vars = {}) {
+  return String(template ?? "").replace(/\{(\w+)\}/g, (_, key) =>
+    vars[key] == null ? "" : String(vars[key])
+  );
+}
+
+const WEEKDAY_LABEL = ui.weekdays;
 
 export function esc(value) {
   return String(value ?? "")
@@ -64,14 +62,7 @@ export function formatFullDate(iso, weekday) {
 }
 
 export function candleAlt(week) {
-  const labels = [
-    "四枝蠟燭都未點着",
-    "點着一枝蠟燭",
-    "點着兩枝蠟燭",
-    "點着三枝蠟燭",
-    "四枝蠟燭都點着了",
-  ];
-  return labels[week] || labels[0];
+  return ui.candles[week] || ui.candles[0];
 }
 
 export function weeksOf(days) {
@@ -133,19 +124,19 @@ export function previousStepId(day, stepId) {
 
 export function flowSteps(day) {
   const steps = [
-    { id: "quiet", label: "安靜" },
-    { id: "before", label: "讀經前" },
-    { id: "read", label: "讀經" },
-    { id: "after", label: "讀經後" },
-    { id: "reflect", label: "反思" },
+    { id: "quiet", label: ui.steps.quiet },
+    { id: "before", label: ui.steps.before },
+    { id: "read", label: ui.steps.read },
+    { id: "reflect", label: ui.steps.reflect },
+    { id: "after", label: ui.steps.after },
   ];
   if (day.review) {
     steps.push({
       id: "review",
-      label: day.review.scope === "season" ? "總回顧" : "回顧",
+      label: day.review.scope === "season" ? ui.steps.reviewSeason : ui.steps.reviewWeek,
     });
   }
-  steps.push({ id: "prayer", label: "祈禱" });
+  steps.push({ id: "prayer", label: ui.steps.prayer });
   return steps;
 }
 
@@ -160,9 +151,9 @@ export function reviewBounds(day) {
 function verseSpoken(n) {
   if (String(n).includes(":")) {
     const [chapter, verse] = String(n).split(":");
-    return `第${chapter}章${verse}節`;
+    return fill(ui.passage.chapterVerse, { chapter, verse });
   }
-  return `第${n}節`;
+  return fill(ui.passage.verse, { n });
 }
 
 export function parseVerses(text) {
@@ -178,23 +169,222 @@ export function parseVerses(text) {
     });
 }
 
-export function passageHtml(text) {
-  const verses = parseVerses(text);
-  if (!verses.length) {
-    return `<p class="placeholder">經文全文尚未放進這一日。請按上面的出處打開聖經，慢慢讀兩遍。</p>`;
+function verseKey(label) {
+  const text = String(label || "");
+  if (!text) return null;
+  if (text.includes(":")) {
+    const [chapter, verse] = text.split(":").map(Number);
+    if (!Number.isInteger(chapter) || !Number.isInteger(verse)) return null;
+    return { chapter, verse };
   }
-  const body = verses
-    .map((verse) => {
-      const spoken = verse.n
-        ? `<span class="sr-only">${esc(verseSpoken(verse.n))}。</span>`
-        : "";
-      const num = verse.n
-        ? `<sup class="vnum">${esc(verse.n)}</sup>`
-        : "";
-      return `<p class="verse">${num}${spoken}${esc(verse.text)}</p>`;
+  const verse = Number(text);
+  if (!Number.isInteger(verse)) return null;
+  return { chapter: null, verse };
+}
+
+function versesContinue(previous, next) {
+  if (!previous || !next) return true;
+  if (previous.chapter == null && next.chapter == null) return next.verse === previous.verse + 1;
+  if (previous.chapter != null && next.chapter != null) {
+    if (previous.chapter === next.chapter) return next.verse === previous.verse + 1;
+    return next.chapter === previous.chapter + 1 && next.verse === 1;
+  }
+  return false;
+}
+
+export const WORD_LIMIT = 5;
+
+const WORD_PUNCT = /^[\s，。！？；：、,.!?;:「」『』（）()…—\-～~]+$/;
+
+export function segmentMode(passage, segmented) {
+  const raw = String(segmented ?? "");
+  if (!raw.trim()) return "empty";
+  if (raw.split("｜").join("") !== String(passage ?? "")) return "mismatch";
+  return "tokens";
+}
+
+function isSelectableWord(text) {
+  const trimmed = String(text || "").trim();
+  if (!trimmed) return false;
+  if (/^\d+(?::\d+)?$/.test(trimmed)) return false;
+  if (WORD_PUNCT.test(trimmed)) return false;
+  return true;
+}
+
+export function lineTokens(line) {
+  const pieces = String(line).split("｜");
+  const tokens = [];
+  const push = (text, selectable) => {
+    if (text === "") return;
+    tokens.push({ text, selectable });
+  };
+  pieces.forEach((piece, index) => {
+    if (index === 0) {
+      const match = piece.match(/^(\d+(?::\d+)?)(\s+)([\s\S]*)$/);
+      if (match) {
+        push(match[1], false);
+        push(match[2], false);
+        if (match[3]) push(match[3], isSelectableWord(match[3]));
+        return;
+      }
+    }
+    push(piece, isSelectableWord(piece));
+  });
+  return tokens;
+}
+
+export function normalizeWords(words) {
+  if (!Array.isArray(words)) return [];
+  const list = [];
+  for (const word of words) {
+    if (typeof word !== "string") continue;
+    const clean = word.trim();
+    if (!clean || list.includes(clean)) continue;
+    list.push(clean);
+    if (list.length >= WORD_LIMIT) break;
+  }
+  return list;
+}
+
+export function selectionWord(raw) {
+  return String(raw || "")
+    .replace(/\s+/g, "")
+    .replace(/^\d+(?::\d+)?/, "")
+    .trim();
+}
+
+export function addWord(words, raw) {
+  const list = normalizeWords(words);
+  const clean = selectionWord(raw);
+  if (!clean) return { words: list, limited: false };
+  if (list.includes(clean)) return { words: list, limited: false };
+  if (list.length >= WORD_LIMIT) return { words: list, limited: true };
+  return { words: [...list, clean], limited: false };
+}
+
+export function toggleWord(words, raw) {
+  const list = normalizeWords(words);
+  const clean = String(raw || "").trim();
+  if (!clean || !isSelectableWord(clean)) return { words: list, limited: false };
+  const index = list.indexOf(clean);
+  if (index >= 0) return { words: list.filter((_, item) => item !== index), limited: false };
+  if (list.length >= WORD_LIMIT) return { words: list, limited: true };
+  return { words: [...list, clean], limited: false };
+}
+
+export function formatMarkedWords(words) {
+  return normalizeWords(words)
+    .map((word) => `「${word}」`)
+    .join("、");
+}
+
+export function feelingLabel(pick) {
+  if (!pick || typeof pick !== "object") return "";
+  const fine = String(pick.feelingZh || "").trim();
+  if (fine) return fine;
+  return String(pick.coreZh || "").trim();
+}
+
+export function fillPrayerFrame(template, context = {}) {
+  const words = formatMarkedWords(context.words);
+  const before = feelingLabel(context.before);
+  const after = feelingLabel(context.after);
+  let text = String(template || "");
+  if (before && before === after && text.includes("〔讀經前感受〕") && text.includes("〔讀經後感受〕")) {
+    const at = text.indexOf("〔字詞〕");
+    const opening = `主啊，讀經前後我都感到${before}。`;
+    text = at >= 0 ? `${opening}${text.slice(at)}` : opening;
+  }
+  return text
+    .split("〔字詞〕")
+    .join(words)
+    .split("〔讀經前感受〕")
+    .join(before)
+    .split("〔讀經後感受〕")
+    .join(after);
+}
+
+function blankHtml(line) {
+  const parts = String(line).split("＿＿");
+  return parts
+    .map((part, index) => {
+      const blank =
+        index < parts.length - 1
+          ? `<span class="pray-blank" role="img" aria-label="${esc(ui.prayer.blank)}">&nbsp;</span>`
+          : "";
+      return `${esc(part)}${blank}`;
     })
     .join("");
-  return `<div class="passage">${body}</div>`;
+}
+
+export function prayerFrameHtml(text) {
+  return String(text || "")
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => `<p>${blankHtml(line)}</p>`)
+    .join("");
+}
+
+function verseBodyHtml(verse) {
+  const spoken = verse.n ? `<span class="sr-only">${esc(verseSpoken(verse.n))}。</span>` : "";
+  const num = verse.n ? `<sup class="vnum">${esc(verse.n)}</sup>` : "";
+  return `<p class="verse">${num}${spoken}${esc(verse.text)}</p>`;
+}
+
+function tokenLineHtml(line, selected) {
+  const tokens = lineTokens(line);
+  let html = "";
+  let index = 0;
+  if (tokens[0] && !tokens[0].selectable && /^\d+(?::\d+)?$/.test(tokens[0].text)) {
+    const n = tokens[0].text;
+    html += `<sup class="vnum">${esc(n)}</sup><span class="sr-only">${esc(verseSpoken(n))}。</span>`;
+    index = 1;
+    if (tokens[1] && !tokens[1].selectable && /^\s+$/.test(tokens[1].text)) index = 2;
+  }
+  for (const token of tokens.slice(index)) {
+    if (!token.selectable) {
+      html += esc(token.text);
+      continue;
+    }
+    const value = token.text.trim();
+    const on = selected.has(value);
+    html += `<button type="button" class="token${on ? " is-on" : ""}" data-action="toggle-word" data-word="${esc(value)}" aria-pressed="${on ? "true" : "false"}">${esc(token.text)}</button>`;
+  }
+  return `<p class="verse">${html}</p>`;
+}
+
+export function passageHtml(text, segmented = "", words = []) {
+  const source = String(text || "");
+  if (!source.trim()) {
+    return `<p class="placeholder">${esc(ui.passage.placeholder)}</p>`;
+  }
+  const tokens = segmentMode(source, segmented) === "tokens";
+  const parts = [];
+  let previous = null;
+  if (tokens) {
+    const selected = new Set(normalizeWords(words));
+    for (const line of String(segmented).split("\n")) {
+      const stripped = line.split("｜").join("");
+      const match = stripped.match(/^(\d+(?::\d+)?)\s*/);
+      const key = verseKey(match ? match[1] : "");
+      if (previous && key && !versesContinue(previous, key)) {
+        parts.push(`<p class="verse-gap">${esc(ui.passage.skip)}</p>`);
+      }
+      if (key) previous = key;
+      parts.push(tokenLineHtml(line, selected));
+    }
+  } else {
+    for (const verse of parseVerses(source)) {
+      const key = verseKey(verse.n);
+      if (previous && key && !versesContinue(previous, key)) {
+        parts.push(`<p class="verse-gap">${esc(ui.passage.skip)}</p>`);
+      }
+      if (key) previous = key;
+      parts.push(verseBodyHtml(verse));
+    }
+  }
+  return `<div class="passage${tokens ? " is-tokens" : " is-selectable"}">${parts.join("")}</div>`;
 }
 
 export function paragraphsHtml(text) {
@@ -253,13 +443,9 @@ export function comparisonNote(before, after) {
   const sameCore = before.coreId === after.coreId;
   const sameFeeling = before.feelingZh === after.feelingZh;
   const sameLevel = Number(before.intensity) === Number(after.intensity);
-  if (sameCore && sameFeeling && sameLevel) {
-    return "讀經前後的感受很接近。一樣的感受，也可以安然放在神面前。";
-  }
-  if (sameCore) {
-    return "核心的感受還在，細節或強度有一點不同。這裏只是並排看着，沒有好壞。";
-  }
-  return "讀經前後的感受不一樣。兩種都是真實的，可以一起交給神。";
+  if (sameCore && sameFeeling && sameLevel) return ui.comparison.same;
+  if (sameCore) return ui.comparison.sameCore;
+  return ui.comparison.different;
 }
 
 export function countCores(picks) {
@@ -282,13 +468,13 @@ export function reviewSummary(beforeCounts, afterCounts) {
     if (!counts.length) return "";
     const top = counts[0].n;
     const names = counts.filter((item) => item.n === top).map((item) => item.zh);
-    if (names.length > 1) return `${label}較常出現的是${names.join("、")}`;
-    return `${label}出現得最多的是${names[0]}`;
+    if (names.length > 1) return fill(ui.review.topMany, { label, names: names.join("、") });
+    return fill(ui.review.topOne, { label, name: names[0] });
   };
-  const beforeLine = line(beforeCounts, "讀經前");
-  const afterLine = line(afterCounts, "讀經後");
+  const beforeLine = line(beforeCounts, ui.review.beforeLabel);
+  const afterLine = line(afterCounts, ui.review.afterLabel);
   if (!beforeLine && !afterLine) {
-    return "這段日子還沒有感受紀錄。沒有紀錄也沒有關係，你可以安靜回想，或回到其中一天補記。";
+    return ui.review.empty;
   }
   if (beforeLine && afterLine) return `${beforeLine}；${afterLine}。`;
   return `${beforeLine || afterLine}。`;
