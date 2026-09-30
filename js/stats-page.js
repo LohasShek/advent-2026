@@ -126,6 +126,18 @@ async function showLive() {
   }
 }
 
+function clearToken() {
+  tokenInput.value = "";
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* private mode */
+  }
+  status.textContent = "已清除這部裝置上的 token。";
+  root.querySelector("[data-report]").innerHTML = "";
+}
+
 root.querySelector("[data-demo]").addEventListener("click", showDemo);
 root.querySelector("[data-load]").addEventListener("click", showLive);
+root.querySelector("[data-clear]").addEventListener("click", clearToken);
 if (demo) showDemo();

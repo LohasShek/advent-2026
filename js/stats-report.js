@@ -35,7 +35,7 @@ export function summarizeStats(hits) {
     const path = String(hit?.path || "").replace(/^\/+/, "");
     const count = Number(hit?.count) || 0;
     const days = Array.isArray(hit?.stats) ? hit.stats : [];
-    if (path.startsWith("anon-feeling/")) {
+    if (path.startsWith("feeling/") || path.startsWith("anon-feeling/")) {
       const parts = path.split("/");
       if (parts.length < 8) continue;
       add(cores, parts[2], count);
@@ -46,7 +46,7 @@ export function summarizeStats(hits) {
       add(intensities, parts[7], count);
       continue;
     }
-    const bucket = path.startsWith("complete-reading/") ? completes : opens;
+    const bucket = path.startsWith("complete-reading/") || /^day-\d+-done$/.test(path) ? completes : opens;
     if (!days.length) add(bucket, "total", count);
     for (const stat of days) add(bucket, stat.day, Number(stat.daily) || 0);
   }
@@ -63,7 +63,7 @@ export function summarizeStats(hits) {
 
 export const DEMO_HITS = Object.freeze([
   {
-    path: "/",
+    path: "open",
     count: 12,
     event: false,
     stats: [
@@ -72,23 +72,23 @@ export const DEMO_HITS = Object.freeze([
     ],
   },
   {
-    path: "/day/1",
+    path: "open-day-1",
     count: 6,
     event: false,
     stats: [{ day: "2026-11-29", daily: 6 }],
   },
   {
-    path: "complete-reading/1",
+    path: "day-1-done",
     count: 7,
     event: true,
     stats: [{ day: "2026-11-29", daily: 7 }],
   },
   {
-    path: "complete-reading/2",
+    path: "day-2-done",
     count: 3,
     event: true,
     stats: [{ day: "2026-11-30", daily: 3 }],
   },
-  { path: "anon-feeling/1/sad/lonely/4/peace/calm/2", count: 6, event: true, stats: [] },
-  { path: "anon-feeling/1/joy/hopeful/2/sad/lonely/3", count: 2, event: true, stats: [] },
+  { path: "feeling/1/sad/lonely/4/peace/content/2", count: 6, event: true, stats: [] },
+  { path: "feeling/1/joy/hopeful/2/sad/lonely/3", count: 2, event: true, stats: [] },
 ]);

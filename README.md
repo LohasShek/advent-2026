@@ -75,16 +75,16 @@ python3 scripts/convert_csv.py
 打開 `config.js`：
 
 - `goatcounter`：填 GoatCounter 的網站代碼。目前是 `lohasshek`（即 `lohasshek.goatcounter.com`，計數網址 `https://lohasshek.goatcounter.com/count`）。留空代表完全不載入統計、不送出任何數字。若填的是完整網址（以 `https://` 開頭），就會直接用那個計數網址。
-- `statsRequireOptIn`：預設 `false`。`false` 時，打開頁面和完成讀經會自動計數；分享感受仍要在關於頁自己打開，預設關閉。設成 `true` 時，連打開頁面和完成讀經都要先在關於頁打開「匿名統計」才送出。網址加上 `?stats=optin` 可以暫時模擬 `true`，不用改這一行。兩種模式都不會送出「因為……」、反思、圈選字詞或身分。
+- `statsRequireOptIn`：預設 `false`。`false` 時，打開頁面和完成讀經會自動計數；分享感受仍要在關於頁自己打開，預設關閉。設成 `true` 時，連打開頁面和完成讀經都要先在關於頁打開「匿名統計」才送出，而且在打開之前不會載入 `https://gc.zgo.at/count.js`，也不會向 goatcounter.com 發出任何要求。網址加上 `?stats=optin` 可以暫時模擬 `true`，不用改這一行。兩種模式在「匿名分享我今天的感受」關閉時都不會送出感受。不會送出「因為……」、反思、圈選字詞、身分、網址參數或 `#` 後面的內容。
 - `churchContact`：關懷提示裏的聯絡句子。執行轉換腳本時，會依詞彙 CSV 的關懷提示覆寫這一行。目前是「歡迎聯絡石守賢傳道」。聯絡句子之後的文字（例如明愛向晴熱線）留在提示裡。畫面上的 18288 是 `tel:18288` 連結。若試算表的關懷提示有另一句聯絡，打開應用程式時以試算表那句為準。
 - `scriptureCopyright`：畫面上唯一的版權句。關於頁和讀經頁底部都用這一句。
 - `sheetId`：Google 試算表 ID。留空代表不讀試算表。
 
-統計開啟之後，只計算有人打開頁面，以及有人按下「完成今天的讀經」。另外，「關於」頁有一個預設關閉的開關「匿名分享我今天的感受」。打開並完成當日之後，才會送出日序、讀經前後的核心情緒、細分感受和強度。不會送出「因為……」、反思，或任何身分。
+統計開啟之後，只計算有人打開頁面，以及有人按下「完成今天的讀經」。另外，「關於」頁有一個預設關閉的開關「匿名分享我今天的感受」。打開並完成當日之後，才會送出日序、讀經前後的核心情緒代號、細分感受代號和強度。感受只用英文代號。送出的 path 和 title 只會是固定名稱，例如 `open`、`open-day-5`、`day-5-done`、`feeling`。計數要求的 referrer 是空的，也不附帶網址上的 `?asof`、`?week`、`?bgm`。本機（localhost）不會真正送出計數，避免測試污染儀表板。
 
 畫面上的介面文字集中在 `ui-strings.json`，用書面中文。經文、禱文和感受詞彙仍來自試算表，不在這份檔案。
 
-請在 GoatCounter 把儀表板保持不公開。儀表板登入後仍會顯示少於 5 人的原始數字。應用程式的導覽沒有統計頁。另有一頁 `stats.html`（`noindex`，任何導覽都不會連去）：在自己的瀏覽器貼上 GoatCounter API token，token 只存在那部裝置的 localStorage，不要把 token 寫進這個倉庫。GoatCounter 的 API 允許瀏覽器跨來源讀取（回應帶 `Access-Control-Allow-Origin: *`，並允許 `Authorization`），所以這頁可以直接讀 `https://lohasshek.goatcounter.com/api/v0/stats/hits`。細分感受或強度少於 5 會顯示「少於 5」；每日打開、完成次數和核心情緒仍顯示數字。網址加上 `?demo=1` 會用內建的示例數字，不必有 token。讀者點選的字詞和寫下的句子一樣，只留在自己的裝置，不會上傳。
+請在 GoatCounter 把儀表板保持不公開。儀表板登入後仍會顯示少於 5 人的原始數字。應用程式的導覽沒有統計頁。另有一頁 `stats.html`（`noindex`，任何導覽都不會連去）：在自己的瀏覽器貼上 GoatCounter API token，token 只存在那部裝置的 localStorage。「清除 token」會從這部裝置刪掉它。不要把 token 寫進這個倉庫、`config.js` 或網頁程式。GoatCounter 的 API 允許瀏覽器跨來源讀取（回應帶 `Access-Control-Allow-Origin: *`，並允許 `Authorization`），所以這頁可以直接讀 `https://lohasshek.goatcounter.com/api/v0/stats/hits`。細分感受或強度少於 5 會顯示「少於 5」；每日打開、完成次數和核心情緒仍顯示數字。網址加上 `?demo=1` 會用內建的示例數字，不必有 token。讀者點選的字詞和寫下的句子一樣，只留在自己的裝置，不會上傳。
 
 ## 發佈到 GitHub Pages
 

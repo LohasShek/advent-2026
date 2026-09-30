@@ -72,7 +72,24 @@ import {
   BGM_WEEKS,
   BGM_OLD,
 } from "../js/bgm.js";
-import { statsPolicy } from "../js/stats.js";
+import {
+  statsPolicy,
+  statsPathWhitelist,
+  statsCountUrl,
+  statsTitleFor,
+  isAllowedStatsPath,
+  isFeelingStatsPath,
+  openStatsPath,
+  doneStatsPath,
+  initStats,
+  resetStatsState,
+  setUsageOptIn,
+  statsScriptRequested,
+  trackOpen,
+  trackComplete,
+  trackFeelings,
+  useStatsTransport,
+} from "../js/stats.js";
 import { DEMO_HITS, UNDER_FIVE, shownCount, summarizeStats } from "../js/stats-report.js";
 
 const plan = JSON.parse(readFileSync(new URL("../data/plan.json", import.meta.url), "utf8"));
@@ -190,11 +207,16 @@ const event = anonymousFeelingEvent(
   { coreId: "sad", feelingEn: "Lonely", intensity: 4, because: "我好驚", feelingZh: "孤單" },
   { coreId: "peace", feelingEn: "Cared for", intensity: 2, because: "有人在", feelingZh: "被關顧" }
 );
-assert.equal(event.path, "anon-feeling/3/sad/lonely/4/peace/cared_for/2");
+assert.equal(event.path, "feeling/3/sad/lonely/4/peace/cared_for/2");
 assert.equal(event.event, true);
 assert.equal(JSON.stringify(event).includes("我好驚"), false);
 assert.equal(JSON.stringify(event).includes("有人在"), false);
+assert.equal(JSON.stringify(event).includes("孤單"), false);
+assert.equal(JSON.stringify(event).includes("因為"), false);
 assert.equal(anonymousFeelingEvent(1, { coreId: "sad" }, { coreId: "joy", feelingEn: "Hopeful", intensity: 1 }), null);
+assert.equal(anonymousFeelingEvent(3, { coreId: "悲傷", feelingEn: "孤單", intensity: 4 }, { coreId: "sad", feelingEn: "Lonely", intensity: 2 }), null);
+assert.equal(anonymousFeelingEvent(3, { coreId: "sad", feelingEn: "因為我好驚", intensity: 4 }, { coreId: "peace", feelingEn: "Content", intensity: 2 }), null);
+assert.equal(anonymousFeelingEvent(99, { coreId: "sad", feelingEn: "Lonely", intensity: 4 }, { coreId: "peace", feelingEn: "Content", intensity: 2 }), null);
 
 for (const note of [comparisonNote(
   { coreId: "sad", feelingZh: "孤單", intensity: 4 },
@@ -370,6 +392,107 @@ assert.equal(shownCount(4, "feeling"), UNDER_FIVE);
 assert.equal(shownCount(4, "core"), "4");
 assert.ok(appSource.includes('data-setting="statsOptIn"'));
 assert.ok(appSource.includes("statsRequireOptIn"));
+assert.equal(appSource.includes("trackPage"), false);
+assert.equal(appSource.includes("location.pathname"), false);
+assert.equal(appSource.includes("location.href"), false);
+const statsSource = readFileSync(new URL("../js/stats.js", import.meta.url), "utf8");
+const statsPage = readFileSync(new URL("../js/stats-page.js", import.meta.url), "utf8");
+const statsHtml = readFileSync(new URL("../stats.html", import.meta.url), "utf8");
+assert.doesNotMatch(statsSource, /location\.(pathname|href|search|hash)/);
+assert.doesNotMatch(statsSource, /document\.(title|referrer)/);
+assert.match(statsSource, /referrerPolicy: "no-referrer"/);
+assert.match(statsHtml, /data-clear/);
+assert.match(statsPage, /removeItem\(TOKEN_KEY\)/);
+for (const file of [config, appSource, statsSource, statsPage, statsHtml]) {
+  assert.equal(/Authorization:\s*Bearer\s+[A-Za-z0-9_-]{8,}/.test(file), false);
+}
+const whitelist = statsPathWhitelist();
+assert.deepEqual(whitelist.opens.slice(0, 3), ["open", "open-plan", "open-about"]);
+assert.equal(whitelist.opens.length, 30);
+assert.equal(whitelist.done.length, 27);
+assert.equal(whitelist.done[4], "day-5-done");
+assert.equal(whitelist.feelingTitle, "feeling");
+for (const path of [...whitelist.opens, ...whitelist.done]) {
+  assert.equal(isAllowedStatsPath(path), true);
+  assert.equal(statsTitleFor(path), path);
+  assert.equal(isFeelingStatsPath(path), false);
+}
+assert.equal(isAllowedStatsPath(event.path), true);
+assert.equal(statsTitleFor(event.path), "feeling");
+for (const blocked of [
+  "/about",
+  "/day/5",
+  "open-day-5?asof=2026-11-29",
+  "?week=2&bgm=b",
+  "#/about",
+  "complete-reading/5",
+  "anon-feeling/3/sad/lonely/4/peace/cared_for/2",
+  "feeling/3/sad/孤單/4/peace/cared_for/2",
+  "feeling/3/sad/lonely/4/peace/cared_for/2/because",
+  "feeling/0/sad/lonely/4/peace/cared_for/2",
+  "feeling/28/sad/lonely/4/peace/cared_for/2",
+  "feeling/3/sad/lonely/6/peace/cared_for/2",
+  "open-day-0",
+  "open-day-28",
+  "day-5-done?asof=1",
+]) {
+  assert.equal(isAllowedStatsPath(blocked), false, blocked);
+}
+assert.equal(openStatsPath("home"), "open");
+assert.equal(openStatsPath("day", 5), "open-day-5");
+assert.equal(doneStatsPath(5), "day-5-done");
+resetStatsState();
+const sent = [];
+useStatsTransport((url) => sent.push(url));
+initStats("lohasshek", { requireOptIn: true, optedIn: false, search: "?asof=2026-11-29&week=2&bgm=b&stats=optin" });
+assert.equal(trackOpen("about"), false);
+assert.equal(trackComplete(5), false);
+assert.equal(trackFeelings(event, true), false);
+assert.equal(trackFeelings(event, false), false);
+assert.equal(sent.length, 0);
+assert.equal(statsScriptRequested(), false);
+setUsageOptIn(true);
+assert.equal(trackOpen("day", 5), true);
+assert.equal(trackFeelings(event, false), false);
+assert.equal(sent.length, 1);
+assert.equal(trackFeelings({ ...event, because: "因為我好驚", feelingZh: "孤單", title: "因為我好驚" }, true), true);
+assert.equal(trackComplete(5), true);
+assert.equal(trackOpen("missing"), false);
+assert.equal(trackComplete(28), false);
+const joined = sent.join("\n");
+assert.match(sent[0], /[?&]p=open-day-5(&|$)/);
+assert.match(sent[0], /[?&]t=open-day-5(&|$)/);
+assert.match(sent[0], /[?&]r=(&|$)/);
+assert.match(sent[1], /[?&]p=feeling%2F3%2Fsad%2Flonely%2F4%2Fpeace%2Fcared_for%2F2(&|$)/);
+assert.match(sent[1], /[?&]t=feeling(&|$)/);
+assert.match(sent[2], /[?&]p=day-5-done(&|$)/);
+assert.doesNotMatch(joined, /asof|week|bgm|because|我好驚|孤單|q=/);
+assert.equal(joined.includes("location"), false);
+resetStatsState();
+initStats("lohasshek", { requireOptIn: false, optedIn: false, search: "" });
+assert.equal(trackFeelings(event, false), false);
+assert.equal(trackOpen("home"), true);
+const previousDocument = globalThis.document;
+const previousWindow = globalThis.window;
+globalThis.window = previousWindow || {};
+globalThis.document = {
+  head: { nodes: [], appendChild(node) { this.nodes.push(node); } },
+  createElement() {
+    return { dataset: {}, addEventListener() {} };
+  },
+};
+resetStatsState();
+initStats("lohasshek", { requireOptIn: true, optedIn: false, search: "?stats=optin" });
+assert.equal(globalThis.document.head.nodes.length, 0);
+setUsageOptIn(true);
+assert.equal(globalThis.document.head.nodes.length, 1);
+assert.equal(globalThis.document.head.nodes[0].src, "https://gc.zgo.at/count.js");
+assert.equal(JSON.parse(globalThis.document.head.nodes[0].dataset.goatcounterSettings).referrer, "");
+assert.equal(JSON.parse(globalThis.document.head.nodes[0].dataset.goatcounterSettings).no_onload, true);
+globalThis.document = previousDocument;
+globalThis.window = previousWindow;
+resetStatsState();
+assert.equal(statsCountUrl("https://lohasshek.goatcounter.com/count", { path: "open", title: "open", event: false }, 390).includes("r="), true);
 
 function mockAudio() {
   const element = {

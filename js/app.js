@@ -52,7 +52,7 @@ import {
   statsPolicy,
   trackComplete,
   trackFeelings,
-  trackPage,
+  trackOpen,
 } from "./stats.js";
 import { applySheetCache, loadSheetCache, refreshFromSheet, saveSheetCache } from "./sheet.js";
 import { initDeviceSpeech, speechVoiceStatus, speechPhase, speechRate, setSpeechRate, speechRates, speakPassage, pauseSpeech, resumeSpeech, stopSpeech, passageUtterances } from "./speech.js";
@@ -209,18 +209,11 @@ function setTab(name) {
   }
 }
 
-function maybeTrack(path) {
-  if (path === app.lastTracked) return;
-  app.lastTracked = path;
-  trackPage(path);
-}
-
-function currentTrackPath() {
-  const route = parseRoute();
-  if (route.name === "about") return "/about";
-  if (route.name === "plan") return "/plan";
-  if (route.name === "day") return `/day/${route.day}`;
-  return "/";
+function maybeTrack(page, dayNumber) {
+  const key = page === "day" ? `day:${dayNumber}` : page;
+  if (key === app.lastTracked) return;
+  app.lastTracked = key;
+  trackOpen(page, dayNumber);
 }
 
 function careText(today) {
@@ -1038,11 +1031,11 @@ function render() {
   if (route.name === "about") {
     renderAbout(today);
     setTab("about");
-    maybeTrack("/about");
+    maybeTrack("about");
   } else if (route.name === "plan" || (route.name === "home" && phase === "after")) {
     renderPlan(today, phase, route.name === "home");
     setTab(route.name === "home" ? "home" : "plan");
-    maybeTrack(route.name === "home" ? "/" : "/plan");
+    maybeTrack(route.name === "home" ? "home" : "plan");
   } else if (route.name === "day") {
     const day = app.plan.days.find((item) => item.day === route.day);
     if (!day) {
@@ -1052,12 +1045,12 @@ function render() {
       renderDay(day, route.step, today, phase);
       const onToday = phase === "during" && todayDay && todayDay.day === day.day;
       setTab(onToday ? "home" : "plan");
-      maybeTrack(`/day/${day.day}`);
+      maybeTrack("day", day.day);
     }
   } else {
     renderHome(today);
     setTab("home");
-    maybeTrack("/");
+    maybeTrack("home");
   }
 
   if (viewChanged) {
@@ -1121,8 +1114,7 @@ function finishDay(day) {
   }
   if (app.state.shareFeelings && !entry.feelingShared) {
     const payload = anonymousFeelingEvent(day.day, entry.before, entry.after);
-    if (payload) {
-      trackFeelings(payload);
+    if (payload && trackFeelings(payload, app.state.shareFeelings === true)) {
       entry.feelingShared = true;
     }
   }
@@ -1437,9 +1429,10 @@ async function mainInit() {
       saveState(app.state);
       setUsageOptIn(app.state.statsOptIn);
       if (app.state.statsOptIn) {
-        const path = currentTrackPath();
-        app.lastTracked = path;
-        trackPage(path);
+        const current = parseRoute();
+        const page = current.name === "day" || current.name === "plan" || current.name === "about" ? current.name : "home";
+        app.lastTracked = page === "day" ? `day:${current.day}` : page;
+        trackOpen(page, current.day);
       }
     }
   });

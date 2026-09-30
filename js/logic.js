@@ -1091,26 +1091,79 @@ function slug(value) {
     .replace(/[^a-z0-9_]/g, "");
 }
 
+/** English codes only. Chinese labels and free text never become a stats path. */
+export const STATS_DAY_MAX = 27;
+export const FEELING_CORE_IDS = Object.freeze(["joy", "peace", "powerful", "sad", "scared", "mad"]);
+export const FEELING_SLUGS = Object.freeze([
+  "excited",
+  "expectant",
+  "cheerful",
+  "energetic",
+  "creative",
+  "hopeful",
+  "cared_for",
+  "trusting",
+  "loved",
+  "close",
+  "thoughtful",
+  "content",
+  "aware",
+  "proud",
+  "respected",
+  "appreciated",
+  "valued",
+  "faithful",
+  "guilty",
+  "ashamed",
+  "depressed",
+  "lonely",
+  "bored",
+  "tired",
+  "rejected",
+  "confused",
+  "helpless",
+  "withdrawn",
+  "insecure",
+  "anxious",
+  "hurt",
+  "hostile",
+  "angry",
+  "jealous",
+  "resentful",
+  "critical",
+]);
+
+function allowedCode(value, list) {
+  const code = slug(value);
+  return list.includes(code) ? code : "";
+}
+
 /**
  * Anonymous feeling event. Callers must not pass notes; this reads only
  * the controlled vocabulary fields and the intensity number.
+ * The path is English codes from the whitelist, never the written sentence.
  */
 export function anonymousFeelingEvent(dayNumber, before, after) {
-  if (!before?.coreId || !after?.coreId) return null;
-  if (!before.feelingEn || !after.feelingEn) return null;
+  const day = Number(dayNumber);
+  if (!Number.isInteger(day) || day < 1 || day > STATS_DAY_MAX) return null;
+  const beforeCore = allowedCode(before?.coreId, FEELING_CORE_IDS);
+  const afterCore = allowedCode(after?.coreId, FEELING_CORE_IDS);
+  const beforeFeeling = allowedCode(before?.feelingEn, FEELING_SLUGS);
+  const afterFeeling = allowedCode(after?.feelingEn, FEELING_SLUGS);
   const intensityOk = (value) => {
     const level = Number(value);
     return Number.isInteger(level) && level >= 1 && level <= 5;
   };
-  if (!intensityOk(before.intensity) || !intensityOk(after.intensity)) return null;
+  if (!beforeCore || !afterCore || !beforeFeeling || !afterFeeling) return null;
+  if (!intensityOk(before?.intensity) || !intensityOk(after?.intensity)) return null;
   const path = [
-    "anon-feeling",
-    String(dayNumber),
-    slug(before.coreId),
-    slug(before.feelingEn),
+    "feeling",
+    String(day),
+    beforeCore,
+    beforeFeeling,
     String(before.intensity),
-    slug(after.coreId),
-    slug(after.feelingEn),
+    afterCore,
+    afterFeeling,
     String(after.intensity),
   ].join("/");
   return { path, event: true };
