@@ -3,7 +3,7 @@
    are fetched from the network first so a new deploy shows up online,
    and fall back to this cache when the phone is offline. */
 
-const CACHE = "advent-2026-v7";
+const CACHE = "advent-2026-v8";
 
 const ASSETS = [
   "./",

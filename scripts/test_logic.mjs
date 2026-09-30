@@ -396,8 +396,10 @@ assert.equal(pickTrack("?bgm=old", "2026-12-24").id, "w4-a");
 assert.equal(pickTrack("?bgm=old", "2026-12-24").src, BGM_WEEKS[4].a.src);
 assert.equal(pickTrack("?bgm=nope", "2026-12-08").slot, "a");
 assert.equal(pickTrack("?week=9", "2026-12-08").week, 2);
-assert.equal(BGM_WEEKS[1].a.title, "Piano Drone Loop");
-assert.equal(BGM_WEEKS[1].b.author, "Boatlanman-");
+assert.equal(BGM_WEEKS[1].a.title, "cello drone.wav");
+assert.equal(BGM_WEEKS[1].b.author, "Beetlemuse");
+assert.equal(BGM_WEEKS[1].a.source.includes("869196"), false);
+assert.equal(BGM_WEEKS[1].b.source.includes("818034"), false);
 assert.equal(bgmTrack().id, "w1-a");
 for (const week of [1, 2, 3, 4]) {
   for (const slot of ["a", "b"]) {
