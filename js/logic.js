@@ -776,10 +776,21 @@ function tokenPunct(text) {
   return text ? `<span class="token-punct">${esc(text)}</span>` : "";
 }
 
-function tokenButton(token, on, prefix = "", suffix = "", slotIndex = -1) {
+function tokenFace(slotIndex, slots, owners) {
+  if (!owners[slotIndex]) return "";
+  const joinedPrev = slotIndex > 0 && owners[slotIndex - 1] && slots[slotIndex - 1]?.joinNext;
+  const joinedNext = Boolean(slots[slotIndex]?.joinNext && owners[slotIndex + 1]);
+  let face = "is-on";
+  if (!joinedPrev) face += " is-run-start";
+  if (!joinedNext) face += " is-run-end";
+  return face;
+}
+
+function tokenButton(token, face = "", prefix = "", suffix = "", slotIndex = -1) {
   const value = token.text.trim();
   const slot = slotIndex >= 0 ? ` data-slot="${slotIndex}"` : "";
-  const button = `<span role="button" tabindex="0" class="token${on ? " is-on" : ""}" data-action="toggle-word" data-word="${esc(value)}"${slot} aria-pressed="${on ? "true" : "false"}">${esc(token.text)}</span>`;
+  const on = face.includes("is-on");
+  const button = `<span role="button" tabindex="0" class="token${face ? ` ${face}` : ""}" data-action="toggle-word" data-word="${esc(value)}"${slot} aria-pressed="${on ? "true" : "false"}">${esc(token.text)}</span>`;
   if (!prefix && !suffix) return button;
   return `<span class="token-glue">${tokenPunct(prefix)}${button}${tokenPunct(suffix)}</span>`;
 }
@@ -789,12 +800,12 @@ function versePrefix(n) {
   return `<span class="sr-only">${esc(verseSpoken(n))}。</span><sup class="vnum">${esc(n)}</sup>`;
 }
 
-function atomsHtml(tokens, owners, slotState) {
+function atomsHtml(tokens, owners, slotState, slots) {
   let html = "";
   const mark = () => {
     const slotIndex = slotState.index;
     slotState.index += 1;
-    return { on: Boolean(owners[slotIndex]), slotIndex };
+    return { face: tokenFace(slotIndex, slots, owners), slotIndex };
   };
   for (let cursor = 0; cursor < tokens.length; cursor += 1) {
     const token = tokens[cursor];
@@ -816,7 +827,7 @@ function atomsHtml(tokens, owners, slotState) {
           look += 1;
         }
         const selected = mark();
-        html += tokenButton(next, selected.on, token.text, suffix, selected.slotIndex);
+        html += tokenButton(next, selected.face, token.text, suffix, selected.slotIndex);
         cursor = look - 1;
         continue;
       }
@@ -830,7 +841,7 @@ function atomsHtml(tokens, owners, slotState) {
       look += 1;
     }
     const selected = mark();
-    html += tokenButton(token, selected.on, "", suffix, selected.slotIndex);
+    html += tokenButton(token, selected.face, "", suffix, selected.slotIndex);
     cursor = look - 1;
   }
   return html;
@@ -873,7 +884,7 @@ export function passageHtml(text, segmented = "", words = [], edition = "") {
           parts.push(`<p class="verse-gap">${esc(ui.passage.skip)}</p>`);
         }
         if (block.key) previous = block.key;
-        parts.push(`<p class="verse">${block.prefix}${atomsHtml(block.tokens, owners, slotState)}</p>`);
+        parts.push(`<p class="verse">${block.prefix}${atomsHtml(block.tokens, owners, slotState, slots)}</p>`);
       }
     }
   } else {
