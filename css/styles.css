@@ -723,6 +723,8 @@ a { color: var(--c-purple); }
   text-underline-offset: 0.16em;
 }
 
+.choice.is-on small { color: var(--c-ink); }
+
 .choice.level {
   flex-direction: column;
   justify-content: center;
@@ -761,7 +763,7 @@ input[type="text"], textarea {
   padding: 0.7rem 0.75rem;
 }
 
-.field small { display: block; margin-top: 0.3rem; opacity: 0.75; font-size: 0.85rem; }
+.field small { display: block; margin-top: 0.3rem; color: #726a84; font-size: 0.85rem; }
 
 .compare {
   display: grid;

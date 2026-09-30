@@ -102,7 +102,7 @@ function scan() {
     const visible = over({ r: fg.r, g: fg.g, b: fg.b, a: fg.a * opacity }, bg);
     const ratio = (Math.max(lum(visible), lum(bg)) + 0.05) / (Math.min(lum(visible), lum(bg)) + 0.05);
     const key = `${style.color}|${Math.round(bg.r)},${Math.round(bg.g)},${Math.round(bg.b)}|${text.slice(0, 24)}`;
-    if (ratio < 4.5 - 0.02 && !seen.has(key)) {
+    if (ratio < 4.5 && !seen.has(key)) {
       seen.add(key);
       failures.push({
         ratio: Math.round(ratio * 100) / 100,
@@ -158,8 +158,79 @@ for (const [name, path] of screens) {
 }
 assert.ok(quietButton.solid >= 4.5, `disabled button ${quietButton.solid}`);
 assert.ok(quietButton.ghost >= 4.5, `ghost disabled ${quietButton.ghost}`);
+
+await page.addInitScript(() => {
+  localStorage.setItem(
+    "advent2026.v1",
+    JSON.stringify({
+      edition: "shen",
+      shareFeelings: false,
+      careDismissedOn: "2026-11-29",
+      days: { 1: { reached: "before", words: [], before: null, after: null } },
+    })
+  );
+});
+await page.goto(`${base}/?asof=2026-11-29&chips=1#/day/1/before`, { waitUntil: "domcontentloaded" });
+await page.waitForSelector("[data-core='joy']");
+await page.evaluate(() => {
+  window.__contrastRatio = (el) => {
+    const parse = (value) => {
+      const match = String(value || "").match(/rgba?\(([^)]+)\)/);
+      if (!match) return null;
+      const parts = match[1].split(",").map((part) => Number(part.trim()));
+      return { r: parts[0], g: parts[1], b: parts[2], a: parts.length > 3 ? parts[3] : 1 };
+    };
+    const channel = (value) => {
+      const x = value / 255;
+      return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+    };
+    const lum = (color) => 0.2126 * channel(color.r) + 0.7152 * channel(color.g) + 0.0722 * channel(color.b);
+    const over = (fg, bg) => {
+      const alpha = fg.a + bg.a * (1 - fg.a);
+      if (alpha <= 0) return bg;
+      const mix = (a, b) => (a * fg.a + b * bg.a * (1 - fg.a)) / alpha;
+      return { r: mix(fg.r, bg.r), g: mix(fg.g, bg.g), b: mix(fg.b, bg.b), a: alpha };
+    };
+    const chain = [];
+    for (let node = el; node; node = node.parentElement) chain.push(node);
+    let bg = { r: 250, g: 246, b: 239, a: 1 };
+    for (const node of chain.reverse()) {
+      const color = parse(getComputedStyle(node).backgroundColor);
+      if (color && color.a > 0) bg = over(color, bg);
+    }
+    let opacity = 1;
+    for (let node = el; node; node = node.parentElement) opacity *= Number(getComputedStyle(node).opacity || 1);
+    const fg = parse(getComputedStyle(el).color);
+    const visible = over({ r: fg.r, g: fg.g, b: fg.b, a: fg.a * opacity }, bg);
+    const ratio = (Math.max(lum(visible), lum(bg)) + 0.05) / (Math.min(lum(visible), lum(bg)) + 0.05);
+    return Math.round(ratio * 100) / 100;
+  };
+});
+const cores = ["joy", "peace", "powerful", "sad", "scared", "mad"];
+const chipRatios = {};
+for (const id of cores) {
+  await page.locator(`[data-core='${id}']`).click();
+  await page.waitForSelector("[data-action='pick-feeling']");
+  const unselected = await page.evaluate(() => {
+    const el = document.querySelector(".choice:not(.is-on) small");
+    return el ? window.__contrastRatio(el) : null;
+  });
+  await page.locator("[data-action='pick-feeling']").first().click();
+  await page.waitForSelector(".choice.is-on small");
+  const selected = await page.evaluate(() => window.__contrastRatio(document.querySelector(".choice.is-on small")));
+  chipRatios[id] = { unselected, selected };
+  assert.ok(unselected >= 4.5, `${id} unselected ${unselected}`);
+  assert.ok(selected >= 4.5, `${id} selected ${selected}`);
+}
+await page.locator("[data-action='pick-intensity']").first().click();
+await page.waitForSelector(".field small");
+const fieldSmall = await page.evaluate(() => window.__contrastRatio(document.querySelector(".field small")));
+assert.ok(fieldSmall >= 4.5, `field small ${fieldSmall}`);
+const chipScan = await page.evaluate(scan);
+if (chipScan.length) all.push({ name: "feeling-chips", found: chipScan });
 assert.deepEqual(all, []);
 
 await browser.close();
 server.close();
 console.log(`contrast tests passed: disabled ${quietButton.solid}:1, ghost disabled ${quietButton.ghost}:1`);
+console.log(`chip ratios ${JSON.stringify(chipRatios)} field small ${fieldSmall}`);
