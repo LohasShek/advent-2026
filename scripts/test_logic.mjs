@@ -48,7 +48,21 @@ import {
   stopSpeech,
   speechVoiceStatus,
 } from "../js/speech.js";
-import { bgmLevel, readBgmEnabled, writeBgmEnabled, BGM_DUCK_VOLUME, BGM_VOLUME, BGM_CREDIT } from "../js/bgm.js";
+import {
+  bgmLevel,
+  bgmRoute,
+  readBgmEnabled,
+  writeBgmEnabled,
+  setBgmEnabled,
+  duckBgm,
+  restoreBgm,
+  useBgmDrivers,
+  BGM_DUCK_VOLUME,
+  BGM_VOLUME,
+  BGM_FADE,
+  BGM_SRC,
+  BGM_CREDIT,
+} from "../js/bgm.js";
 
 const plan = JSON.parse(readFileSync(new URL("../data/plan.json", import.meta.url), "utf8"));
 const feelings = JSON.parse(readFileSync(new URL("../data/feelings.json", import.meta.url), "utf8"));
@@ -261,7 +275,11 @@ assert.equal(appSource.includes("new Audio"), false);
 assert.match(speechSource, /粵語/);
 assert.match(speechSource, /voiceschanged/);
 assert.match(speechSource, /engine\.speak\(utter\)/);
-assert.match(bgmSource, /new Audio/);
+assert.match(bgmSource, /new Ctor\(\)/);
+assert.match(bgmSource, /createMediaElementSource/);
+assert.match(bgmSource, /setTargetAtTime/);
+assert.match(bgmSource, /crossOrigin = "anonymous"/);
+assert.match(bgmSource, /webkitAudioContext/);
 assert.equal(BGM_VOLUME, 1);
 assert.equal(BGM_DUCK_VOLUME, 0.2);
 assert.equal(bgmLevel(true), 0.2);
@@ -279,6 +297,136 @@ assert.match(credits, /RokZRooM/);
 assert.match(credits, /https:\/\/freesound\.org\/people\/RokZRooM\/sounds\/345310\//);
 assert.match(credits, /http:\/\/creativecommons\.org\/publicdomain\/zero\/1\.0\//);
 assert.match(credits, /CC0/);
+
+function mockAudio() {
+  const element = {
+    crossOrigin: "",
+    loop: false,
+    preload: "",
+    volume: 1,
+    paused: true,
+    plays: 0,
+    src: "",
+    order: [],
+    listeners: {},
+    addEventListener(type, fn) {
+      this.listeners[type] = fn;
+    },
+    play() {
+      this.paused = false;
+      this.plays += 1;
+      return Promise.resolve();
+    },
+    pause() {
+      this.paused = true;
+      this.listeners.pause?.();
+    },
+  };
+  const descriptor = {
+    set(value) {
+      element.order.push(element.crossOrigin);
+      element.srcValue = value;
+    },
+    get() {
+      return element.srcValue || "";
+    },
+  };
+  Object.defineProperty(element, "src", descriptor);
+  function AudioMock() {
+    return element;
+  }
+  return { element, AudioMock };
+}
+
+function mockContext() {
+  const targets = [];
+  let constructed = 0;
+  function AudioContextMock() {
+    constructed += 1;
+    this.state = "suspended";
+    this.currentTime = 4;
+    this.destination = { kind: "destination" };
+    this.resumes = 0;
+    this.element = null;
+    this.resume = () => {
+      this.resumes += 1;
+      this.state = "running";
+      return Promise.resolve();
+    };
+    this.createMediaElementSource = (el) => {
+      this.element = el;
+      return { connect() {} };
+    };
+    this.createGain = () => ({
+      gain: {
+        value: 1,
+        cancelScheduledValues() {},
+        setValueAtTime() {},
+        setTargetAtTime(value, time, constant) {
+          targets.push({ value, time, constant });
+        },
+      },
+      connect(dest) {
+        this.destinationHit = dest;
+      },
+    });
+  }
+  return { AudioContextMock, targets, count: () => constructed };
+}
+
+const memoryBgm = { store: {}, getItem(key) { return this.store[key] ?? null; }, setItem(key, value) { this.store[key] = String(value); } };
+const gained = mockAudio();
+const graph = mockContext();
+useBgmDrivers({ Audio: gained.AudioMock, AudioContext: graph.AudioContextMock });
+assert.equal(graph.count(), 0);
+assert.equal(setBgmEnabled(false, memoryBgm), false);
+assert.equal(graph.count(), 0);
+assert.equal(setBgmEnabled(true, memoryBgm), true);
+assert.equal(graph.count(), 1);
+assert.equal(gained.element.crossOrigin, "anonymous");
+assert.equal(gained.element.order[0], "anonymous");
+assert.equal(gained.element.src, BGM_SRC);
+assert.equal(gained.element.loop, true);
+assert.equal(bgmRoute(), "gain");
+assert.equal(gained.element.volume, 1);
+assert.equal(graph.targets.at(-1).value, BGM_VOLUME);
+assert.equal(graph.targets.at(-1).time, 4);
+assert.equal(graph.targets.at(-1).constant, BGM_FADE);
+duckBgm();
+assert.equal(graph.targets.at(-1).value, BGM_DUCK_VOLUME);
+assert.equal(gained.element.volume, 1);
+assert.equal(gained.element.paused, false);
+gained.element.paused = true;
+gained.element.listeners.pause();
+assert.equal(gained.element.paused, false);
+assert.equal(gained.element.plays, 2);
+gained.element.paused = true;
+restoreBgm();
+assert.equal(graph.targets.at(-1).value, BGM_VOLUME);
+assert.equal(gained.element.paused, false);
+const playsAfterSpeech = gained.element.plays;
+setBgmEnabled(false, memoryBgm);
+assert.equal(gained.element.paused, true);
+assert.equal(gained.element.plays, playsAfterSpeech);
+setBgmEnabled(true, memoryBgm);
+assert.equal(graph.count(), 1);
+
+const volumeOnly = mockAudio();
+function BrokenContext() {
+  throw new Error("no web audio");
+}
+useBgmDrivers({ Audio: volumeOnly.AudioMock, AudioContext: BrokenContext });
+assert.equal(setBgmEnabled(true, memoryBgm), true);
+assert.equal(bgmRoute(), "volume");
+assert.equal(volumeOnly.element.crossOrigin, "anonymous");
+duckBgm();
+assert.equal(volumeOnly.element.volume, BGM_DUCK_VOLUME);
+restoreBgm();
+assert.equal(volumeOnly.element.volume, BGM_VOLUME);
+volumeOnly.element.paused = true;
+volumeOnly.element.listeners.pause();
+assert.equal(volumeOnly.element.paused, false);
+useBgmDrivers({});
 assert.match(passageHtml("1 甲\n2 乙\n7 丙"), /verse-gap">……<\/p>/);
 assert.doesNotMatch(passageHtml("1 甲\n2 乙"), /verse-gap/);
 assert.match(passageHtml("3:4 甲\n4:5 乙"), /verse-gap/);
