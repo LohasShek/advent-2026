@@ -73,7 +73,8 @@ function scan() {
     const alpha = fg.a + bg.a * (1 - fg.a);
     if (alpha <= 0) return bg;
     const mix = (a, b) => (a * fg.a + b * bg.a * (1 - fg.a)) / alpha;
-    return { r: mix(fg.r, bg.r), g: mix(fg.g, bg.g), b: mix(fg.b, bg.b), a: alpha };
+    const byte = (n) => Math.min(255, Math.max(0, Math.round(n)));
+    return { r: byte(mix(fg.r, bg.r)), g: byte(mix(fg.g, bg.g)), b: byte(mix(fg.b, bg.b)), a: alpha };
   };
   const backgroundOf = (el) => {
     const chain = [];
@@ -189,7 +190,8 @@ await page.evaluate(() => {
       const alpha = fg.a + bg.a * (1 - fg.a);
       if (alpha <= 0) return bg;
       const mix = (a, b) => (a * fg.a + b * bg.a * (1 - fg.a)) / alpha;
-      return { r: mix(fg.r, bg.r), g: mix(fg.g, bg.g), b: mix(fg.b, bg.b), a: alpha };
+      const byte = (n) => Math.min(255, Math.max(0, Math.round(n)));
+      return { r: byte(mix(fg.r, bg.r)), g: byte(mix(fg.g, bg.g)), b: byte(mix(fg.b, bg.b)), a: alpha };
     };
     const chain = [];
     for (let node = el; node; node = node.parentElement) chain.push(node);
