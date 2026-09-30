@@ -1,0 +1,269 @@
+{
+  "cores": [
+    {
+      "id": "joy",
+      "zh": "喜樂",
+      "en": "Joyful",
+      "color": "#F3D98B",
+      "segment": "seg-joy",
+      "feelings": [
+        {
+          "order": 1,
+          "zh": "興奮",
+          "en": "Excited"
+        },
+        {
+          "order": 2,
+          "zh": "期待",
+          "en": "Expectant"
+        },
+        {
+          "order": 3,
+          "zh": "雀躍",
+          "en": "Cheerful"
+        },
+        {
+          "order": 4,
+          "zh": "充滿活力",
+          "en": "Energetic"
+        },
+        {
+          "order": 5,
+          "zh": "有創意",
+          "en": "Creative"
+        },
+        {
+          "order": 6,
+          "zh": "有盼望",
+          "en": "Hopeful"
+        }
+      ]
+    },
+    {
+      "id": "peace",
+      "zh": "平安",
+      "en": "Peaceful",
+      "color": "#BFD8B8",
+      "segment": "seg-peace",
+      "feelings": [
+        {
+          "order": 1,
+          "zh": "被關顧",
+          "en": "Cared for"
+        },
+        {
+          "order": 2,
+          "zh": "信任",
+          "en": "Trusting"
+        },
+        {
+          "order": 3,
+          "zh": "被愛",
+          "en": "Loved"
+        },
+        {
+          "order": 4,
+          "zh": "親密",
+          "en": "Close"
+        },
+        {
+          "order": 5,
+          "zh": "沉靜",
+          "en": "Thoughtful"
+        },
+        {
+          "order": 6,
+          "zh": "知足",
+          "en": "Content"
+        }
+      ]
+    },
+    {
+      "id": "powerful",
+      "zh": "有力",
+      "en": "Powerful",
+      "color": "#A9C4DE",
+      "segment": "seg-powerful",
+      "feelings": [
+        {
+          "order": 1,
+          "zh": "清醒",
+          "en": "Aware"
+        },
+        {
+          "order": 2,
+          "zh": "自豪",
+          "en": "Proud"
+        },
+        {
+          "order": 3,
+          "zh": "受尊重",
+          "en": "Respected"
+        },
+        {
+          "order": 4,
+          "zh": "被欣賞",
+          "en": "Appreciated"
+        },
+        {
+          "order": 5,
+          "zh": "被重視",
+          "en": "Valued"
+        },
+        {
+          "order": 6,
+          "zh": "忠心",
+          "en": "Faithful"
+        }
+      ]
+    },
+    {
+      "id": "sad",
+      "zh": "悲傷",
+      "en": "Sad",
+      "color": "#B8BCC8",
+      "segment": "seg-sad",
+      "feelings": [
+        {
+          "order": 1,
+          "zh": "內疚",
+          "en": "Guilty"
+        },
+        {
+          "order": 2,
+          "zh": "羞愧",
+          "en": "Ashamed"
+        },
+        {
+          "order": 3,
+          "zh": "沮喪",
+          "en": "Depressed"
+        },
+        {
+          "order": 4,
+          "zh": "孤單",
+          "en": "Lonely"
+        },
+        {
+          "order": 5,
+          "zh": "無聊",
+          "en": "Bored"
+        },
+        {
+          "order": 6,
+          "zh": "疲累",
+          "en": "Tired"
+        }
+      ]
+    },
+    {
+      "id": "scared",
+      "zh": "懼怕",
+      "en": "Scared",
+      "color": "#C9B8DC",
+      "segment": "seg-scared",
+      "feelings": [
+        {
+          "order": 1,
+          "zh": "被拒絕",
+          "en": "Rejected"
+        },
+        {
+          "order": 2,
+          "zh": "困惑",
+          "en": "Confused"
+        },
+        {
+          "order": 3,
+          "zh": "無助",
+          "en": "Helpless"
+        },
+        {
+          "order": 4,
+          "zh": "退縮",
+          "en": "Withdrawn"
+        },
+        {
+          "order": 5,
+          "zh": "不安",
+          "en": "Insecure"
+        },
+        {
+          "order": 6,
+          "zh": "焦慮",
+          "en": "Anxious"
+        }
+      ]
+    },
+    {
+      "id": "mad",
+      "zh": "憤怒",
+      "en": "Mad",
+      "color": "#EDB98A",
+      "segment": "seg-mad",
+      "feelings": [
+        {
+          "order": 1,
+          "zh": "受傷",
+          "en": "Hurt"
+        },
+        {
+          "order": 2,
+          "zh": "敵意",
+          "en": "Hostile"
+        },
+        {
+          "order": 3,
+          "zh": "生氣",
+          "en": "Angry"
+        },
+        {
+          "order": 4,
+          "zh": "嫉妒",
+          "en": "Jealous"
+        },
+        {
+          "order": 5,
+          "zh": "怨恨",
+          "en": "Resentful"
+        },
+        {
+          "order": 6,
+          "zh": "挑剔",
+          "en": "Critical"
+        }
+      ]
+    }
+  ],
+  "intensities": [
+    {
+      "level": 1,
+      "label": "輕微"
+    },
+    {
+      "level": 2,
+      "label": "有少少"
+    },
+    {
+      "level": 3,
+      "label": "明顯"
+    },
+    {
+      "level": 4,
+      "label": "強烈"
+    },
+    {
+      "level": 5,
+      "label": "非常強烈"
+    }
+  ],
+  "care": {
+    "consecutiveDays": 3,
+    "minIntensity": 4,
+    "coreIds": [
+      "sad",
+      "scared"
+    ],
+    "template": "這幾天你好像背着沉重的感受。你不必獨自承受，可以找牧者或信得過的弟兄姊妹傾談。{churchContact}如有即時危險，請致電 999。"
+  }
+}

@@ -1,0 +1,18 @@
+:root{
+  --c-paper:#FAF6EF;
+  --c-lavender:#C9B8DC;
+  --c-purple:#7A6A9E;
+  --c-ink:#4A4060;
+  --c-greyblue:#A9BCD0;
+  --c-gold:#D9B56A;
+  --c-flame:#F2C66D;
+  --c-line:#E4DCCF;
+  --emo-joy:#F3D98B;
+  --emo-peace:#BFD8B8;
+  --emo-powerful:#A9C4DE;
+  --emo-sad:#B8BCC8;
+  --emo-scared:#C9B8DC;
+  --emo-mad:#EDB98A;
+  --font-heading:'LXGW WenKai TC',serif;
+  --font-body:'Noto Serif TC',serif;
+}
