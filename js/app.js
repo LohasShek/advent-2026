@@ -53,7 +53,8 @@ import {
   trackPage,
 } from "./stats.js";
 import { applySheetCache, loadSheetCache, refreshFromSheet, saveSheetCache } from "./sheet.js";
-import { initDeviceSpeech } from "./speech.js";
+import { initDeviceSpeech, speechVoiceStatus, speechPhase, speechRate, setSpeechRate, speechRates, speakPassage, pauseSpeech, resumeSpeech, stopSpeech, passageUtterances } from "./speech.js";
+import { BGM_CREDIT, readBgmEnabled, setBgmEnabled, duckBgm, restoreBgm } from "./bgm.js";
 import ui from "../ui-strings.json" with { type: "json" };
 
 const main = document.querySelector("#app");
@@ -75,6 +76,7 @@ const app = {
   frameIndex: 0,
   frameDay: 0,
   touchStart: null,
+  marking: false,
 };
 
 function siteConfig() {
@@ -261,18 +263,23 @@ function wheelHtml(selectedId) {
     if (!core) continue;
     path.setAttribute("tabindex", "0");
     path.setAttribute("role", "button");
-    path.setAttribute("aria-label", core.zh);
-    path.setAttribute("aria-pressed", core.id === selectedId ? "true" : "false");
+    const picked = core.id === selectedId;
+    const state = picked ? ui.picker.selected : ui.picker.unselected;
+    path.setAttribute("aria-label", fill(ui.picker.coreSpoken, { name: core.zh, state }));
+    path.setAttribute("aria-pressed", picked ? "true" : "false");
     path.dataset.action = "pick-core";
     path.dataset.core = core.id;
     if (selectedId && core.id !== selectedId) path.classList.add("is-dim");
     if (core.id === selectedId) {
       path.classList.add("is-selected");
-      path.setAttribute("stroke", "#7A6A9E");
+      path.setAttribute("stroke", "#64547E");
       path.setAttribute("stroke-width", "8");
     }
   }
-  for (const text of svg.querySelectorAll("text")) text.setAttribute("pointer-events", "none");
+  for (const text of svg.querySelectorAll("text")) {
+    text.setAttribute("pointer-events", "none");
+    text.setAttribute("aria-hidden", "true");
+  }
   const selected = coreById(selectedId);
   if (selected) {
     const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -282,7 +289,8 @@ function wheelHtml(selectedId) {
     label.setAttribute("font-size", "16");
     label.setAttribute("fill", "#4A4060");
     label.setAttribute("pointer-events", "none");
-    label.textContent = selected.zh;
+    label.textContent = `✓ ${selected.zh}`;
+    label.setAttribute("aria-hidden", "true");
     svg.appendChild(label);
   }
   return holder.innerHTML;
@@ -300,8 +308,9 @@ function renderPicker(which, entry) {
         ${selected.feelings
           .map((item) => {
             const on = item.order === Number(draft.feelingOrder);
-            return `<button type="button" class="choice ${on ? "is-on" : ""}" style="--chip:${esc(selected.color)}" data-action="pick-feeling" data-order="${item.order}" aria-pressed="${on ? "true" : "false"}">
-              <span>${esc(item.zh)}</span><small>${esc(item.en)}</small>
+            const state = on ? ui.picker.selected : ui.picker.unselected;
+            return `<button type="button" class="choice ${on ? "is-on" : ""}" style="--chip:${esc(selected.color)}" data-action="pick-feeling" data-order="${item.order}" aria-pressed="${on ? "true" : "false"}" aria-label="${esc(fill(ui.picker.outerSpoken, { name: item.zh, state }))}">
+              <span>${esc(item.zh)}${on ? `<span class="tick" aria-hidden="true"> ✓</span>` : ""}</span><small aria-hidden="true">${esc(item.en)}</small>
             </button>`;
           })
           .join("")}
@@ -313,8 +322,9 @@ function renderPicker(which, entry) {
         ${app.feelings.intensities
           .map((item) => {
             const on = Number(draft.intensity) === item.level;
-            return `<button type="button" class="choice level ${on ? "is-on" : ""}" data-action="pick-intensity" data-level="${item.level}" aria-pressed="${on ? "true" : "false"}">
-              <span class="lv">${item.level}</span><span class="lb">${esc(item.label)}</span>
+            const state = on ? ui.picker.selected : ui.picker.unselected;
+            return `<button type="button" class="choice level ${on ? "is-on" : ""}" data-action="pick-intensity" data-level="${item.level}" aria-pressed="${on ? "true" : "false"}" aria-label="${esc(fill(ui.picker.intensityChoice, { level: item.level, label: item.label, state }))}">
+              <span class="lv">${item.level}${on ? `<span class="tick" aria-hidden="true"> ✓</span>` : ""}</span><span class="lb">${esc(item.label)}</span>
             </button>`;
           })
           .join("")}
@@ -499,9 +509,56 @@ function renderWordBar(day, entry, mode) {
     mode === "tokens"
       ? ""
       : `<button type="button" class="btn ghost" data-action="add-word">${esc(ui.words.add)}</button>`;
-  const hint =
-    app.wordHintDay === day.day ? `<p class="word-hint" role="status">${esc(ui.words.limit)}</p>` : "";
+  const hint = `<p class="word-hint" aria-live="assertive" aria-atomic="true">${
+    app.wordHintDay === day.day ? esc(ui.words.limit) : ""
+  }</p>`;
   return `${list}${add}${hint}`;
+}
+
+function bgmToggle() {
+  const on = readBgmEnabled();
+  return `<label class="toggle">
+    <input type="checkbox" data-setting="bgm" ${on ? "checked" : ""}>
+    <span class="switch" aria-hidden="true"></span>
+    <span>
+      <strong>${esc(ui.bgm.toggle)}</strong>
+      <small>${esc(ui.bgm.help)}</small>
+    </span>
+  </label>`;
+}
+
+function bgmCreditLine() {
+  return `<p class="bgm-credit">${esc(fill(ui.bgm.creditLine, { title: BGM_CREDIT.title, author: BGM_CREDIT.author }))}
+    <a href="${esc(BGM_CREDIT.source)}" target="_blank" rel="noopener noreferrer">${esc(ui.bgm.sourceLink)}</a>
+    <a href="${esc(BGM_CREDIT.license)}" target="_blank" rel="noopener noreferrer">${esc(ui.bgm.licenseLink)}</a>
+  </p>`;
+}
+
+function renderSpeakBar() {
+  if (speechVoiceStatus() === "missing") {
+    return `<p class="speak-note">${esc(ui.read.speakMissing)}</p>`;
+  }
+  const phase = speechPhase();
+  const playing = phase === "playing";
+  const paused = phase === "paused";
+  const playLabel = playing ? ui.read.speakPause : paused ? ui.read.speakResume : ui.read.speakPlay;
+  const state = playing ? ui.read.speakPlaying : paused ? ui.read.speakPaused : "";
+  const rates = speechRates()
+    .map((value) => {
+      const on = value === speechRate();
+      const label = fill(ui.read.speakRateOption, { rate: value });
+      return `<button type="button" data-action="speak-rate" data-rate="${value}" aria-pressed="${on ? "true" : "false"}" aria-label="${esc(label)}">${esc(label)}</button>`;
+    })
+    .join("");
+  return `<div class="speak" data-speak-bar role="group" aria-label="${esc(ui.read.speakGroup)}">
+    <p class="speak-hint">${esc(ui.read.speakHint)}</p>
+    <div class="speak-row">
+      <button type="button" class="btn" data-action="speak-toggle" aria-pressed="${playing ? "true" : "false"}">${esc(playLabel)}</button>
+      <button type="button" class="btn ghost" data-action="speak-stop">${esc(ui.read.speakStop)}</button>
+    </div>
+    <div class="speak-rates" role="group" aria-label="${esc(ui.read.speakRate)}">${rates}</div>
+    <p class="speak-status" aria-live="polite">${esc(state)}</p>
+  </div>`;
 }
 
 function renderRead(day) {
@@ -521,16 +578,26 @@ function renderRead(day) {
     }
   }
   const markHint = mode === "tokens" ? ui.read.tokenHint : ui.read.selectHint;
+  const markButton =
+    mode === "tokens"
+      ? `<button type="button" class="btn ghost" data-action="toggle-marking" aria-pressed="${app.marking ? "true" : "false"}">${esc(app.marking ? ui.read.markOff : ui.read.markOn)}</button>`
+      : "";
   return `<div class="card reading">
     <h2>${esc(ui.read.title)}</h2>
     <p class="hint">${esc(ui.read.hint)}</p>
-    <p class="hint">${esc(markHint)}</p>
+    <p class="hint" data-live-hint aria-live="polite">${esc(markHint)}</p>
+    ${markButton}
     <div class="segmented" role="group" aria-label="${esc(ui.read.editionLabel)}">
       <button type="button" data-action="set-edition" data-edition="shen" aria-pressed="${edition === "shen" ? "true" : "false"}">${esc(ui.read.shen)}</button>
       <button type="button" data-action="set-edition" data-edition="shangdi" aria-pressed="${edition === "shangdi" ? "true" : "false"}">${esc(ui.read.shangdi)}</button>
     </div>
+    ${renderSpeakBar()}
+    <div class="bgm" data-bgm-bar>
+      ${bgmToggle()}
+      ${bgmCreditLine()}
+    </div>
     ${day.focus ? `<p class="focus">${esc(shown(fill(ui.day.focus, { focus: day.focus })))}</p>` : ""}
-    ${passageHtml(text, mode === "tokens" ? segmented : "", entry.words, edition)}
+    ${passageHtml(text, mode === "tokens" ? segmented : "", entry.words, edition, { marking: mode === "tokens" && app.marking })}
     ${renderWordBar(day, entry, mode)}
     ${scriptureCopyright() ? `<p class="copyright">${esc(scriptureCopyright())}</p>` : ""}
     <button type="button" class="btn" data-action="next">${esc(ui.read.next)}</button>
@@ -709,7 +776,7 @@ function miniDots(entry) {
     .filter(Boolean)
     .map((pick) => {
       const color = coreById(pick.coreId)?.color || "#E4DCCF";
-      return `<i class="dot" style="background:${esc(color)}" title="${esc(pick.coreZh)}"></i>`;
+      return `<i class="dot" style="background:${esc(color)}" aria-hidden="true"></i><span class="sr-only">${esc(pick.coreZh)}</span>`;
     });
   return bits.length ? `<span class="mini-dots">${bits.join("")}</span>` : "";
 }
@@ -788,6 +855,19 @@ function renderAbout(today) {
         </span>
       </label>
     </div>
+    <div class="card" id="music-credit">
+      <h2>${esc(ui.bgm.aboutTitle)}</h2>
+      <p>${esc(ui.bgm.aboutBody)}</p>
+      <p>${esc(ui.bgm.duckNote)}</p>
+      ${bgmToggle()}
+      <dl class="credit-list">
+        <div><dt>${esc(ui.bgm.titleLabel)}</dt><dd>${esc(BGM_CREDIT.title)}</dd></div>
+        <div><dt>${esc(ui.bgm.authorLabel)}</dt><dd>${esc(BGM_CREDIT.author)}</dd></div>
+        <div><dt>${esc(ui.bgm.sourceLink)}</dt><dd><a href="${esc(BGM_CREDIT.source)}" target="_blank" rel="noopener noreferrer">${esc(BGM_CREDIT.source)}</a></dd></div>
+        <div><dt>${esc(ui.bgm.licenseLink)}</dt><dd><a href="${esc(BGM_CREDIT.license)}" target="_blank" rel="noopener noreferrer">${esc(BGM_CREDIT.licenseName)}</a></dd></div>
+      </dl>
+      ${bgmCreditLine()}
+    </div>
     <div class="card">
       <h2>${esc(ui.about.installTitle)}</h2>
       <p>${esc(ui.about.installBody)}</p>
@@ -799,10 +879,59 @@ function renderAbout(today) {
   </article>`;
 }
 
+function focusKey(node) {
+  if (!node?.dataset?.action && !node?.dataset?.setting) return "";
+  const id =
+    node.dataset.slot ||
+    node.dataset.rate ||
+    node.dataset.edition ||
+    node.dataset.index ||
+    node.dataset.order ||
+    node.dataset.level ||
+    node.dataset.core ||
+    node.dataset.setting ||
+    "";
+  return `${node.dataset.action || node.dataset.setting}:${id}`;
+}
+
 function rerenderKeepingPlace() {
+  const active = document.activeElement;
+  const key = focusKey(active);
   const y = window.scrollY;
   render();
   window.scrollTo(0, y);
+  if (!key) return;
+  const [action, id] = key.split(":");
+  const candidates = [
+    ...main.querySelectorAll(`[data-action="${action}"]`),
+    ...main.querySelectorAll(`[data-setting="${action}"]`),
+  ];
+  const next = candidates.find((node) => {
+    const nodeId =
+      node.dataset.slot ||
+      node.dataset.rate ||
+      node.dataset.edition ||
+      node.dataset.index ||
+      node.dataset.order ||
+      node.dataset.level ||
+      node.dataset.core ||
+      node.dataset.setting ||
+      "";
+    return nodeId === id;
+  });
+  next?.focus?.({ preventScroll: true });
+}
+
+function announce(message) {
+  const live = document.querySelector("#live-status");
+  if (!live) return;
+  const next = message || "";
+  if (live.dataset.message === next) return;
+  live.dataset.message = next;
+  live.textContent = "";
+  window.setTimeout(() => {
+    if (live.dataset.message === next) live.textContent = next;
+  }, 40);
 }
 
 function render() {
@@ -825,6 +954,10 @@ function render() {
   const viewKey = `${route.name}:${route.day || ""}:${route.step || ""}:${phase}`;
   const viewChanged = viewKey !== app.lastView;
   app.lastView = viewKey;
+  if (viewChanged) {
+    stopSpeech();
+    restoreBgm();
+  }
 
   if (route.name === "about") {
     renderAbout(today);
@@ -854,6 +987,7 @@ function render() {
   if (viewChanged) {
     window.scrollTo(0, 0);
     main.focus({ preventScroll: true });
+    if (main.dataset.step === "read") announce(main.querySelector("[data-live-hint]")?.textContent || "");
   }
 }
 
@@ -946,7 +1080,42 @@ function onClick(event) {
   if (action === "set-edition") {
     app.state.edition = button.dataset.edition === "shangdi" ? "shangdi" : "shen";
     saveState(app.state);
-    render();
+    rerenderKeepingPlace();
+    return;
+  }
+  if (action === "toggle-marking") {
+    app.marking = !app.marking;
+    rerenderKeepingPlace();
+    return;
+  }
+  if (action === "speak-toggle") {
+    if (!day) return;
+    const phase = speechPhase();
+    if (phase === "playing") pauseSpeech();
+    else if (phase === "paused") resumeSpeech();
+    else {
+      const edition = currentEdition();
+      const lines = passageUtterances(day.reference, day.passage?.[edition] || "");
+      speakPassage(lines, {
+        onstart: () => duckBgm(),
+        onend: () => {
+          restoreBgm();
+          rerenderKeepingPlace();
+        },
+      });
+    }
+    rerenderKeepingPlace();
+    return;
+  }
+  if (action === "speak-stop") {
+    stopSpeech();
+    restoreBgm();
+    rerenderKeepingPlace();
+    return;
+  }
+  if (action === "speak-rate") {
+    setSpeechRate(button.dataset.rate);
+    rerenderKeepingPlace();
     return;
   }
   if (action === "prayer-frame") {
@@ -1044,6 +1213,7 @@ function onClick(event) {
           );
     entry.words = result.words;
     app.wordHintDay = action === "toggle-word" && result.limited ? day.day : 0;
+    if (app.wordHintDay === day.day) announce(ui.words.limit);
     saveState(app.state);
     rerenderKeepingPlace();
     return;
@@ -1054,8 +1224,10 @@ function onClick(event) {
     const before = normalizeWords(entry.words).length;
     const result = addWord(entry.words, selected);
     entry.words = result.words;
-    if (result.limited) app.wordHintDay = day.day;
-    else if (result.words.length !== before) app.wordHintDay = 0;
+    if (result.limited) {
+      app.wordHintDay = day.day;
+      announce(ui.words.limit);
+    } else if (result.words.length !== before) app.wordHintDay = 0;
     app.pendingSelection = "";
     saveState(app.state);
     window.getSelection?.()?.removeAllRanges?.();
@@ -1123,7 +1295,10 @@ async function mainInit() {
   app.wheelSvg = wheelSvg;
   app.state = loadState();
   initStats(siteConfig().goatcounter || "");
-  initDeviceSpeech();
+  let booted = false;
+  initDeviceSpeech(undefined, () => {
+    if (booted) rerenderKeepingPlace();
+  });
   document.addEventListener("selectionchange", () => {
     const text = window.getSelection?.().toString() || "";
     if (text.trim()) app.pendingSelection = text;
@@ -1171,15 +1346,20 @@ async function mainInit() {
     { passive: true }
   );
   main.addEventListener("change", (event) => {
-    const input = event.target.closest("[data-setting='shareFeelings']");
-    if (!input) return;
-    app.state.shareFeelings = input.checked === true;
-    saveState(app.state);
+    const share = event.target.closest("[data-setting='shareFeelings']");
+    if (share) {
+      app.state.shareFeelings = share.checked === true;
+      saveState(app.state);
+      return;
+    }
+    const bgm = event.target.closest("[data-setting='bgm']");
+    if (bgm) setBgmEnabled(bgm.checked === true);
   });
   window.addEventListener("hashchange", () => {
     app.thanksDay = 0;
     render();
   });
+  booted = true;
   render();
   if (sheetId) {
     refreshFromSheet({

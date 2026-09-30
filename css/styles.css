@@ -50,6 +50,7 @@ body {
 
 .topbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
@@ -270,11 +271,14 @@ a { color: var(--c-purple); }
 .steps a,
 .steps span {
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   font-family: var(--font-heading);
   font-size: 0.98rem;
   color: var(--c-ink);
   text-decoration: none;
-  padding: 0.35rem 0.45rem 0.28rem;
+  padding: 0.35rem 0.55rem;
   border-bottom: 2px solid transparent;
 }
 
@@ -349,6 +353,12 @@ a { color: var(--c-purple); }
   background: var(--c-ink);
   color: #fff;
   border-color: var(--c-ink);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.segmented button[aria-pressed="true"]::before {
+  content: "✓ ";
 }
 
 .breath { text-align: center; margin: 0.4rem 0 0.2rem; }
@@ -429,7 +439,8 @@ a { color: var(--c-purple); }
 
 .passage.is-tokens .verse { user-select: none; }
 
-.token {
+.token,
+.token-run {
   display: inline;
   font: inherit;
   color: inherit;
@@ -442,6 +453,18 @@ a { color: var(--c-purple); }
   white-space: normal;
   vertical-align: baseline;
   cursor: pointer;
+  position: relative;
+}
+
+.token::after,
+.token-run::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
 }
 
 .token.is-on {
@@ -488,7 +511,7 @@ a { color: var(--c-purple); }
   color: var(--c-ink);
   border-radius: 999px;
   padding: 0.2rem 0.75rem;
-  min-height: 36px;
+  min-height: 44px;
   font-family: var(--font-heading);
 }
 
@@ -525,7 +548,7 @@ a { color: var(--c-purple); }
   background: rgba(255, 255, 255, 0.8);
   border-radius: 999px;
   padding: 0.35rem 0.8rem;
-  min-height: 40px;
+  min-height: 44px;
   font-family: var(--font-heading);
   color: var(--c-ink);
 }
@@ -603,7 +626,9 @@ a { color: var(--c-purple); }
 .choice.is-on {
   border-color: var(--c-purple);
   background: var(--chip, #fff);
-  box-shadow: inset 0 0 0 1px var(--c-purple);
+  box-shadow: inset 0 -3px 0 #4a4060;
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
 }
 
 .choice.level {
@@ -765,8 +790,9 @@ article.about a[href^="tel:"] {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 0.75rem;
-  align-items: start;
+  align-items: center;
   position: relative;
+  min-height: 44px;
   padding: 0.35rem 0;
 }
 
@@ -780,22 +806,24 @@ article.about a[href^="tel:"] {
 }
 
 .switch {
-  width: 3.05rem;
-  height: 1.8rem;
-  margin-top: 0.2rem;
+  width: 3.4rem;
+  min-width: 44px;
+  height: 44px;
+  margin-top: 0;
   border-radius: 999px;
   background: var(--c-line);
   border: 1px solid var(--c-gold);
   position: relative;
+  flex: 0 0 auto;
 }
 
 .switch::after {
   content: "";
   position: absolute;
-  top: 0.16rem;
-  left: 0.16rem;
-  width: 1.35rem;
-  height: 1.35rem;
+  top: 0.5rem;
+  left: 0.22rem;
+  width: 1.45rem;
+  height: 1.45rem;
   border-radius: 50%;
   background: var(--c-paper);
   transition: transform 0.15s ease;
@@ -807,7 +835,7 @@ article.about a[href^="tel:"] {
 }
 
 .toggle input:checked + .switch::after {
-  transform: translateX(1.22rem);
+  transform: translateX(1.35rem);
   background: var(--c-gold);
 }
 
@@ -818,6 +846,42 @@ article.about a[href^="tel:"] {
 
 .toggle strong { display: block; font-weight: 600; }
 .toggle small { display: block; font-size: 0.92rem; line-height: 1.6; }
+
+.speak, .bgm { margin-top: 0.8rem; }
+.speak-hint, .speak-note, .bgm-credit {
+  color: var(--c-ink);
+  font-size: 0.92rem;
+  overflow-wrap: anywhere;
+}
+.speak-row, .speak-rates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.speak-row .btn { width: auto; flex: 1 1 8rem; margin-top: 0; min-height: 44px; }
+.speak-rates button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--c-line);
+  background: #fff;
+  color: var(--c-ink);
+  font-family: var(--font-heading);
+}
+.speak-rates button[aria-pressed="true"] {
+  background: var(--c-ink);
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+.speak-status { min-height: 1.4em; margin: 0.35rem 0 0; color: var(--c-purple); }
+.bgm-credit a { margin-right: 0.7rem; }
+.credit-list { margin: 0.4rem 0 0; }
+.credit-list div { margin: 0.35rem 0; }
+.credit-list dt { font-family: var(--font-heading); }
+.credit-list dd { margin: 0.1rem 0 0; overflow-wrap: anywhere; }
+.verse, .passage, h1, h2, h3 { overflow-wrap: anywhere; }
 
 .loading, .noscript {
   padding: 1rem;

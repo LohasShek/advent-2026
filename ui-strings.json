@@ -127,6 +127,11 @@
     "intensityLabel": "強度",
     "intensityPrompt": "有多強烈？",
     "intensitySpoken": "強度 {label}",
+    "coreSpoken": "{name}，核心，{state}",
+    "outerSpoken": "{name}，外層，{state}",
+    "selected": "已選",
+    "unselected": "未選",
+    "intensityChoice": "強度 {level}，{label}，{state}",
     "becauseLabel": "因為……（可留空）",
     "becausePlaceholder": "只留一句，也可以不寫",
     "becausePrivate": "這句話只存在這部裝置，不會被送出。",
@@ -150,7 +155,20 @@
     "editionLabel": "經文版本",
     "shen": "神版",
     "shangdi": "上帝版",
-    "next": "讀完了，去反思"
+    "next": "讀完了，去反思",
+    "markOn": "開始圈選",
+    "markOff": "完成圈選",
+    "speakGroup": "朗讀經文",
+    "speakPlay": "播放",
+    "speakPause": "暫停",
+    "speakResume": "繼續",
+    "speakStop": "停止",
+    "speakRate": "朗讀速度",
+    "speakRateOption": "{rate} 倍",
+    "speakHint": "如果正在使用讀屏，可以不用這個朗讀按鈕，以免兩個聲音同時出現。",
+    "speakMissing": "這部裝置沒有粵語或國語語音，所以沒有顯示朗讀按鈕。",
+    "speakPlaying": "正在朗讀",
+    "speakPaused": "朗讀已暫停"
   },
   "reflect": {
     "title": "反思",
@@ -180,6 +198,8 @@
   "words": {
     "add": "加入字詞",
     "limit": "最多選 5 處",
+    "spokenOn": "{word}，已圈選",
+    "spokenOff": "{word}，未圈選",
     "listLabel": "已選字詞",
     "remove": "移除{word}",
     "recap": "今天的字詞",
@@ -206,6 +226,19 @@
     "installBody": "用瀏覽器的分享或選單，選擇「加到主畫面」或「安裝應用程式」。安裝之後，讀過一次的內容可以離線再開。",
     "careTitle": "如果你需要人陪",
     "careBody": "連續幾日感到強烈的悲傷或懼怕時，程式會在畫面上輕輕提醒你找人傾談。{contact}如果想找人傾談，也可以致電明愛向晴熱線 18288（24 小時）。"
+  },
+  "bgm": {
+    "label": "背景音樂",
+    "toggle": "播放輕柔背景音樂",
+    "help": "預設關閉。打開後會循環播放，選擇會記在這部裝置。",
+    "creditLine": "音樂：{title}，{author}。",
+    "sourceLink": "來源頁",
+    "licenseLink": "CC0 授權",
+    "aboutTitle": "背景音樂",
+    "aboutBody": "讀經時可以打開一段輕柔鋼琴。預設關閉，只有你按下開關才會播放。朗讀經文時，音樂會自動降低音量，停止後回復。",
+    "titleLabel": "曲名",
+    "authorLabel": "作者",
+    "duckNote": "朗讀時音量會降到兩成。"
   },
   "care": {
     "dismiss": "我知道了，今天先收起"

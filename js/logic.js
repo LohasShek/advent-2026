@@ -226,6 +226,13 @@ function verseSpoken(n) {
   return fill(ui.passage.verse, { n });
 }
 
+/** One screen-reader sentence for a verse, in the edition already chosen. */
+export function verseScreenLabel(n, body) {
+  const text = String(body || "").replace(/\s+/g, " ").trim();
+  if (!n) return text;
+  return `${verseSpoken(n)}，${text}`;
+}
+
 export function parseVerses(text) {
   if (!text || !String(text).trim()) return [];
   const verses = [];
@@ -767,9 +774,13 @@ export function prayerFrameHtml(text) {
 }
 
 function verseBodyHtml(verse) {
-  const spoken = verse.n ? `<span class="sr-only">${esc(verseSpoken(verse.n))}。</span>` : "";
+  const label = verseScreenLabel(verse.n, verse.text);
   const num = verse.n ? `<sup class="vnum">${esc(verse.n)}</sup>` : "";
-  return `<p class="verse">${spoken}${num}${esc(verse.text)}</p>`;
+  return `<p class="verse"><span class="sr-only">${esc(label)}</span><span class="verse-visual" aria-hidden="true">${num}${esc(verse.text)}</span></p>`;
+}
+
+function wordSpoken(text, on) {
+  return fill(on ? ui.words.spokenOn : ui.words.spokenOff, { word: text });
 }
 
 function tokenPunct(text) {
@@ -786,11 +797,12 @@ function tokenFace(slotIndex, slots, owners) {
   return face;
 }
 
-function tokenButton(token, face = "", prefix = "", suffix = "", slotIndex = -1) {
+function tokenButton(token, face = "", prefix = "", suffix = "", slotIndex = -1, label = "", tabIndex = "0") {
   const value = token.text.trim();
   const slot = slotIndex >= 0 ? ` data-slot="${slotIndex}"` : "";
   const on = face.includes("is-on");
-  const button = `<span role="button" tabindex="0" class="token${face ? ` ${face}` : ""}" data-action="toggle-word" data-word="${esc(value)}"${slot} aria-pressed="${on ? "true" : "false"}">${esc(token.text)}</span>`;
+  const spoken = label ? ` aria-label="${esc(label)}"` : "";
+  const button = `<span role="button" tabindex="${tabIndex}" class="token${face ? ` ${face}` : ""}" data-action="toggle-word" data-word="${esc(value)}"${slot} aria-pressed="${on ? "true" : "false"}"${spoken}>${esc(token.text)}</span>`;
   if (!prefix && !suffix) return button;
   return `<span class="token-glue">${tokenPunct(prefix)}${button}${tokenPunct(suffix)}</span>`;
 }
@@ -800,21 +812,52 @@ function versePrefix(n) {
   return `<span class="sr-only">${esc(verseSpoken(n))}。</span><sup class="vnum">${esc(n)}</sup>`;
 }
 
-function atomsHtml(tokens, owners, slotState, slots) {
-  let html = "";
+function renderRun(run, tab) {
+  const label = wordSpoken(run.text, run.on);
+  if (run.parts.length === 1) {
+    const part = run.parts[0];
+    return tokenButton({ text: part.raw }, part.face, run.prefix, run.suffix, part.slotIndex, label, tab);
+  }
+  const inner = run.parts
+    .map(
+      (part) =>
+        `<span class="token${part.face ? ` ${part.face}` : ""}" data-word="${esc(part.text)}" aria-pressed="${run.on ? "true" : "false"}" aria-hidden="true">${esc(part.raw)}</span>`
+    )
+    .join("");
+  const first = run.parts[0];
+  const button = `<span role="button" tabindex="${tab}" class="token-run" data-action="toggle-word" data-word="${esc(first.text)}" data-slot="${first.slotIndex}" aria-pressed="${run.on ? "true" : "false"}" aria-label="${esc(label)}">${inner}</span>`;
+  if (!run.prefix && !run.suffix) return button;
+  return `<span class="token-glue">${tokenPunct(run.prefix)}${button}${tokenPunct(run.suffix)}</span>`;
+}
+
+function atomsHtml(tokens, owners, slotState, slots, marking = false) {
+  const items = [];
   const mark = () => {
     const slotIndex = slotState.index;
     slotState.index += 1;
     return { face: tokenFace(slotIndex, slots, owners), slotIndex };
   };
+  const pushWord = (token, prefix, suffix) => {
+    const selected = mark();
+    items.push({
+      kind: "word",
+      text: token.text.trim(),
+      raw: token.text,
+      prefix,
+      suffix,
+      face: selected.face,
+      slotIndex: selected.slotIndex,
+      on: selected.face.includes("is-on"),
+    });
+  };
   for (let cursor = 0; cursor < tokens.length; cursor += 1) {
     const token = tokens[cursor];
     if (token.kind === "verse") {
-      html += versePrefix(token.text);
+      items.push({ kind: "html", html: versePrefix(token.text) });
       continue;
     }
     if (token.kind === "close" || token.kind === "other") {
-      html += esc(token.text);
+      items.push({ kind: "html", html: esc(token.text) });
       continue;
     }
     if (token.kind === "open") {
@@ -826,12 +869,11 @@ function atomsHtml(tokens, owners, slotState, slots) {
           suffix += tokens[look].text;
           look += 1;
         }
-        const selected = mark();
-        html += tokenButton(next, selected.face, token.text, suffix, selected.slotIndex);
+        pushWord(next, token.text, suffix);
         cursor = look - 1;
         continue;
       }
-      html += esc(token.text);
+      items.push({ kind: "html", html: esc(token.text) });
       continue;
     }
     let suffix = "";
@@ -840,10 +882,43 @@ function atomsHtml(tokens, owners, slotState, slots) {
       suffix += tokens[look].text;
       look += 1;
     }
-    const selected = mark();
-    html += tokenButton(token, selected.face, "", suffix, selected.slotIndex);
+    pushWord(token, "", suffix);
     cursor = look - 1;
   }
+  const tab = marking ? "0" : "-1";
+  let html = "";
+  let run = null;
+  const flush = () => {
+    if (!run) return;
+    html += renderRun(run, tab);
+    run = null;
+  };
+  for (const item of items) {
+    if (item.kind !== "word") {
+      flush();
+      html += item.html;
+      continue;
+    }
+    const prevSlot = run ? run.slotIndexes[run.slotIndexes.length - 1] : -1;
+    const joined = marking && run && run.on && item.on && !item.prefix && slots[prevSlot]?.joinNext;
+    if (joined) {
+      run.parts.push(item);
+      run.slotIndexes.push(item.slotIndex);
+      run.text += item.text;
+      run.suffix = item.suffix;
+      continue;
+    }
+    flush();
+    run = {
+      on: item.on,
+      text: item.text,
+      prefix: item.prefix,
+      suffix: item.suffix,
+      parts: [item],
+      slotIndexes: [item.slotIndex],
+    };
+  }
+  flush();
   return html;
 }
 
@@ -865,11 +940,12 @@ function tokenBlocks(line) {
   return blocks;
 }
 
-export function passageHtml(text, segmented = "", words = [], edition = "") {
+export function passageHtml(text, segmented = "", words = [], edition = "", options = {}) {
   const source = String(text || "");
   if (!source.trim()) {
     return `<p class="placeholder">${esc(ui.passage.placeholder)}</p>`;
   }
+  const marking = options?.marking === true;
   const tokens = segmentMode(source, segmented) === "tokens";
   const parts = [];
   let previous = null;
@@ -884,7 +960,14 @@ export function passageHtml(text, segmented = "", words = [], edition = "") {
           parts.push(`<p class="verse-gap">${esc(ui.passage.skip)}</p>`);
         }
         if (block.key) previous = block.key;
-        parts.push(`<p class="verse">${block.prefix}${atomsHtml(block.tokens, owners, slotState, slots)}</p>`);
+        const visual = `${block.prefix}${atomsHtml(block.tokens, owners, slotState, slots, marking)}`;
+        if (marking) parts.push(`<p class="verse">${visual}</p>`);
+        else {
+          const label = verseScreenLabel(block.label, block.tokens.map((token) => token.text).join(""));
+          parts.push(
+            `<p class="verse"><span class="sr-only">${esc(label)}</span><span class="verse-visual" aria-hidden="true">${visual}</span></p>`
+          );
+        }
       }
     }
   } else {
