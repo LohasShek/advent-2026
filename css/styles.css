@@ -444,6 +444,27 @@ a { color: var(--c-purple); }
   cursor: pointer;
 }
 
+.token.is-on {
+  border-radius: 0;
+  background: #f3d98b;
+  box-shadow: inset 0 -0.18em 0 #d7b15e;
+}
+
+.token.is-on.is-run-start {
+  border-top-left-radius: 0.28em;
+  border-bottom-left-radius: 0.28em;
+}
+
+.token.is-on.is-run-end {
+  border-top-right-radius: 0.28em;
+  border-bottom-right-radius: 0.28em;
+}
+
+.token.is-on:not(.is-run-end) {
+  padding-right: 0.12em;
+  margin-right: -0.12em;
+}
+
 .token-glue,
 .token-glue .token {
   white-space: nowrap;
@@ -452,11 +473,6 @@ a { color: var(--c-purple); }
 .token-punct {
   background: transparent;
   color: inherit;
-}
-
-.token.is-on {
-  background: #f3d98b;
-  box-shadow: inset 0 -0.18em 0 #d7b15e;
 }
 
 .word-list {

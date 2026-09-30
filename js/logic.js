@@ -345,17 +345,283 @@ export function lineTokens(line) {
   return tokens;
 }
 
+function verseBlocks(segmented) {
+  const blocks = [];
+  for (const line of String(segmented || "").split("\n")) {
+    if (!line.trim()) continue;
+    blocks.push(...tokenBlocks(line));
+  }
+  return blocks;
+}
+
+/** Selectable words in reading order. joinNext is true when the next word is in the same verse with no punctuation between. */
+export function passageSlots(passage, segmented) {
+  if (segmentMode(passage, segmented) !== "tokens") return [];
+  const slots = [];
+  for (const block of verseBlocks(segmented)) {
+    let previous = -1;
+    let wordIndex = 0;
+    block.tokens.forEach((token, index) => {
+      if (token.kind !== "word") return;
+      const text = token.text.trim();
+      if (!isSelectableWord(text)) return;
+      wordIndex += 1;
+      if (previous >= 0) slots[slots.length - 1].joinNext = index === previous + 1;
+      slots.push({ text, joinNext: false, verse: block.label || "", index: wordIndex });
+      previous = index;
+    });
+  }
+  return slots;
+}
+
+function annotateSlots(slots) {
+  let verse = null;
+  let next = 1;
+  return slots.map((slot) => {
+    const label = slot.verse != null ? String(slot.verse) : "";
+    if (label !== verse) {
+      verse = label;
+      next = 1;
+    }
+    const index = Number.isInteger(slot.index) ? slot.index : next;
+    next = index + 1;
+    return { text: String(slot.text || ""), joinNext: slot.joinNext === true, verse: label, index };
+  });
+}
+
+function isMark(word) {
+  return Boolean(
+    word &&
+      typeof word === "object" &&
+      typeof word.verse === "string" &&
+      Number.isInteger(word.from) &&
+      Number.isInteger(word.to) &&
+      word.from >= 1 &&
+      word.to >= word.from
+  );
+}
+
+function sameMark(left, right) {
+  return left.verse === right.verse && left.from === right.from && left.to === right.to;
+}
+
+function copyMark(word) {
+  const mark = { verse: word.verse, from: word.from, to: word.to };
+  if (typeof word.shen === "string" && word.shen) mark.shen = word.shen;
+  if (typeof word.shangdi === "string" && word.shangdi) mark.shangdi = word.shangdi;
+  return mark;
+}
+
+function phraseAt(slots, mark) {
+  if (!Array.isArray(slots) || !slots.length || !rangeFits(mark, annotateSlots(slots))) return "";
+  return wordLabel(mark, slots);
+}
+
+function stampMark(mark, slots, options = {}) {
+  const stamped = copyMark(mark);
+  const shenSource = options.shen || (!options.shangdi ? slots : null);
+  const shangdiSource = options.shangdi || (!options.shen ? slots : null);
+  const shen = shenSource ? phraseAt(shenSource, stamped) : "";
+  const shangdi = shangdiSource ? phraseAt(shangdiSource, stamped) : "";
+  if (shen) stamped.shen = shen;
+  if (shangdi) stamped.shangdi = shangdi;
+  return stamped;
+}
+
+function markCovers(mark, slot) {
+  return mark.verse === slot.verse && slot.index >= mark.from && slot.index <= mark.to;
+}
+
+function findRuns(slots, word) {
+  const runs = [];
+  for (let start = 0; start < slots.length; start += 1) {
+    let text = "";
+    for (let end = start; end < slots.length; end += 1) {
+      if (end > start) {
+        const previous = slots[end - 1];
+        const here = slots[end];
+        if (!previous.joinNext || previous.verse !== here.verse || here.index !== previous.index + 1) break;
+      }
+      text += slots[end].text;
+      if (text === word) {
+        runs.push({ verse: slots[start].verse, from: slots[start].index, to: slots[end].index });
+        break;
+      }
+      if (!word.startsWith(text)) break;
+    }
+  }
+  return runs;
+}
+
+function rangeFits(mark, slots) {
+  const matched = slots.filter((slot) => markCovers(mark, slot));
+  if (matched.length !== mark.to - mark.from + 1) return false;
+  for (let index = 1; index < matched.length; index += 1) {
+    const previous = slots.indexOf(matched[index - 1]);
+    const here = slots.indexOf(matched[index]);
+    if (here !== previous + 1) return false;
+    if (!matched[index - 1].joinNext || matched[index].index !== matched[index - 1].index + 1) return false;
+  }
+  return true;
+}
+
+function joinedText(pieces, field) {
+  if (!pieces.length || pieces.some((item) => typeof item[field] !== "string" || !item[field])) return "";
+  return pieces.map((item) => item[field]).join("");
+}
+
+function coalesceMarks(marks, slots) {
+  const covered = new Array(slots.length).fill(false);
+  const owners = new Array(slots.length).fill(null);
+  for (const mark of marks) {
+    if (!rangeFits(mark, slots)) continue;
+    slots.forEach((slot, index) => {
+      if (!markCovers(mark, slot)) return;
+      covered[index] = true;
+      owners[index] = mark;
+    });
+  }
+  const out = [];
+  let start = -1;
+  const close = (end) => {
+    const pieces = [];
+    let previous = null;
+    for (let index = start; index <= end; index += 1) {
+      const mark = owners[index];
+      if (!mark || mark === previous) continue;
+      pieces.push(mark);
+      previous = mark;
+    }
+    const mark = { verse: slots[start].verse, from: slots[start].index, to: slots[end].index };
+    const shen = joinedText(pieces, "shen");
+    const shangdi = joinedText(pieces, "shangdi");
+    if (shen) mark.shen = shen;
+    if (shangdi) mark.shangdi = shangdi;
+    out.push(mark);
+    start = -1;
+  };
+  for (let index = 0; index < slots.length; index += 1) {
+    if (!covered[index]) {
+      if (start >= 0) close(index - 1);
+      continue;
+    }
+    if (start < 0) {
+      start = index;
+      continue;
+    }
+    const previous = slots[index - 1];
+    const here = slots[index];
+    const joined = previous.joinNext && previous.verse === here.verse && here.index === previous.index + 1;
+    if (!joined) {
+      close(index - 1);
+      start = index;
+    }
+  }
+  if (start >= 0) close(slots.length - 1);
+  return out;
+}
+
 export function normalizeWords(words) {
   if (!Array.isArray(words)) return [];
   const list = [];
+  const seen = new Set();
   for (const word of words) {
-    if (typeof word !== "string") continue;
-    const clean = word.trim();
-    if (!clean || list.includes(clean)) continue;
-    list.push(clean);
+    if (typeof word === "string") {
+      const clean = word.trim();
+      if (!clean || seen.has(clean)) continue;
+      seen.add(clean);
+      list.push(clean);
+    } else if (isMark(word)) {
+      const mark = copyMark(word);
+      const key = `${mark.verse}:${mark.from}-${mark.to}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      list.push(mark);
+    }
     if (list.length >= WORD_LIMIT) break;
   }
   return list;
+}
+
+function recordedPhrases(mark, edition) {
+  const preferred = edition === "shangdi" ? mark.shangdi : mark.shen;
+  const other = edition === "shangdi" ? mark.shen : mark.shangdi;
+  const list = [];
+  if (typeof preferred === "string" && preferred) list.push(preferred);
+  if (typeof other === "string" && other && other !== preferred) list.push(other);
+  return list;
+}
+
+function positionAgrees(mark, slots, edition) {
+  if (!rangeFits(mark, slots)) return false;
+  const current = wordLabel(mark, slots);
+  if (!current) return false;
+  const known = recordedPhrases(mark, edition);
+  if (!known.length) return true;
+  if (edition === "shen" || edition === "shangdi") return current === known[0];
+  return known.includes(current);
+}
+
+function recoverMark(mark, slots, edition) {
+  const phrases = recordedPhrases(mark, edition || "shen");
+  for (const phrase of phrases) {
+    const runs = findRuns(slots, phrase);
+    if (runs.length === 1) return copyMark({ ...mark, ...runs[0] });
+    if (runs.length > 1) return phrase;
+  }
+  return phrases[0] || "";
+}
+
+/** Turn saved strings into verse positions when each phrase occurs once, then merge neighbours. */
+export function resolveWords(words, slots, edition = "") {
+  const input = normalizeWords(words);
+  if (!Array.isArray(slots) || !slots.length) return input;
+  const ready = annotateSlots(slots);
+  const marks = [];
+  const pending = [];
+  for (const item of input) {
+    if (isMark(item)) {
+      if (positionAgrees(item, ready, edition)) {
+        marks.push(copyMark(item));
+        continue;
+      }
+      if (item.shen || item.shangdi) {
+        const recovered = recoverMark(item, ready, edition);
+        if (isMark(recovered)) marks.push(recovered);
+        else if (recovered) pending.push(recovered);
+      }
+      continue;
+    }
+    const runs = findRuns(ready, item);
+    if (runs.length === 1) marks.push(runs[0]);
+    else pending.push(item);
+  }
+  return normalizeWords([...coalesceMarks(marks, ready), ...pending]);
+}
+
+export function wordLabel(word, slots) {
+  if (typeof word === "string") return word;
+  if (!isMark(word) || !Array.isArray(slots)) return "";
+  const ready = annotateSlots(slots);
+  const parts = [];
+  for (let index = word.from; index <= word.to; index += 1) {
+    const slot = ready.find((item) => item.verse === word.verse && item.index === index);
+    if (!slot) return "";
+    parts.push(slot.text);
+  }
+  return parts.join("");
+}
+
+function bindWordSlots(words, slots, edition = "") {
+  const ready = annotateSlots(slots);
+  const owners = new Array(ready.length).fill(false);
+  for (const item of resolveWords(words, ready, edition)) {
+    if (!isMark(item)) continue;
+    ready.forEach((slot, index) => {
+      if (markCovers(item, slot)) owners[index] = true;
+    });
+  }
+  return owners;
 }
 
 export function selectionWord(raw) {
@@ -374,19 +640,81 @@ export function addWord(words, raw) {
   return { words: [...list, clean], limited: false };
 }
 
-export function toggleWord(words, raw) {
-  const list = normalizeWords(words);
+export function toggleWord(words, raw, options = {}) {
   const clean = String(raw || "").trim();
+  const slots = Array.isArray(options.slots) ? annotateSlots(options.slots) : null;
+  const list = slots ? resolveWords(words, slots, options.edition || "") : normalizeWords(words);
   if (!clean || !isSelectableWord(clean)) return { words: list, limited: false };
-  const index = list.indexOf(clean);
-  if (index >= 0) return { words: list.filter((_, item) => item !== index), limited: false };
-  if (list.length >= WORD_LIMIT) return { words: list, limited: true };
-  return { words: [...list, clean], limited: false };
+  const slotIndex = Number(options.slotIndex);
+  const slotted =
+    slots &&
+    Number.isInteger(slotIndex) &&
+    slotIndex >= 0 &&
+    slotIndex < slots.length &&
+    slots[slotIndex].text === clean;
+  if (!slotted) {
+    const index = list.findIndex((item) => item === clean);
+    if (index >= 0) return { words: list.filter((_, item) => item !== index), limited: false };
+    if (list.length >= WORD_LIMIT) return { words: list, limited: true };
+    return { words: [...list, clean], limited: false };
+  }
+  const slot = slots[slotIndex];
+  const current = list.find((item) => isMark(item) && markCovers(item, slot));
+  if (current) return { words: list.filter((item) => item !== current), limited: false };
+  const previous = slotIndex > 0 ? slots[slotIndex - 1] : null;
+  const nextSlot = slotIndex + 1 < slots.length ? slots[slotIndex + 1] : null;
+  const left =
+    previous && previous.joinNext && previous.verse === slot.verse && slot.index === previous.index + 1
+      ? list.find((item) => isMark(item) && markCovers(item, previous))
+      : null;
+  const right =
+    slot.joinNext && nextSlot && nextSlot.verse === slot.verse && nextSlot.index === slot.index + 1
+      ? list.find((item) => isMark(item) && markCovers(item, nextSlot))
+      : null;
+  if (!left && !right && list.length >= WORD_LIMIT) return { words: list, limited: true };
+  const merged = stampMark(
+    {
+      verse: slot.verse,
+      from: left ? left.from : slot.index,
+      to: right ? right.to : slot.index,
+    },
+    slots,
+    options
+  );
+  const drop = new Set([left, right].filter(Boolean));
+  const next = [];
+  let placed = false;
+  for (const item of list) {
+    if (drop.has(item)) {
+      if (!placed) {
+        next.push(merged);
+        placed = true;
+      }
+      continue;
+    }
+    next.push(item);
+  }
+  if (!placed) next.push(merged);
+  return { words: normalizeWords(next), limited: false };
 }
 
-export function formatMarkedWords(words) {
-  return normalizeWords(words)
-    .map((word) => `「${word}」`)
+export function removeWord(words, target, slots, edition = "") {
+  const list = Array.isArray(slots) && slots.length ? resolveWords(words, slots, edition) : normalizeWords(words);
+  if (isMark(target)) {
+    return { words: list.filter((item) => !(isMark(item) && sameMark(item, target))), limited: false };
+  }
+  const clean = String(target || "").trim();
+  return { words: list.filter((item) => item !== clean), limited: false };
+}
+
+export function formatMarkedWords(words, slots, edition = "") {
+  const list = Array.isArray(slots) ? resolveWords(words, slots, edition) : normalizeWords(words);
+  return list
+    .map((word) => {
+      const text = wordLabel(word, slots);
+      return text ? `「${text}」` : "";
+    })
+    .filter(Boolean)
     .join("、");
 }
 
@@ -398,7 +726,7 @@ export function feelingLabel(pick) {
 }
 
 export function fillPrayerFrame(template, context = {}) {
-  const words = formatMarkedWords(context.words);
+  const words = formatMarkedWords(context.words, context.slots, context.edition);
   const before = feelingLabel(context.before);
   const after = feelingLabel(context.after);
   let text = String(template || "");
@@ -448,10 +776,21 @@ function tokenPunct(text) {
   return text ? `<span class="token-punct">${esc(text)}</span>` : "";
 }
 
-function tokenButton(token, selected, prefix = "", suffix = "") {
+function tokenFace(slotIndex, slots, owners) {
+  if (!owners[slotIndex]) return "";
+  const joinedPrev = slotIndex > 0 && owners[slotIndex - 1] && slots[slotIndex - 1]?.joinNext;
+  const joinedNext = Boolean(slots[slotIndex]?.joinNext && owners[slotIndex + 1]);
+  let face = "is-on";
+  if (!joinedPrev) face += " is-run-start";
+  if (!joinedNext) face += " is-run-end";
+  return face;
+}
+
+function tokenButton(token, face = "", prefix = "", suffix = "", slotIndex = -1) {
   const value = token.text.trim();
-  const on = selected.has(value);
-  const button = `<span role="button" tabindex="0" class="token${on ? " is-on" : ""}" data-action="toggle-word" data-word="${esc(value)}" aria-pressed="${on ? "true" : "false"}">${esc(token.text)}</span>`;
+  const slot = slotIndex >= 0 ? ` data-slot="${slotIndex}"` : "";
+  const on = face.includes("is-on");
+  const button = `<span role="button" tabindex="0" class="token${face ? ` ${face}` : ""}" data-action="toggle-word" data-word="${esc(value)}"${slot} aria-pressed="${on ? "true" : "false"}">${esc(token.text)}</span>`;
   if (!prefix && !suffix) return button;
   return `<span class="token-glue">${tokenPunct(prefix)}${button}${tokenPunct(suffix)}</span>`;
 }
@@ -461,8 +800,13 @@ function versePrefix(n) {
   return `<span class="sr-only">${esc(verseSpoken(n))}。</span><sup class="vnum">${esc(n)}</sup>`;
 }
 
-function atomsHtml(tokens, selected) {
+function atomsHtml(tokens, owners, slotState, slots) {
   let html = "";
+  const mark = () => {
+    const slotIndex = slotState.index;
+    slotState.index += 1;
+    return { face: tokenFace(slotIndex, slots, owners), slotIndex };
+  };
   for (let cursor = 0; cursor < tokens.length; cursor += 1) {
     const token = tokens[cursor];
     if (token.kind === "verse") {
@@ -482,7 +826,8 @@ function atomsHtml(tokens, selected) {
           suffix += tokens[look].text;
           look += 1;
         }
-        html += tokenButton(next, selected, token.text, suffix);
+        const selected = mark();
+        html += tokenButton(next, selected.face, token.text, suffix, selected.slotIndex);
         cursor = look - 1;
         continue;
       }
@@ -495,7 +840,8 @@ function atomsHtml(tokens, selected) {
       suffix += tokens[look].text;
       look += 1;
     }
-    html += tokenButton(token, selected, "", suffix);
+    const selected = mark();
+    html += tokenButton(token, selected.face, "", suffix, selected.slotIndex);
     cursor = look - 1;
   }
   return html;
@@ -505,7 +851,7 @@ function tokenBlocks(line) {
   const blocks = [];
   let current = null;
   const start = (verseText) => {
-    current = { key: verseKey(verseText), prefix: versePrefix(verseText), tokens: [] };
+    current = { key: verseKey(verseText), label: verseText, prefix: versePrefix(verseText), tokens: [] };
     blocks.push(current);
   };
   for (const token of lineTokens(line)) {
@@ -519,7 +865,7 @@ function tokenBlocks(line) {
   return blocks;
 }
 
-export function passageHtml(text, segmented = "", words = []) {
+export function passageHtml(text, segmented = "", words = [], edition = "") {
   const source = String(text || "");
   if (!source.trim()) {
     return `<p class="placeholder">${esc(ui.passage.placeholder)}</p>`;
@@ -528,7 +874,9 @@ export function passageHtml(text, segmented = "", words = []) {
   const parts = [];
   let previous = null;
   if (tokens) {
-    const selected = new Set(normalizeWords(words));
+    const slots = passageSlots(source, segmented);
+    const owners = bindWordSlots(words, slots, edition);
+    const slotState = { index: 0 };
     for (const line of String(segmented).split("\n")) {
       if (!line.trim()) continue;
       for (const block of tokenBlocks(line)) {
@@ -536,7 +884,7 @@ export function passageHtml(text, segmented = "", words = []) {
           parts.push(`<p class="verse-gap">${esc(ui.passage.skip)}</p>`);
         }
         if (block.key) previous = block.key;
-        parts.push(`<p class="verse">${block.prefix}${atomsHtml(block.tokens, selected)}</p>`);
+        parts.push(`<p class="verse">${block.prefix}${atomsHtml(block.tokens, owners, slotState, slots)}</p>`);
       }
     }
   } else {
