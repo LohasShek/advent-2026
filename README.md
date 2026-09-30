@@ -75,7 +75,7 @@ python3 scripts/convert_csv.py
 打開 `config.js`：
 
 - `goatcounter`：填 GoatCounter 的網站代碼，例如 `my-church`（即 `my-church.goatcounter.com`）。留空代表完全不載入統計、不送出任何數字。若填的是完整網址（以 `https://` 開頭），就會直接用那個計數網址。
-- `churchContact`：關懷提示裏的聯絡句子。執行轉換腳本時，會依詞彙 CSV 的關懷提示覆寫這一行。目前是「歡迎聯絡石守賢傳道」。若試算表的關懷提示有另一句聯絡，打開應用程式時以試算表那句為準。
+- `churchContact`：關懷提示裏的聯絡句子。執行轉換腳本時，會依詞彙 CSV 的關懷提示覆寫這一行。目前是「歡迎聯絡石守賢傳道」。聯絡句子之後的文字（例如明愛向晴熱線）留在提示裡。畫面上的 18288 是 `tel:18288` 連結。若試算表的關懷提示有另一句聯絡，打開應用程式時以試算表那句為準。
 - `scriptureCopyright`：畫面上唯一的版權句。關於頁和讀經頁底部都用這一句。
 - `sheetId`：Google 試算表 ID。留空代表不讀試算表。
 

@@ -117,8 +117,15 @@ def parse_care(rows: list[list[str]]) -> dict:
     contact_match = re.search(r"^(.*?傾談。)(.*)\s*$", message, re.DOTALL)
     if not contact_match:
         raise SystemExit(f"Could not split church contact out of care prompt: {message}")
-    contact = contact_match.group(2).strip().rstrip("。")
-    template = contact_match.group(1) + "{churchContact}"
+    rest = contact_match.group(2).strip()
+    sentence = re.match(r"^([^。]*。)([\s\S]*)$", rest)
+    if sentence:
+        contact = sentence.group(1).strip().rstrip("。")
+        tail = sentence.group(2)
+    else:
+        contact = rest.rstrip("。")
+        tail = ""
+    template = contact_match.group(1) + "{churchContact}" + tail
     return {
         "consecutiveDays": care_count(days_match.group(1), 3) if days_match else 3,
         "minIntensity": int(level_match.group(1)) if level_match else 4,

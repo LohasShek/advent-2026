@@ -111,7 +111,9 @@ assert.equal(parsedFeelings.cores[0].feelings[0].zh, "興奮");
 assert.equal(parsedFeelings.care.template, feelings.care.template);
 assert.equal(parsedFeelings.care.contact, "歡迎聯絡石守賢傳道");
 assert.equal(parsedFeelings.care.consecutiveDays, 3);
-assert.equal(parsedFeelings.care.template.endsWith("{churchContact}"), true);
+assert.match(parsedFeelings.care.template, /\{churchContact\}/);
+assert.match(parsedFeelings.care.template, /18288/);
+assert.equal(parsedFeelings.care.template.includes("如有即時"), false);
 
 assert.equal(
   gvizUrl("abc", "經文"),
