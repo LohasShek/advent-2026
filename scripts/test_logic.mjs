@@ -199,13 +199,16 @@ assert.match(tokenHtml, /<sup class="vnum">1<\/sup>/);
 assert.match(tokenHtml, /data-word="殘幹"[^>]*aria-pressed="true"/);
 assert.doesNotMatch(tokenHtml, /role="button"[^>]*>1<\/span>/);
 const glued = passageHtml("1 側耳而聽！他說，「嫩枝」。", "1 側耳而｜聽｜！｜他｜說｜，｜「｜嫩枝｜」。", ["嫩枝"]);
-assert.match(glued, /class="token-glue"><span[^>]*data-word="聽"[^>]*>聽！<\/span>/);
-assert.match(glued, /class="token-glue"><span[^>]*data-word="說"[^>]*>說，<\/span>/);
-assert.match(glued, /class="token-glue"><span[^>]*data-word="嫩枝"[^>]*aria-pressed="true"[^>]*>「嫩枝」。<\/span>/);
-assert.doesNotMatch(glued, /<\/span>！/);
-assert.doesNotMatch(glued, /<\/span>，/);
+assert.match(glued, /class="token-glue"><span role="button"[^>]*data-word="聽"[^>]*>聽<\/span><span class="token-punct">！<\/span>/);
+assert.match(glued, /class="token-glue"><span role="button"[^>]*data-word="說"[^>]*>說<\/span><span class="token-punct">，<\/span>/);
+assert.match(
+  glued,
+  /class="token-glue"><span class="token-punct">「<\/span><span role="button"[^>]*data-word="嫩枝"[^>]*aria-pressed="true"[^>]*>嫩枝<\/span><span class="token-punct">」。<\/span>/
+);
+assert.doesNotMatch(glued, /aria-pressed="true"[^>]*>[^<]*[！，。？、；：」』]/);
+assert.doesNotMatch(glued, /data-word="聽"[^>]*>聽！/);
 const inlineVerse = passageHtml("來！2 在以法蓮", "來｜！2 ｜在｜以法蓮", []);
-assert.match(inlineVerse, /class="token-glue"><span[^>]*data-word="來"[^>]*>來！<\/span>/);
+assert.match(inlineVerse, /class="token-glue"><span role="button"[^>]*data-word="來"[^>]*>來<\/span><span class="token-punct">！<\/span>/);
 assert.match(inlineVerse, /<sup class="vnum">2<\/sup>/);
 assert.doesNotMatch(inlineVerse, /data-word="2"/);
 assert.doesNotMatch(inlineVerse, /data-word="！"/);

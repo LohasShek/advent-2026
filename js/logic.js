@@ -374,11 +374,16 @@ function verseBodyHtml(verse) {
   return `<p class="verse">${spoken}${num}${esc(verse.text)}</p>`;
 }
 
+function tokenPunct(text) {
+  return text ? `<span class="token-punct">${esc(text)}</span>` : "";
+}
+
 function tokenButton(token, selected, prefix = "", suffix = "") {
   const value = token.text.trim();
   const on = selected.has(value);
-  const button = `<span role="button" tabindex="0" class="token${on ? " is-on" : ""}" data-action="toggle-word" data-word="${esc(value)}" aria-pressed="${on ? "true" : "false"}">${esc(prefix)}${esc(token.text)}${esc(suffix)}</span>`;
-  return prefix || suffix ? `<span class="token-glue">${button}</span>` : button;
+  const button = `<span role="button" tabindex="0" class="token${on ? " is-on" : ""}" data-action="toggle-word" data-word="${esc(value)}" aria-pressed="${on ? "true" : "false"}">${esc(token.text)}</span>`;
+  if (!prefix && !suffix) return button;
+  return `<span class="token-glue">${tokenPunct(prefix)}${button}${tokenPunct(suffix)}</span>`;
 }
 
 function versePrefix(n) {

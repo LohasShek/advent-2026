@@ -444,8 +444,14 @@ a { color: var(--c-purple); }
   cursor: pointer;
 }
 
-.token-glue {
+.token-glue,
+.token-glue .token {
   white-space: nowrap;
+}
+
+.token-punct {
+  background: transparent;
+  color: inherit;
 }
 
 .token.is-on {
