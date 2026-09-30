@@ -20,6 +20,7 @@ import {
   nextStepId,
   passageHtml,
   passageSlots,
+  resolveWords,
   prayerFrameHtml,
   segmentMode,
   toggleWord,
@@ -227,10 +228,18 @@ const chain = [
 ];
 let chainWords = toggleWord([], "甲", { slots: chain, slotIndex: 0 }).words;
 chainWords = toggleWord(chainWords, "丙", { slots: chain, slotIndex: 2 }).words;
-assert.deepEqual(chainWords, ["甲", "丙"]);
+assert.equal(chainWords.length, 2);
+assert.deepEqual(chainWords, [
+  { verse: "", from: 1, to: 1 },
+  { verse: "", from: 3, to: 3 },
+]);
 chainWords = toggleWord(chainWords, "乙", { slots: chain, slotIndex: 1 }).words;
-assert.deepEqual(chainWords, ["甲乙丙"]);
+assert.equal(chainWords.length, 1);
+assert.deepEqual(chainWords, [{ verse: "", from: 1, to: 3 }]);
+assert.equal(formatMarkedWords(chainWords, chain), "「甲乙丙」");
+assert.deepEqual(toggleWord(chainWords, "甲", { slots: chain, slotIndex: 0 }).words, []);
 assert.deepEqual(toggleWord(chainWords, "乙", { slots: chain, slotIndex: 1 }).words, []);
+assert.deepEqual(toggleWord(chainWords, "丙", { slots: chain, slotIndex: 2 }).words, []);
 assert.deepEqual(toggleWord(["甲乙丙"], "甲", { slots: chain, slotIndex: 0 }).words, []);
 assert.deepEqual(toggleWord(["甲乙丙"], "丙", { slots: chain, slotIndex: 2 }).words, []);
 const punctuated = "1 甲，乙。";
@@ -238,15 +247,21 @@ const punctuatedSlots = passageSlots(punctuated, "1 ｜甲｜，｜乙｜。");
 assert.equal(punctuatedSlots[0].joinNext, false);
 let punctWords = toggleWord([], "甲", { slots: punctuatedSlots, slotIndex: 0 }).words;
 punctWords = toggleWord(punctWords, "乙", { slots: punctuatedSlots, slotIndex: 1 }).words;
-assert.deepEqual(punctWords, ["甲", "乙"]);
+assert.equal(punctWords.length, 2);
+assert.equal(punctWords[0].verse, "1");
+assert.equal(punctWords[1].from, punctWords[0].from + 1);
 const across = "1 甲乙。\n2 丙。";
 const acrossSlots = passageSlots(across, "1 ｜甲｜乙｜。\n2 ｜丙｜。");
 assert.equal(acrossSlots.map((slot) => slot.text).join(","), "甲,乙,丙");
 assert.equal(acrossSlots[0].joinNext, true);
 assert.equal(acrossSlots[1].joinNext, false);
+assert.equal(acrossSlots[0].verse, "1");
+assert.equal(acrossSlots[2].verse, "2");
 let acrossWords = toggleWord([], "乙", { slots: acrossSlots, slotIndex: 1 }).words;
 acrossWords = toggleWord(acrossWords, "丙", { slots: acrossSlots, slotIndex: 2 }).words;
-assert.deepEqual(acrossWords, ["乙", "丙"]);
+assert.equal(acrossWords.length, 2);
+assert.equal(acrossWords[0].verse, "1");
+assert.equal(acrossWords[1].verse, "2");
 const quotaSlots = [
   { text: "一", joinNext: false },
   { text: "二", joinNext: false },
@@ -266,7 +281,8 @@ assert.equal(blocked.limited, true);
 assert.deepEqual(blocked.words, quotaWords);
 const mergedAtLimit = toggleWord(quotaWords, "六", { slots: quotaSlots, slotIndex: 5 });
 assert.equal(mergedAtLimit.limited, false);
-assert.deepEqual(mergedAtLimit.words, ["一", "二", "三", "四", "五六"]);
+assert.equal(mergedAtLimit.words.length, 5);
+assert.equal(formatMarkedWords(mergedAtLimit.words, quotaSlots), "「一」、「二」、「三」、「四」、「五六」");
 assert.deepEqual(normalizeWords(["量出", "滿碗"]), ["量出", "滿碗"]);
 assert.equal(formatMarkedWords(["量出", "滿碗"]), "「量出」、「滿碗」");
 assert.equal(formatMarkedWords(["量出滿碗"]), "「量出滿碗」");
@@ -277,9 +293,14 @@ for (const edition of ["shen", "shangdi"]) {
   const bowl = slots.findIndex((slot) => slot.text === "滿碗");
   assert.equal(slots[liang].joinNext, true);
   assert.equal(slots[liang + 1].text, "滿碗");
+  assert.equal(slots[liang].verse, "5");
   let marked = toggleWord([], "量出", { slots, slotIndex: liang }).words;
   marked = toggleWord(marked, "滿碗", { slots, slotIndex: bowl }).words;
-  assert.deepEqual(marked, ["量出滿碗"]);
+  assert.equal(marked.length, 1);
+  assert.equal(marked[0].verse, "5");
+  assert.equal(marked[0].from, slots[liang].index);
+  assert.equal(marked[0].to, slots[bowl].index);
+  assert.equal(formatMarkedWords(marked, slots), "「量出滿碗」");
   const html = passageHtml(day.passage[edition], day.segments[edition], marked);
   assert.match(html, /data-word="量出"[^>]*aria-pressed="true"/);
   assert.match(html, /data-word="滿碗"[^>]*aria-pressed="true"/);
@@ -287,6 +308,10 @@ for (const edition of ["shen", "shangdi"]) {
   const legacy = passageHtml(day.passage[edition], day.segments[edition], ["量出", "滿碗"]);
   assert.match(legacy, /data-word="量出"[^>]*aria-pressed="true"/);
   assert.match(legacy, /data-word="滿碗"[^>]*aria-pressed="true"/);
+  assert.equal(resolveWords(["量出", "滿碗"], slots).length, 1);
+  assert.equal(resolveWords(["滿碗", "量出"], slots).length, 1);
+  assert.equal(formatMarkedWords(["量出", "滿碗"], slots), "「量出滿碗」");
+  assert.equal(formatMarkedWords(["量出滿碗"], slots), "「量出滿碗」");
 }
 const uiCopy = JSON.parse(readFileSync(new URL("../ui-strings.json", import.meta.url), "utf8"));
 assert.match(uiCopy.read.tokenHint, /最多 5 處/);
@@ -359,7 +384,74 @@ for (const edition of ["shen", "shangdi"]) {
   const tokens = day19.segments[edition].split("｜");
   assert.equal(tokens.filter((token) => token === "懷的胎").length, 2, `${edition} 第 19 日應有兩處「懷的胎」`);
   assert.equal(day19.segments[edition].includes("懷｜的｜胎"), false);
+  const slots = passageSlots(day19.passage[edition], day19.segments[edition]);
+  const places = slots.filter((slot) => slot.text === "懷的胎");
+  assert.deepEqual(
+    places.map((slot) => `${slot.verse}:${slot.index}`),
+    ["41:7", "42:13"]
+  );
+  const first = slots.indexOf(places[0]);
+  const second = slots.indexOf(places[1]);
+  let marked = toggleWord([], "懷的胎", { slots, slotIndex: first }).words;
+  assert.equal(marked.length, 1);
+  let html = passageHtml(day19.passage[edition], day19.segments[edition], marked);
+  assert.deepEqual(
+    [...html.matchAll(/data-word="懷的胎"[^>]*aria-pressed="(true|false)"/g)].map((match) => match[1]),
+    ["true", "false"]
+  );
+  marked = toggleWord(marked, "懷的胎", { slots, slotIndex: second }).words;
+  assert.equal(marked.length, 2);
+  assert.equal(marked[0].verse, "41");
+  assert.equal(marked[1].verse, "42");
+  html = passageHtml(day19.passage[edition], day19.segments[edition], marked);
+  assert.deepEqual(
+    [...html.matchAll(/data-word="懷的胎"[^>]*aria-pressed="(true|false)"/g)].map((match) => match[1]),
+    ["true", "true"]
+  );
+  marked = toggleWord(marked, "懷的胎", { slots, slotIndex: first }).words;
+  assert.equal(marked.length, 1);
+  assert.equal(marked[0].verse, "42");
+  assert.deepEqual(resolveWords(["懷的胎"], slots), ["懷的胎"]);
+  assert.equal(formatMarkedWords(["懷的胎"], slots), "「懷的胎」");
+  assert.doesNotMatch(
+    passageHtml(day19.passage[edition], day19.segments[edition], ["懷的胎"]),
+    /data-word="懷的胎"[^>]*aria-pressed="true"/
+  );
 }
+const day7 = plan.days.find((day) => day.day === 7);
+const shenSlots = passageSlots(day7.passage.shen, day7.segments.shen);
+const shangdiSlots = passageSlots(day7.passage.shangdi, day7.segments.shangdi);
+const god = shenSlots.find((slot) => slot.verse === "8" && slot.text === "神");
+const godWords = [{ verse: "8", from: god.index, to: god.index + 2 }];
+assert.equal(shenSlots.find((slot) => slot.verse === "8" && slot.index === god.index + 1).text, "的");
+assert.equal(shenSlots.find((slot) => slot.verse === "8" && slot.index === god.index + 2).text, "話");
+assert.equal(formatMarkedWords(godWords, shenSlots), "「神的話」");
+assert.equal(formatMarkedWords(godWords, shangdiSlots), "「上帝的話」");
+const switched = passageHtml(day7.passage.shangdi, day7.segments.shangdi, godWords);
+assert.equal(
+  [...switched.matchAll(/data-word="上帝"[^>]*aria-pressed="(true|false)"/g)].filter((match) => match[1] === "true").length,
+  1
+);
+assert.equal(resolveWords(["沒有這個詞"], shenSlots).join(","), "沒有這個詞");
+assert.equal(formatMarkedWords(["沒有這個詞"], shenSlots), "「沒有這個詞」");
+assert.doesNotThrow(() => passageHtml(day7.passage.shen, day7.segments.shen, ["沒有這個詞", { verse: "8", from: 9, to: 11 }]));
+let verseTotal = 0;
+for (const day of plan.days) {
+  const left = passageSlots(day.passage.shen, day.segments.shen);
+  const right = passageSlots(day.passage.shangdi, day.segments.shangdi);
+  assert.equal(left.length, right.length, `第 ${day.day} 日兩版本詞數不同`);
+  const verses = new Set();
+  for (let index = 0; index < left.length; index += 1) {
+    assert.equal(left[index].verse, right[index].verse, `第 ${day.day} 日節號不對應`);
+    assert.equal(left[index].index, right[index].index, `第 ${day.day} 日詞序不對應`);
+    assert.equal(left[index].joinNext, right[index].joinNext, `第 ${day.day} 日相鄰關係不對應`);
+    const aligned = left[index].text === right[index].text || left[index].text.replaceAll("神", "上帝") === right[index].text;
+    assert.equal(aligned, true, `第 ${day.day} 日第 ${left[index].verse} 節第 ${left[index].index} 詞不是「神」對「上帝」`);
+    verses.add(left[index].verse);
+  }
+  verseTotal += verses.size;
+}
+assert.equal(verseTotal, 246);
 const day18 = plan.days.find((day) => day.day === 18);
 assert.equal(day18.segments.shen.split("｜").includes("主神"), true);
 assert.equal(day18.segments.shangdi.split("｜").includes("主上帝"), true);

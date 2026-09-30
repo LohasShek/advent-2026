@@ -25,6 +25,9 @@ import {
   normalizeWords,
   passageHtml,
   passageSlots,
+  removeWord,
+  resolveWords,
+  wordLabel,
   prayerFrameHtml,
   previousStepId,
   segmentMode,
@@ -405,9 +408,9 @@ function renderReview(day) {
       const entry = app.state.days[String(item.day)];
       if (entry?.before) beforePicks.push(entry.before);
       if (entry?.after) afterPicks.push(entry.after);
-      const words = normalizeWords(entry?.words);
-      const wordLine = words.length
-        ? `<p class="rev-words">${esc(ui.words.reviewLabel)} ${esc(formatMarkedWords(words))}</p>`
+      const shown = formatMarkedWords(entry?.words, readingSlots(item));
+      const wordLine = shown
+        ? `<p class="rev-words">${esc(ui.words.reviewLabel)} ${esc(shown)}</p>`
         : "";
       return `<div class="rev-row">
         <a href="#/day/${item.day}">${esc(formatMonthDay(item.date))} · ${esc(item.title)}</a>
@@ -457,13 +460,26 @@ function renderQuiet(day) {
   </div>`;
 }
 
+function readingSlots(day) {
+  const edition = app.state.edition === "shangdi" ? "shangdi" : "shen";
+  const text = day?.passage?.[edition] || "";
+  const segmented = day?.segments?.[edition] || "";
+  return segmentMode(text, segmented) === "tokens" ? passageSlots(text, segmented) : null;
+}
+
 function renderWordBar(day, entry, mode) {
-  const words = normalizeWords(entry.words);
+  const slots = readingSlots(day);
+  const words = slots ? resolveWords(entry.words, slots) : normalizeWords(entry.words);
   const chips = words
-    .map(
-      (word) =>
-        `<button type="button" class="word-chip" data-action="remove-word" data-word="${esc(word)}" aria-label="${esc(fill(ui.words.remove, { word }))}">${esc(word)} <span aria-hidden="true">×</span></button>`
-    )
+    .map((word) => {
+      const text = wordLabel(word, slots || undefined);
+      if (!text) return "";
+      const loc =
+        typeof word === "string"
+          ? `data-word="${esc(word)}"`
+          : `data-verse="${esc(word.verse)}" data-from="${word.from}" data-to="${word.to}"`;
+      return `<button type="button" class="word-chip" data-action="remove-word" ${loc} aria-label="${esc(fill(ui.words.remove, { word: text }))}">${esc(text)} <span aria-hidden="true">×</span></button>`;
+    })
     .join("");
   const list = chips
     ? `<div class="word-list" aria-label="${esc(ui.words.listLabel)}">${chips}</div>`
@@ -547,7 +563,8 @@ function renderPrayer(day, entry) {
       <a class="btn ghost" href="#/">${esc(ui.prayer.backHome)}</a>
     </div>`;
   }
-  const words = normalizeWords(entry.words);
+  const slots = readingSlots(day);
+  const words = slots ? resolveWords(entry.words, slots) : normalizeWords(entry.words);
   const frames = words.length && Array.isArray(app.plan.prayerFrames) ? app.plan.prayerFrames : [];
   const index = frames.length ? Math.min(Math.max(app.frameIndex || 0, 0), frames.length - 1) : 0;
   const tabs = frames
@@ -558,11 +575,11 @@ function renderPrayer(day, entry) {
     .join("");
   const filled = frames.length
     ? prayerFrameHtml(
-        fillPrayerFrame(frames[index].text, { words, before: entry.before, after: entry.after })
+        fillPrayerFrame(frames[index].text, { words: entry.words, slots, before: entry.before, after: entry.after })
       )
     : "";
   const framesBlock = frames.length
-    ? `<p class="word-recap">${esc(ui.words.recap)} ${esc(formatMarkedWords(words))}</p>
+    ? `<p class="word-recap">${esc(ui.words.recap)} ${esc(formatMarkedWords(entry.words, slots))}</p>
       <h3>${esc(ui.prayer.framesLabel)}</h3>
       <p class="hint">${esc(ui.prayer.withWords)}</p>
       <div class="frame-tabs" role="tablist" aria-label="${esc(ui.prayer.framesLabel)}">${tabs}</div>
@@ -626,9 +643,9 @@ function renderPlan(today, phase, asHome) {
         .map((day) => {
           const entry = app.state.days[String(day.day)];
           const done = entry?.completed ? `<span class="done">${esc(ui.plan.done)}</span>` : "";
-          const marked = normalizeWords(entry?.words);
-          const wordLine = marked.length
-            ? `<span class="day-words">${esc(formatMarkedWords(marked))}</span>`
+          const shownWords = formatMarkedWords(entry?.words, readingSlots(day));
+          const wordLine = shownWords
+            ? `<span class="day-words">${esc(shownWords)}</span>`
             : "";
           const mood = miniDots(entry);
           const review = day.review
@@ -982,14 +999,18 @@ function onClick(event) {
     return;
   }
   if (action === "toggle-word" || action === "remove-word") {
-    const edition = app.state.edition === "shangdi" ? "shangdi" : "shen";
-    const slots = passageSlots(day.passage?.[edition], day.segments?.[edition]);
+    const slots = readingSlots(day) || [];
     const hasSlot = action === "toggle-word" && button.dataset.slot != null && button.dataset.slot !== "";
-    const result = toggleWord(
-      entry.words,
-      button.dataset.word,
-      hasSlot ? { slots, slotIndex: Number(button.dataset.slot) } : {}
-    );
+    const result =
+      action === "remove-word"
+        ? removeWord(
+            entry.words,
+            button.dataset.from
+              ? { verse: button.dataset.verse || "", from: Number(button.dataset.from), to: Number(button.dataset.to) }
+              : button.dataset.word,
+            slots
+          )
+        : toggleWord(entry.words, button.dataset.word, hasSlot ? { slots, slotIndex: Number(button.dataset.slot) } : {});
     entry.words = result.words;
     app.wordHintDay = action === "toggle-word" && result.limited ? day.day : 0;
     saveState(app.state);
