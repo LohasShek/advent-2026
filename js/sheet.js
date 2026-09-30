@@ -210,6 +210,14 @@ export function parseGuideCsv(text) {
   });
 }
 
+const CARE_DIGITS = { 一: 1, 二: 2, 兩: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
+
+function careCount(token, fallback) {
+  if (CARE_DIGITS[token]) return CARE_DIGITS[token];
+  const value = Number(token);
+  return Number.isFinite(value) ? value : fallback;
+}
+
 function parseCare(rows) {
   let header = "";
   let message = "";
@@ -222,13 +230,13 @@ function parseCare(rows) {
     }
   }
   if (!message) throw new SheetError("「感受詞彙」缺少關懷提示", "invalid");
-  const daysMatch = header.match(/連續\s*(\d+)\s*日/);
+  const daysMatch = header.match(/連續\s*(\d+|[一二兩三四五六七八九十])\s*[日天]/);
   const levelMatch = header.match(/強度\s*(\d+)/);
   const coreIds = ["悲傷", "懼怕"].filter((name) => header.includes(name)).map((name) => CORE_ZH_TO_ID[name]);
-  const contactMatch = message.match(/^(.*?傾談。)(.*?)(如有即時危險，請致電 999。)\s*$/);
+  const contactMatch = message.match(/^(.*?傾談。)(.*)$/s);
   if (!contactMatch) {
     return {
-      consecutiveDays: daysMatch ? Number(daysMatch[1]) : 3,
+      consecutiveDays: daysMatch ? careCount(daysMatch[1], 3) : 3,
       minIntensity: levelMatch ? Number(levelMatch[1]) : 4,
       coreIds: coreIds.length ? coreIds : ["sad", "scared"],
       template: message,
@@ -236,10 +244,10 @@ function parseCare(rows) {
     };
   }
   return {
-    consecutiveDays: daysMatch ? Number(daysMatch[1]) : 3,
+    consecutiveDays: daysMatch ? careCount(daysMatch[1], 3) : 3,
     minIntensity: levelMatch ? Number(levelMatch[1]) : 4,
     coreIds: coreIds.length ? coreIds : ["sad", "scared"],
-    template: `${contactMatch[1]}{churchContact}${contactMatch[3]}`,
+    template: `${contactMatch[1]}{churchContact}`,
     contact: contactMatch[2].trim().replace(/。$/, ""),
   };
 }

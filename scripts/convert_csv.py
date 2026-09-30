@@ -84,6 +84,17 @@ def clean_passage(text: str) -> str:
     return "\n".join(line for line in lines if line)
 
 
+CARE_DIGITS = {"一": 1, "二": 2, "兩": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
+
+
+def care_count(token: str, fallback: int) -> int:
+    if token in CARE_DIGITS:
+        return CARE_DIGITS[token]
+    if token.isdigit():
+        return int(token)
+    return fallback
+
+
 def parse_care(rows: list[list[str]]) -> dict:
     header = ""
     message = ""
@@ -97,19 +108,19 @@ def parse_care(rows: list[list[str]]) -> dict:
     if not message:
         raise SystemExit("Care prompt row not found in the feelings CSV")
 
-    days_match = re.search(r"連續\s*(\d+)\s*日", header)
+    days_match = re.search(r"連續\s*(\d+|[一二兩三四五六七八九十])\s*[日天]", header)
     level_match = re.search(r"強度\s*(\d+)", header)
     core_ids = [CORE_ZH_TO_ID[zh] for zh in ("悲傷", "懼怕") if zh in header]
     if not core_ids:
         core_ids = ["sad", "scared"]
 
-    contact_match = re.search(r"^(.*?傾談。)(.*?)(如有即時危險，請致電 999。)\s*$", message)
+    contact_match = re.search(r"^(.*?傾談。)(.*)\s*$", message, re.DOTALL)
     if not contact_match:
         raise SystemExit(f"Could not split church contact out of care prompt: {message}")
     contact = contact_match.group(2).strip().rstrip("。")
-    template = contact_match.group(1) + "{churchContact}" + contact_match.group(3)
+    template = contact_match.group(1) + "{churchContact}"
     return {
-        "consecutiveDays": int(days_match.group(1)) if days_match else 3,
+        "consecutiveDays": care_count(days_match.group(1), 3) if days_match else 3,
         "minIntensity": int(level_match.group(1)) if level_match else 4,
         "coreIds": core_ids,
         "template": template,

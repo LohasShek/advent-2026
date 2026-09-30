@@ -94,7 +94,7 @@ assert.match(config, /churchContact:\s*"歡迎聯絡石守賢傳道"/);
 assert.match(config, /goatcounter:\s*""/);
 assert.equal(
   careMessage(feelings.care.template, "歡迎聯絡石守賢傳道"),
-  "這幾天你好像背著沉重的感受。你不必獨自承受，可以找牧者或信得過的弟兄姊妹傾談。歡迎聯絡石守賢傳道。如有即時危險，請致電 999。"
+  "這幾天你好像背著沉重的感受。你不必獨自承受，可以找牧者或信得過的弟兄姊妹傾談。歡迎聯絡石守賢傳道。"
 );
 
 assert.equal(hongKongDate(new Date("2026-11-28T15:30:00Z")), "2026-11-28");
