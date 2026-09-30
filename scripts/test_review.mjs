@@ -228,7 +228,29 @@ assert.equal(await page.locator("#music-credit .bgm-credit").count(), 6);
 const editionName = await page.locator("[data-edition='shen']").getAttribute("aria-label");
 assert.equal(editionName, "神版");
 assert.doesNotMatch(editionName, /✓/);
-await page.locator("#music-credit").screenshot({ path: "/tmp/about-music-credits-390.png" });
+for (const width of [360, 390, 412]) {
+  await page.setViewportSize({ width, height: 844 });
+  const broken = await page.evaluate(() => {
+    const bad = [];
+    const blocks = document.querySelectorAll("#music-credit .bgm-credit");
+    if (blocks.length !== 6) bad.push({ blocks: blocks.length });
+    for (const link of document.querySelectorAll("#music-credit .bgm-credit a")) {
+      const tops = [];
+      for (const rect of link.getClientRects()) {
+        if (rect.width < 1 || rect.height < 1) continue;
+        if (!tops.some((top) => Math.abs(top - rect.top) < 2)) tops.push(rect.top);
+      }
+      if (tops.length !== 1) bad.push({ text: link.textContent, lines: tops.length });
+    }
+    return bad;
+  });
+  assert.deepEqual(broken, [], `${width}px ${JSON.stringify(broken)}`);
+}
+await page.setViewportSize({ width: 390, height: 844 });
+await night.evaluate((el) => el.scrollIntoView({ block: "center", inline: "nearest" }));
+const nightBox = await night.boundingBox();
+assert.ok(nightBox.y >= 0 && nightBox.y + nightBox.height <= 844);
+await page.screenshot({ path: "/tmp/about-music-credits-390.png" });
 await copyFile("/tmp/about-music-credits-390.png", "/opt/cursor/artifacts/screenshots/about-music-credits-390.png");
 
 await page.locator("[data-action='bgm-panel']").click();
