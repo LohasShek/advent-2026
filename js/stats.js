@@ -1,36 +1,24 @@
 /**
  * GoatCounter counts use a fixed path and title whitelist.
- * Paths are names such as open, open-day-5, day-5-done, and feeling codes.
+ * Page views are "open". Completed reading is "day-N-done".
+ * Feelings are English codes and are sent only when the reader opts in.
  * The count request sends an empty referrer and omits the page address.
- * count.js is not loaded until counting is allowed.
  */
 
 import { FEELING_CORE_IDS, FEELING_SLUGS, STATS_DAY_MAX } from "./logic.js";
 
 const INTENSITIES = Object.freeze(["1", "2", "3", "4", "5"]);
-const OPEN_PAGES = Object.freeze({
-  home: "open",
-  plan: "open-plan",
-  about: "open-about",
-});
 
 let configured = false;
-let mustOpt = false;
 let usageAllowed = false;
 let endpoint = "";
 let scriptRequested = false;
 const queue = [];
 let transport = defaultTransport;
 
-export function statsPolicy({ code, requireOptIn, optedIn, search }) {
+export function statsPolicy({ code }) {
   const site = Boolean(String(code || "").trim());
-  const trial = new URLSearchParams(String(search || "").replace(/^\?/, "")).get("stats") === "optin";
-  const must = trial || requireOptIn === true;
-  return {
-    configured: site,
-    mustOpt: must,
-    usage: site && (!must || optedIn === true),
-  };
+  return { configured: site, usage: site };
 }
 
 function endpointFor(code) {
@@ -40,19 +28,8 @@ function endpointFor(code) {
   return `https://${site}.goatcounter.com/count`;
 }
 
-export function isLocalHostname(hostname) {
-  return /(^localhost$|^127\.|^10\.|^172\.(1[6-9]|2[0-9]|3[0-1])\.|^192\.168\.|^0\.0\.0\.0$)/.test(
-    String(hostname || "")
-  );
-}
-
-export function openStatsPath(page, dayNumber) {
-  if (page === "day") {
-    const day = Number(dayNumber);
-    if (!Number.isInteger(day) || day < 1 || day > STATS_DAY_MAX) return "";
-    return `open-day-${day}`;
-  }
-  return OPEN_PAGES[page] || "";
+export function openStatsPath() {
+  return "open";
 }
 
 export function doneStatsPath(dayNumber) {
@@ -75,8 +52,7 @@ export function isFeelingStatsPath(path) {
 }
 
 export function isAllowedStatsPath(path) {
-  if (path === "open" || path === "open-plan" || path === "open-about") return true;
-  if (/^open-day-([1-9]|1\d|2[0-7])$/.test(path)) return true;
+  if (path === "open") return true;
   if (/^day-([1-9]|1\d|2[0-7])-done$/.test(path)) return true;
   return isFeelingStatsPath(path);
 }
@@ -87,12 +63,9 @@ export function statsTitleFor(path) {
 }
 
 export function statsPathWhitelist() {
-  const opens = ["open", "open-plan", "open-about"];
+  const opens = ["open"];
   const done = [];
-  for (let day = 1; day <= STATS_DAY_MAX; day += 1) {
-    opens.push(`open-day-${day}`);
-    done.push(`day-${day}-done`);
-  }
+  for (let day = 1; day <= STATS_DAY_MAX; day += 1) done.push(`day-${day}-done`);
   return {
     opens,
     done,
@@ -120,8 +93,6 @@ function screenWidth() {
 }
 
 function defaultTransport(url) {
-  const hostname = globalThis.location?.hostname || "";
-  if (isLocalHostname(hostname)) return;
   if (typeof fetch !== "function") return;
   fetch(url, {
     method: "POST",
@@ -137,7 +108,6 @@ export function useStatsTransport(fn) {
 
 export function resetStatsState() {
   configured = false;
-  mustOpt = false;
   usageAllowed = false;
   endpoint = "";
   scriptRequested = false;
@@ -184,21 +154,11 @@ function sendHit(path, event, sharing) {
   return true;
 }
 
-export function initStats(code, options = {}) {
-  const policy = statsPolicy({
-    code,
-    requireOptIn: options.requireOptIn,
-    optedIn: options.optedIn,
-    search: options.search || "",
-  });
-  mustOpt = policy.mustOpt;
+export function initStats(code) {
+  const policy = statsPolicy({ code });
   usageAllowed = policy.usage;
   endpoint = endpointFor(code);
-  configured = Boolean(endpoint);
-  if (!configured) {
-    usageAllowed = false;
-    return;
-  }
+  configured = policy.configured;
   if (usageAllowed) loadScript();
 }
 
@@ -206,21 +166,12 @@ export function statsEnabled() {
   return configured;
 }
 
-export function statsCountsUsage() {
-  return usageAllowed;
-}
-
 export function statsScriptRequested() {
   return scriptRequested;
 }
 
-export function setUsageOptIn(on) {
-  usageAllowed = configured && (!mustOpt || on === true);
-  if (usageAllowed) loadScript();
-}
-
-export function trackOpen(page, dayNumber) {
-  return sendHit(openStatsPath(page, dayNumber), false, false);
+export function trackOpen() {
+  return sendHit("open", false, false);
 }
 
 export function trackComplete(dayNumber) {

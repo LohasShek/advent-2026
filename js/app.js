@@ -45,15 +45,7 @@ import {
   loadState,
   saveState,
 } from "./storage.js";
-import {
-  initStats,
-  setUsageOptIn,
-  statsEnabled,
-  statsPolicy,
-  trackComplete,
-  trackFeelings,
-  trackOpen,
-} from "./stats.js";
+import { initStats, statsEnabled, trackComplete, trackFeelings, trackOpen } from "./stats.js";
 import { applySheetCache, loadSheetCache, refreshFromSheet, saveSheetCache } from "./sheet.js";
 import { initDeviceSpeech, speechVoiceStatus, speechPhase, speechRate, setSpeechRate, speechRates, speakPassage, pauseSpeech, resumeSpeech, stopSpeech, passageUtterances } from "./speech.js";
 import { bgmTrack, readBgmEnabled, readBgmVolume, setBgmEnabled, setBgmVolume, selectBgmTrack, bindBgmGesture, duckBgm, restoreBgm } from "./bgm.js";
@@ -863,27 +855,8 @@ function renderHome(today) {
 function renderAbout(today) {
   const edition = app.state.edition === "shangdi" ? "shangdi" : "shen";
   const share = app.state.shareFeelings === true;
-  const policy = statsPolicy({
-    code: siteConfig().goatcounter || "",
-    requireOptIn: siteConfig().statsRequireOptIn,
-    optedIn: app.state.statsOptIn === true,
-    search: location.search || "",
-  });
-  const usageOn = app.state.statsOptIn === true;
   const contact = activeChurchContact();
-  const stats = !statsEnabled()
-    ? `<p>${esc(ui.about.statsOff)}</p>`
-    : policy.mustOpt
-      ? `<p>${esc(ui.about.statsOptInBody)}</p>
-      <label class="toggle">
-        <input type="checkbox" data-setting="statsOptIn" ${usageOn ? "checked" : ""}>
-        <span class="switch" aria-hidden="true"></span>
-        <span>
-          <strong>${esc(ui.about.statsOptInLabel)}</strong>
-          <small>${esc(ui.about.statsOptInHelp)}</small>
-        </span>
-      </label>`
-      : `<p>${esc(ui.about.statsOn)}</p>`;
+  const stats = !statsEnabled() ? `<p>${esc(ui.about.statsOff)}</p>` : `<p>${esc(ui.about.statsOn)}</p>`;
   const careContact = contact ? (contact.endsWith("。") ? contact : `${contact}。`) : "";
   setTitle(ui.about.title);
   delete main.dataset.day;
@@ -1361,11 +1334,7 @@ async function mainInit() {
   app.feelings = initial.feelings;
   app.wheelSvg = wheelSvg;
   app.state = loadState();
-  initStats(siteConfig().goatcounter || "", {
-    requireOptIn: siteConfig().statsRequireOptIn,
-    optedIn: app.state.statsOptIn === true,
-    search: location.search || "",
-  });
+  initStats(siteConfig().goatcounter || "");
   let booted = false;
   initDeviceSpeech(undefined, () => {
     if (booted) rerenderKeepingPlace();
@@ -1421,19 +1390,6 @@ async function mainInit() {
     if (share) {
       app.state.shareFeelings = share.checked === true;
       saveState(app.state);
-      return;
-    }
-    const usage = event.target.closest("[data-setting='statsOptIn']");
-    if (usage) {
-      app.state.statsOptIn = usage.checked === true;
-      saveState(app.state);
-      setUsageOptIn(app.state.statsOptIn);
-      if (app.state.statsOptIn) {
-        const current = parseRoute();
-        const page = current.name === "day" || current.name === "plan" || current.name === "about" ? current.name : "home";
-        app.lastTracked = page === "day" ? `day:${current.day}` : page;
-        trackOpen(page, current.day);
-      }
     }
   });
   document.addEventListener("click", (event) => {

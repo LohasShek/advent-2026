@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
+import { copyFile, mkdir } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { chromium } from "playwright";
 
@@ -37,64 +38,85 @@ const server = createServer((request, response) => {
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const { port } = server.address();
 const base = `http://127.0.0.1:${port}`;
-
-function watched(url) {
-  return /goatcounter\.com|gc\.zgo\.at/i.test(url);
-}
+const journal = {
+  edition: "shen",
+  shareFeelings: false,
+  careDismissedOn: "2026-11-29",
+  days: {
+    1: {
+      before: { coreId: "sad", feelingZh: "孤單", feelingEn: "Lonely", intensity: 4, because: "因為不想被送出" },
+      after: { coreId: "peace", feelingZh: "沉靜", feelingEn: "Content", intensity: 2, because: "寫了字句" },
+      reflect1: "反思不應送出",
+      reflect2: "",
+      words: ["嫩枝"],
+      reached: "prayer",
+      completed: false,
+      feelingShared: false,
+      completionSent: false,
+    },
+  },
+};
 
 const browser = await chromium.launch({
   executablePath: "/usr/bin/google-chrome",
   args: ["--no-sandbox", "--disable-dev-shm-usage"],
 });
-const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
-await context.addInitScript(() => {
-  localStorage.clear();
-});
-const page = await context.newPage();
+const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
 const hits = [];
-page.on("request", (request) => {
-  if (watched(request.url())) hits.push(request.url());
+await context.route(/goatcounter\.com|gc\.zgo\.at/i, (route) => {
+  hits.push(route.request().url());
+  return route.fulfill({ status: 204, body: "" });
 });
-await page.goto(`${base}/?asof=2026-11-29&week=2&bgm=b&stats=optin#/about`, { waitUntil: "domcontentloaded" });
-await page.evaluate(async () => {
-  const regs = await navigator.serviceWorker?.getRegistrations?.();
-  for (const reg of regs || []) await reg.unregister();
-});
-await page.waitForSelector("article.about h1");
-await page.waitForSelector("[data-setting='statsOptIn']");
-await page.waitForTimeout(500);
-assert.equal(hits.length, 0, `opt-in off still requested ${hits.join(" ")}`);
-await page.locator("label.toggle").filter({ has: page.locator("[data-setting='shareFeelings']") }).locator("strong").click();
-await page.waitForTimeout(300);
-assert.equal(hits.length, 0, `share switch requested ${hits.join(" ")}`);
-assert.equal(await page.locator("[data-setting='statsOptIn']").isChecked(), false);
-await page.locator("label.toggle").filter({ has: page.locator("[data-setting='statsOptIn']") }).locator("strong").click();
-await page.waitForTimeout(800);
-assert.ok(hits.some((url) => url.includes("gc.zgo.at/count.js")), `count.js missing after opt-in: ${hits.join(" ")}`);
-assert.equal(hits.some((url) => /goatcounter\.com/i.test(url)), false, `count host ${hits.join(" ")}`);
-assert.equal(hits.some((url) => /feeling|asof|because|week=|bgm/i.test(url)), false);
+await context.addInitScript((state) => {
+  localStorage.setItem("advent2026.v1", JSON.stringify(state));
+}, journal);
+const page = await context.newPage();
+page.on("dialog", (dialog) => dialog.dismiss());
+await page.goto(`${base}/?asof=2026-11-29&week=2&bgm=b#/day/1/prayer`, { waitUntil: "domcontentloaded" });
+await page.waitForSelector("article h1");
+const complete = page.getByRole("button", { name: "完成今天的讀經" });
+await complete.click();
+await page.waitForTimeout(400);
+const counts = hits.filter((url) => /\/count\?/.test(url));
+const paths = counts.map((url) => new URL(url).searchParams.get("p"));
+assert.ok(paths.includes("open"), `missing open in ${paths.join(", ")}`);
+assert.ok(paths.includes("day-1-done"), `missing day-1-done in ${paths.join(", ")}`);
+for (const path of paths) {
+  assert.match(path, /^(open|day-(?:[1-9]|1\d|2[0-7])-done)$/, path);
+}
+assert.equal(paths.some((path) => path.startsWith("feeling")), false, paths.join(", "));
+for (const url of counts) {
+  const params = new URL(url).searchParams;
+  assert.equal(params.get("r"), "");
+  assert.equal(params.has("q"), false);
+  assert.equal(/asof|week|bgm|because|孤單|因為|反思|嫩枝/.test(url), false, url);
+}
+assert.equal(await page.locator("[data-setting='shareFeelings']").count(), 0);
 
-const fresh = await browser.newContext({ viewport: { width: 390, height: 844 } });
-const blocked = await fresh.newPage();
-const blockedHits = [];
-blocked.on("request", (request) => {
-  if (watched(request.url())) blockedHits.push(request.url());
+await page.goto(`${base}/?asof=2026-11-29#/about`, { waitUntil: "domcontentloaded" });
+await page.waitForSelector("article.about h1");
+const about = await page.locator("article.about").innerText();
+assert.match(about, /我們只計算有多少次打開頁面和完成當日讀經/);
+assert.match(about, /不用 cookie/);
+assert.match(about, /不收集任何個人資料/);
+const share = page.locator("[data-setting='shareFeelings']");
+assert.equal(await share.isChecked(), false);
+const more = hits.filter((url) => /\/count\?/.test(url)).map((url) => new URL(url).searchParams.get("p"));
+assert.equal(more.some((path) => String(path).startsWith("feeling")), false);
+await page.locator("article.about .card", { hasText: "匿名統計" }).screenshot({
+  path: "/tmp/about-stats-auto-390.png",
 });
-await blocked.goto(`${base}/?stats=optin#/`, { waitUntil: "domcontentloaded" });
-await blocked.waitForSelector("article h1");
-await blocked.waitForTimeout(500);
-assert.equal(blockedHits.length, 0, `home opt-in requested ${blockedHits.join(" ")}`);
+await mkdir("/opt/cursor/artifacts/screenshots", { recursive: true });
+await copyFile("/tmp/about-stats-auto-390.png", "/opt/cursor/artifacts/screenshots/about-stats-auto-390.png");
 
 const statsPage = await context.newPage();
 await statsPage.goto(`${base}/stats.html`, { waitUntil: "domcontentloaded" });
-await statsPage.waitForSelector("[data-clear]");
 await statsPage.fill("[data-token]", "not-a-real-token");
 await statsPage.evaluate(() => localStorage.setItem("advent2026.goatcounterToken", "not-a-real-token"));
 await statsPage.click("[data-clear]");
 assert.equal(await statsPage.inputValue("[data-token]"), "");
 assert.equal(await statsPage.evaluate(() => localStorage.getItem("advent2026.goatcounterToken")), null);
 
-await fresh.close();
 await browser.close();
 server.close();
-console.log("stats network tests passed");
+console.log(`stats network tests passed: ${paths.join(", ")}`);

@@ -64,6 +64,7 @@ const browser = await chromium.launch({
   args: ["--no-sandbox", "--disable-dev-shm-usage"],
 });
 const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+await context.route(/goatcounter\.com|gc\.zgo\.at/i, (route) => route.abort());
 const page = await context.newPage();
 await context.addInitScript(() => {
   const voice = { name: "Cantonese", lang: "zh-HK", localService: true, default: true, voiceURI: "zh-HK" };

@@ -6,7 +6,6 @@ export function emptyState() {
   return {
     edition: "shen",
     shareFeelings: false,
-    statsOptIn: false,
     careDismissedOn: "",
     days: {},
   };
@@ -20,7 +19,6 @@ export function loadState() {
     return {
       edition: data.edition === "shangdi" ? "shangdi" : "shen",
       shareFeelings: data.shareFeelings === true,
-      statsOptIn: data.statsOptIn === true,
       careDismissedOn: typeof data.careDismissedOn === "string" ? data.careDismissedOn : "",
       days: normalizeDays(data.days),
     };

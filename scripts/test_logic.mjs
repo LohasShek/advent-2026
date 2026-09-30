@@ -83,7 +83,6 @@ import {
   doneStatsPath,
   initStats,
   resetStatsState,
-  setUsageOptIn,
   statsScriptRequested,
   trackOpen,
   trackComplete,
@@ -158,7 +157,7 @@ assert.deepEqual(feelings.care.coreIds, ["sad", "scared"]);
 assert.match(feelings.care.template, /\{churchContact\}/);
 assert.match(config, /churchContact:\s*"歡迎聯絡石守賢傳道"/);
 assert.match(config, /goatcounter:\s*"lohasshek"/);
-assert.match(config, /statsRequireOptIn:\s*false/);
+assert.equal(config.includes("statsRequireOptIn"), false);
 assert.equal(
   careMessage(feelings.care.template, "歡迎聯絡石守賢傳道"),
   "這幾天你好像背著沉重的感受。你不必獨自承受，可以找牧者或信得過的弟兄姊妹傾談。歡迎聯絡石守賢傳道。如果想找人傾談，也可以致電明愛向晴熱線 18288（24 小時）。"
@@ -373,12 +372,8 @@ assert.match(credits, /CC0/);
 assert.match(credits, /\?bgm=b/);
 assert.match(credits, /\?week=/);
 assert.equal(sw.includes("./assets/bgm/w1-a.mp3"), false);
-assert.equal(statsPolicy({ code: "lohasshek", requireOptIn: false, optedIn: false, search: "" }).usage, true);
-assert.equal(statsPolicy({ code: "lohasshek", requireOptIn: true, optedIn: false, search: "" }).usage, false);
-assert.equal(statsPolicy({ code: "lohasshek", requireOptIn: true, optedIn: true, search: "" }).usage, true);
-assert.equal(statsPolicy({ code: "lohasshek", requireOptIn: false, optedIn: false, search: "?stats=optin" }).mustOpt, true);
-assert.equal(statsPolicy({ code: "lohasshek", requireOptIn: false, optedIn: false, search: "?asof=2026-11-29&stats=optin" }).usage, false);
-assert.equal(statsPolicy({ code: "", requireOptIn: false, optedIn: true, search: "" }).usage, false);
+assert.equal(statsPolicy({ code: "lohasshek" }).usage, true);
+assert.equal(statsPolicy({ code: "" }).usage, false);
 const summary = summarizeStats(DEMO_HITS);
 assert.equal(summary.opens.find((row) => row.key === "2026-11-29").label, "14");
 assert.equal(summary.completes.find((row) => row.key === "2026-11-30").label, "3");
@@ -390,8 +385,9 @@ assert.equal(summary.intensities.find((row) => row.key === "3").label, UNDER_FIV
 assert.equal(summary.intensities.find((row) => row.key === "4").label, "6");
 assert.equal(shownCount(4, "feeling"), UNDER_FIVE);
 assert.equal(shownCount(4, "core"), "4");
-assert.ok(appSource.includes('data-setting="statsOptIn"'));
-assert.ok(appSource.includes("statsRequireOptIn"));
+assert.equal(appSource.includes('data-setting="statsOptIn"'), false);
+assert.equal(appSource.includes("statsRequireOptIn"), false);
+assert.match(readFileSync(new URL("../ui-strings.json", import.meta.url), "utf8"), /我們只計算有多少次打開頁面和完成當日讀經/);
 assert.equal(appSource.includes("trackPage"), false);
 assert.equal(appSource.includes("location.pathname"), false);
 assert.equal(appSource.includes("location.href"), false);
@@ -407,8 +403,7 @@ for (const file of [config, appSource, statsSource, statsPage, statsHtml]) {
   assert.equal(/Authorization:\s*Bearer\s+[A-Za-z0-9_-]{8,}/.test(file), false);
 }
 const whitelist = statsPathWhitelist();
-assert.deepEqual(whitelist.opens.slice(0, 3), ["open", "open-plan", "open-about"]);
-assert.equal(whitelist.opens.length, 30);
+assert.deepEqual(whitelist.opens, ["open"]);
 assert.equal(whitelist.done.length, 27);
 assert.equal(whitelist.done[4], "day-5-done");
 assert.equal(whitelist.feelingTitle, "feeling");
@@ -432,6 +427,9 @@ for (const blocked of [
   "feeling/0/sad/lonely/4/peace/cared_for/2",
   "feeling/28/sad/lonely/4/peace/cared_for/2",
   "feeling/3/sad/lonely/6/peace/cared_for/2",
+  "open-plan",
+  "open-about",
+  "open-day-5",
   "open-day-0",
   "open-day-28",
   "day-5-done?asof=1",
@@ -439,39 +437,32 @@ for (const blocked of [
   assert.equal(isAllowedStatsPath(blocked), false, blocked);
 }
 assert.equal(openStatsPath("home"), "open");
-assert.equal(openStatsPath("day", 5), "open-day-5");
+assert.equal(openStatsPath("day", 5), "open");
 assert.equal(doneStatsPath(5), "day-5-done");
 resetStatsState();
 const sent = [];
 useStatsTransport((url) => sent.push(url));
-initStats("lohasshek", { requireOptIn: true, optedIn: false, search: "?asof=2026-11-29&week=2&bgm=b&stats=optin" });
-assert.equal(trackOpen("about"), false);
+initStats("");
+assert.equal(trackOpen(), false);
 assert.equal(trackComplete(5), false);
 assert.equal(trackFeelings(event, true), false);
-assert.equal(trackFeelings(event, false), false);
-assert.equal(sent.length, 0);
-assert.equal(statsScriptRequested(), false);
-setUsageOptIn(true);
+initStats("lohasshek");
+assert.equal(trackOpen("about"), true);
 assert.equal(trackOpen("day", 5), true);
 assert.equal(trackFeelings(event, false), false);
-assert.equal(sent.length, 1);
 assert.equal(trackFeelings({ ...event, because: "因為我好驚", feelingZh: "孤單", title: "因為我好驚" }, true), true);
 assert.equal(trackComplete(5), true);
-assert.equal(trackOpen("missing"), false);
 assert.equal(trackComplete(28), false);
 const joined = sent.join("\n");
-assert.match(sent[0], /[?&]p=open-day-5(&|$)/);
-assert.match(sent[0], /[?&]t=open-day-5(&|$)/);
+assert.match(sent[0], /[?&]p=open(&|$)/);
+assert.match(sent[0], /[?&]t=open(&|$)/);
 assert.match(sent[0], /[?&]r=(&|$)/);
-assert.match(sent[1], /[?&]p=feeling%2F3%2Fsad%2Flonely%2F4%2Fpeace%2Fcared_for%2F2(&|$)/);
-assert.match(sent[1], /[?&]t=feeling(&|$)/);
-assert.match(sent[2], /[?&]p=day-5-done(&|$)/);
+assert.match(sent[1], /[?&]p=open(&|$)/);
+assert.match(sent[2], /[?&]p=feeling%2F3%2Fsad%2Flonely%2F4%2Fpeace%2Fcared_for%2F2(&|$)/);
+assert.match(sent[2], /[?&]t=feeling(&|$)/);
+assert.match(sent[3], /[?&]p=day-5-done(&|$)/);
 assert.doesNotMatch(joined, /asof|week|bgm|because|我好驚|孤單|q=/);
 assert.equal(joined.includes("location"), false);
-resetStatsState();
-initStats("lohasshek", { requireOptIn: false, optedIn: false, search: "" });
-assert.equal(trackFeelings(event, false), false);
-assert.equal(trackOpen("home"), true);
 const previousDocument = globalThis.document;
 const previousWindow = globalThis.window;
 globalThis.window = previousWindow || {};
@@ -482,9 +473,8 @@ globalThis.document = {
   },
 };
 resetStatsState();
-initStats("lohasshek", { requireOptIn: true, optedIn: false, search: "?stats=optin" });
-assert.equal(globalThis.document.head.nodes.length, 0);
-setUsageOptIn(true);
+initStats("lohasshek");
+assert.equal(statsScriptRequested(), true);
 assert.equal(globalThis.document.head.nodes.length, 1);
 assert.equal(globalThis.document.head.nodes[0].src, "https://gc.zgo.at/count.js");
 assert.equal(JSON.parse(globalThis.document.head.nodes[0].dataset.goatcounterSettings).referrer, "");

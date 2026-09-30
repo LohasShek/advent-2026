@@ -64,18 +64,12 @@ export function summarizeStats(hits) {
 export const DEMO_HITS = Object.freeze([
   {
     path: "open",
-    count: 12,
+    count: 18,
     event: false,
     stats: [
-      { day: "2026-11-29", daily: 8 },
+      { day: "2026-11-29", daily: 14 },
       { day: "2026-11-30", daily: 4 },
     ],
-  },
-  {
-    path: "open-day-1",
-    count: 6,
-    event: false,
-    stats: [{ day: "2026-11-29", daily: 6 }],
   },
   {
     path: "day-1-done",
