@@ -9,10 +9,16 @@ import {
   careStreak,
   comparisonNote,
   daysBetween,
+  addWord,
+  fillPrayerFrame,
   flowSteps,
+  formatMarkedWords,
   hongKongDate,
   nextStepId,
   passageHtml,
+  prayerFrameHtml,
+  segmentMode,
+  toggleWord,
   parseVerses,
   reviewBounds,
   reviewSummary,
@@ -143,14 +149,17 @@ for (const note of [comparisonNote(
 
 const plain = { review: null, day: 1 };
 const reviewDay = plan.days[7];
-assert.deepEqual(flowSteps(plain).map((step) => step.id), ["quiet", "before", "read", "after", "reflect", "prayer"]);
-assert.ok(flowSteps(reviewDay).some((step) => step.id === "review"));
+assert.deepEqual(flowSteps(plain).map((step) => step.id), ["quiet", "before", "read", "reflect", "after", "prayer"]);
+assert.deepEqual(flowSteps(reviewDay).map((step) => step.id), ["quiet", "before", "read", "reflect", "after", "review", "prayer"]);
 assert.equal(flowSteps(plan.days[26]).find((step) => step.id === "review").label, "總回顧");
 const entry = { reached: "quiet", completed: false };
 assert.equal(canOpenStep(reviewDay, entry, "read"), false);
 assert.equal(activeStepId(reviewDay, entry, "prayer"), "quiet");
 entry.reached = "after";
-assert.equal(nextStepId(reviewDay, "after"), "reflect");
+assert.equal(nextStepId(plain, "read"), "reflect");
+assert.equal(nextStepId(plain, "reflect"), "after");
+assert.equal(nextStepId(plain, "after"), "prayer");
+assert.equal(nextStepId(reviewDay, "after"), "review");
 assert.equal(activeStepId(reviewDay, entry, "read"), "read");
 entry.completed = true;
 assert.equal(activeStepId(reviewDay, entry, "review"), "review");
@@ -160,6 +169,39 @@ assert.match(passageHtml("1 甲\n2 乙\n7 丙"), /verse-gap">……<\/p>/);
 assert.doesNotMatch(passageHtml("1 甲\n2 乙"), /verse-gap/);
 assert.match(passageHtml("3:4 甲\n4:5 乙"), /verse-gap/);
 assert.doesNotMatch(passageHtml("3:4 甲\n4:1 乙"), /verse-gap/);
+const sample = "1 耶西的殘幹必長出嫩枝";
+const segmented = "1 耶西的｜殘幹｜必｜長出｜嫩枝";
+assert.equal(segmentMode(sample, ""), "empty");
+assert.equal(segmentMode(sample, "1 耶西的｜殘幹｜必｜長出"), "mismatch");
+assert.equal(segmentMode(sample, segmented), "tokens");
+const tokenHtml = passageHtml(sample, segmented, ["殘幹"]);
+assert.match(tokenHtml, /<sup class="vnum">1<\/sup>/);
+assert.match(tokenHtml, /data-word="殘幹"[^>]*aria-pressed="true"/);
+assert.doesNotMatch(tokenHtml, /<button[^>]*>1<\/button>/);
+assert.doesNotMatch(passageHtml(sample, "1 耶西的｜別的"), /toggle-word/);
+let marked = [];
+for (const word of ["殘幹", "嫩枝", "必", "長出", "耶西的"]) marked = addWord(marked, word).words;
+const sixth = addWord(marked, "新枝");
+assert.equal(sixth.limited, true);
+assert.equal(sixth.words.length, 5);
+assert.deepEqual(toggleWord(sixth.words, "殘幹").words.includes("殘幹"), false);
+assert.equal(formatMarkedWords(["殘幹", "嫩枝"]), "「殘幹」、「嫩枝」");
+const shift = "主啊，讀經前我感到〔讀經前感受〕，讀完經文，我感到〔讀經後感受〕。〔字詞〕提醒我＿＿。無論我的感受怎樣，求你與我同在。奉主耶穌的名，阿們。";
+const sameFeeling = fillPrayerFrame(shift, {
+  words: ["殘幹", "嫩枝"],
+  before: { feelingZh: "平靜", coreZh: "平安" },
+  after: { feelingZh: "平靜", coreZh: "平安" },
+});
+assert.equal(sameFeeling.startsWith("主啊，讀經前後我都感到平靜。「殘幹」、「嫩枝」提醒我＿＿。"), true);
+assert.equal(sameFeeling.includes("讀經前我感到"), false);
+const changedFeeling = fillPrayerFrame(shift, {
+  words: ["殘幹"],
+  before: { feelingZh: "", coreZh: "悲傷" },
+  after: { feelingZh: "盼望", coreZh: "喜樂" },
+});
+assert.match(changedFeeling, /讀經前我感到悲傷，讀完經文，我感到盼望。「殘幹」提醒我/);
+assert.match(prayerFrameHtml("說：＿＿。"), /class="pray-blank"/);
+assert.equal(plan.prayerFrames.map((item) => item.name).join(","), "字詞觸動,感受轉變,交託與回應");
 const day1Passage = passageHtml(plan.days[0].passage.shen);
 assert.equal((day1Passage.match(/verse-gap/g) || []).length, 1);
 assert.ok(readFileSync(new URL("../ui-strings.json", import.meta.url), "utf8").includes("匿名分享我今天的感受"));

@@ -17,8 +17,15 @@ import {
   markReached,
   nextStepId,
   paragraphsHtml,
+  addWord,
+  fillPrayerFrame,
+  formatMarkedWords,
+  normalizeWords,
   passageHtml,
+  prayerFrameHtml,
   previousStepId,
+  segmentMode,
+  toggleWord,
   reviewBounds,
   reviewSummary,
   seasonPhase,
@@ -54,6 +61,12 @@ const app = {
   lastTracked: "",
   lastView: "",
   thanksDay: 0,
+  wordHintDay: 0,
+  pendingSelection: "",
+  segmentWarned: new Set(),
+  frameIndex: 0,
+  frameDay: 0,
+  touchStart: null,
 };
 
 function siteConfig() {
@@ -338,7 +351,12 @@ function renderPickColumn(pick, label) {
   </article>`;
 }
 
-function renderComparison(entry) {
+function renderComparison(day, entry) {
+  const nextLabel = day.review
+    ? day.review.scope === "season"
+      ? ui.reflect.toSeason
+      : ui.reflect.toWeek
+    : ui.compare.next;
   return `<div class="card">
     <h2>${esc(ui.compare.title)}</h2>
     <p>${esc(comparisonNote(entry.before, entry.after))}</p>
@@ -346,7 +364,7 @@ function renderComparison(entry) {
       ${renderPickColumn(entry.before, ui.compare.before)}
       ${renderPickColumn(entry.after, ui.compare.after)}
     </div>
-    <button type="button" class="btn" data-action="next">${esc(ui.compare.next)}</button>
+    <button type="button" class="btn" data-action="next">${esc(nextLabel)}</button>
     <button type="button" class="btn ghost" data-action="redo-after">${esc(ui.compare.redo)}</button>
   </div>`;
 }
@@ -380,9 +398,14 @@ function renderReview(day) {
       const entry = app.state.days[String(item.day)];
       if (entry?.before) beforePicks.push(entry.before);
       if (entry?.after) afterPicks.push(entry.after);
+      const words = normalizeWords(entry?.words);
+      const wordLine = words.length
+        ? `<p class="rev-words">${esc(ui.words.reviewLabel)} ${esc(formatMarkedWords(words))}</p>`
+        : "";
       return `<div class="rev-row">
         <a href="#/day/${item.day}">${esc(formatMonthDay(item.date))} · ${esc(item.title)}</a>
         <div class="rev-feel">${feelBit(entry?.before)} <span aria-hidden="true">→</span> ${feelBit(entry?.after)}</div>
+        ${wordLine}
       </div>`;
     })
     .join("");
@@ -427,18 +450,54 @@ function renderQuiet(day) {
   </div>`;
 }
 
+function renderWordBar(day, entry, mode) {
+  const words = normalizeWords(entry.words);
+  const chips = words
+    .map(
+      (word) =>
+        `<button type="button" class="word-chip" data-action="remove-word" data-word="${esc(word)}" aria-label="${esc(fill(ui.words.remove, { word }))}">${esc(word)}</button>`
+    )
+    .join("");
+  const list = chips
+    ? `<div class="word-list" aria-label="${esc(ui.words.listLabel)}">${chips}</div>`
+    : "";
+  const add =
+    mode === "tokens"
+      ? ""
+      : `<button type="button" class="btn ghost" data-action="add-word">${esc(ui.words.add)}</button>`;
+  const hint =
+    app.wordHintDay === day.day ? `<p class="word-hint" role="status">${esc(ui.words.limit)}</p>` : "";
+  return `${list}${add}${hint}`;
+}
+
 function renderRead(day) {
   const edition = app.state.edition === "shangdi" ? "shangdi" : "shen";
+  const editionLabel = edition === "shangdi" ? ui.read.shangdi : ui.read.shen;
   const text = day.passage?.[edition] || "";
+  const segmented = day.segments?.[edition] || "";
+  const mode = segmentMode(text, segmented);
+  const entry = dayState(app.state, day.day);
+  if (mode === "mismatch") {
+    const key = `${day.day}:${edition}`;
+    if (!app.segmentWarned.has(key)) {
+      app.segmentWarned.add(key);
+      console.warn(
+        `[advent] 第 ${day.day} 日的分詞（${editionLabel}）去掉「｜」之後與經文全文不一致，改為手動選取字詞。`
+      );
+    }
+  }
+  const markHint = mode === "tokens" ? ui.read.tokenHint : ui.read.selectHint;
   return `<div class="card reading">
     <h2>${esc(ui.read.title)}</h2>
     <p class="hint">${esc(ui.read.hint)}</p>
+    <p class="hint">${esc(markHint)}</p>
     <div class="segmented" role="group" aria-label="${esc(ui.read.editionLabel)}">
       <button type="button" data-action="set-edition" data-edition="shen" aria-pressed="${edition === "shen" ? "true" : "false"}">${esc(ui.read.shen)}</button>
       <button type="button" data-action="set-edition" data-edition="shangdi" aria-pressed="${edition === "shangdi" ? "true" : "false"}">${esc(ui.read.shangdi)}</button>
     </div>
     ${day.focus ? `<p class="focus">${esc(fill(ui.day.focus, { focus: day.focus }))}</p>` : ""}
-    ${passageHtml(text)}
+    ${passageHtml(text, mode === "tokens" ? segmented : "", entry.words)}
+    ${renderWordBar(day, entry, mode)}
     ${scriptureCopyright() ? `<p class="copyright">${esc(scriptureCopyright())}</p>` : ""}
     <button type="button" class="btn" data-action="next">${esc(ui.read.next)}</button>
   </div>`;
@@ -446,11 +505,6 @@ function renderRead(day) {
 
 function renderReflect(day) {
   const entry = dayState(app.state, day.day);
-  const nextLabel = day.review
-    ? day.review.scope === "season"
-      ? ui.reflect.toSeason
-      : ui.reflect.toWeek
-    : ui.reflect.toPrayer;
   return `<div class="card">
     <h2>${esc(ui.reflect.title)}</h2>
     <p>${esc(ui.reflect.lead)}</p>
@@ -462,7 +516,7 @@ function renderReflect(day) {
       <span>${esc(day.reflect2)}</span>
       <textarea rows="3" maxlength="2000" autocomplete="off" data-field="reflect2" placeholder="${esc(ui.reflect.placeholder)}">${esc(entry.reflect2 || "")}</textarea>
     </label>
-    <button type="button" class="btn" data-action="next">${esc(nextLabel)}</button>
+    <button type="button" class="btn" data-action="next">${esc(ui.reflect.toAfter)}</button>
   </div>`;
 }
 
@@ -476,16 +530,43 @@ function renderPrayer(day, entry) {
       <a class="btn ghost" href="#/">${esc(ui.prayer.backHome)}</a>
     </div>`;
   }
+  const words = normalizeWords(entry.words);
+  const frames = words.length && Array.isArray(app.plan.prayerFrames) ? app.plan.prayerFrames : [];
+  const index = frames.length ? Math.min(Math.max(app.frameIndex || 0, 0), frames.length - 1) : 0;
+  const tabs = frames
+    .map(
+      (frame, frameIndex) =>
+        `<button type="button" role="tab" id="frame-tab-${frameIndex}" aria-selected="${frameIndex === index ? "true" : "false"}" aria-controls="frame-panel" data-action="prayer-frame" data-index="${frameIndex}">${esc(frame.name)}</button>`
+    )
+    .join("");
+  const filled = frames.length
+    ? prayerFrameHtml(
+        fillPrayerFrame(frames[index].text, { words, before: entry.before, after: entry.after })
+      )
+    : "";
+  const framesBlock = frames.length
+    ? `<p class="word-recap">${esc(ui.words.recap)} ${esc(formatMarkedWords(words))}</p>
+      <h3>${esc(ui.prayer.framesLabel)}</h3>
+      <p class="hint">${esc(ui.prayer.withWords)}</p>
+      <div class="frame-tabs" role="tablist" aria-label="${esc(ui.prayer.framesLabel)}">${tabs}</div>
+      <div class="prayer frame" id="frame-panel" role="tabpanel" aria-labelledby="frame-tab-${index}" data-swipe="frame">${filled}</div>`
+    : "";
   return `<div class="card">
     <h2>${esc(ui.prayer.title)}</h2>
     <p>${esc(ui.prayer.lead)}</p>
+    <h3>${esc(ui.prayer.sampleTitle)}</h3>
     <div class="prayer">${paragraphsHtml(day.samplePrayer)}</div>
+    ${framesBlock}
     <button type="button" class="btn" data-action="complete">${esc(entry.completed ? ui.prayer.saveAgain : ui.prayer.complete)}</button>
   </div>`;
 }
 
 function renderDay(day, requestedStep, today, phase) {
   const entry = dayState(app.state, day.day);
+  if (app.frameDay !== day.day) {
+    app.frameDay = day.day;
+    app.frameIndex = 0;
+  }
   const stepId = activeStepId(day, entry, requestedStep);
   if ((requestedStep || "") !== stepId) {
     location.replace(`#/day/${day.day}/${stepId}`);
@@ -496,7 +577,7 @@ function renderDay(day, requestedStep, today, phase) {
   if (stepId === "quiet") body = renderQuiet(day);
   else if (stepId === "before") body = renderPicker("before", entry);
   else if (stepId === "read") body = renderRead(day);
-  else if (stepId === "after") body = entry.after ? renderComparison(entry) : renderPicker("after", entry);
+  else if (stepId === "after") body = entry.after ? renderComparison(day, entry) : renderPicker("after", entry);
   else if (stepId === "reflect") body = renderReflect(day);
   else if (stepId === "review") body = renderReview(day);
   else body = renderPrayer(day, entry);
@@ -528,6 +609,10 @@ function renderPlan(today, phase, asHome) {
         .map((day) => {
           const entry = app.state.days[String(day.day)];
           const done = entry?.completed ? `<span class="done">${esc(ui.plan.done)}</span>` : "";
+          const marked = normalizeWords(entry?.words);
+          const wordLine = marked.length
+            ? `<span class="day-words">${esc(formatMarkedWords(marked))}</span>`
+            : "";
           const mood = miniDots(entry);
           const review = day.review
             ? `<span class="tag">${esc(day.review.scope === "season" ? ui.review.seasonTag : ui.review.weekTag)}</span>`
@@ -536,6 +621,7 @@ function renderPlan(today, phase, asHome) {
             <span class="meta">${esc(formatMonthDay(day.date))} · ${esc(day.weekday)} ${done}${review}</span>
             <span class="name">${esc(day.title)}</span>
             <span class="passage-ref">${esc(day.reference)}${mood}</span>
+            ${wordLine}
           </a>`;
         })
         .join("");
@@ -806,6 +892,11 @@ function onClick(event) {
     render();
     return;
   }
+  if (action === "prayer-frame") {
+    app.frameIndex = Number(button.dataset.index) || 0;
+    render();
+    return;
+  }
   if (!day) return;
   const entry = dayState(app.state, day.day);
   if (action === "start-breath") {
@@ -864,6 +955,28 @@ function onClick(event) {
       return;
     }
     saveState(app.state);
+    render();
+    return;
+  }
+  if (action === "toggle-word" || action === "remove-word") {
+    const result = toggleWord(entry.words, button.dataset.word);
+    entry.words = result.words;
+    app.wordHintDay = action === "toggle-word" && result.limited ? day.day : 0;
+    saveState(app.state);
+    render();
+    return;
+  }
+  if (action === "add-word") {
+    const live = window.getSelection?.().toString() || "";
+    const selected = live.trim() ? live : app.pendingSelection;
+    const before = normalizeWords(entry.words).length;
+    const result = addWord(entry.words, selected);
+    entry.words = result.words;
+    if (result.limited) app.wordHintDay = day.day;
+    else if (result.words.length !== before) app.wordHintDay = 0;
+    app.pendingSelection = "";
+    saveState(app.state);
+    window.getSelection?.()?.removeAllRanges?.();
     render();
     return;
   }
@@ -928,8 +1041,52 @@ async function mainInit() {
   app.wheelSvg = wheelSvg;
   app.state = loadState();
   initStats(siteConfig().goatcounter || "");
+  document.addEventListener("selectionchange", () => {
+    const text = window.getSelection?.().toString() || "";
+    if (text.trim()) app.pendingSelection = text;
+  });
+  main.addEventListener("pointerdown", (event) => {
+    if (event.target.closest("[data-action='add-word']")) event.preventDefault();
+  });
   main.addEventListener("click", onClick);
   main.addEventListener("keydown", onKeydown);
+  main.addEventListener(
+    "touchstart",
+    (event) => {
+      const touch = event.changedTouches[0];
+      app.touchStart = touch
+        ? {
+            x: touch.clientX,
+            y: touch.clientY,
+            frame: Boolean(event.target.closest("[data-swipe='frame']")),
+          }
+        : null;
+    },
+    { passive: true }
+  );
+  main.addEventListener(
+    "touchend",
+    (event) => {
+      const start = app.touchStart;
+      app.touchStart = null;
+      if (!start?.frame || main.dataset.step !== "prayer") return;
+      const touch = event.changedTouches[0];
+      if (!touch) return;
+      const dx = touch.clientX - start.x;
+      const dy = touch.clientY - start.y;
+      if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy)) return;
+      const dayNumber = Number(main.dataset.day);
+      const day = app.plan.days.find((item) => item.day === dayNumber);
+      if (!day) return;
+      const entry = dayState(app.state, day.day);
+      const frames = normalizeWords(entry.words).length ? app.plan.prayerFrames || [] : [];
+      if (frames.length < 2) return;
+      const next = (app.frameIndex || 0) + (dx < 0 ? 1 : -1);
+      app.frameIndex = Math.min(frames.length - 1, Math.max(0, next));
+      render();
+    },
+    { passive: true }
+  );
   main.addEventListener("change", (event) => {
     const input = event.target.closest("[data-setting='shareFeelings']");
     if (!input) return;

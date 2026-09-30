@@ -1,3 +1,5 @@
+import { normalizeWords } from "./logic.js";
+
 const KEY = "advent2026.v1";
 
 export function emptyState() {
@@ -14,12 +16,11 @@ export function loadState() {
     const raw = localStorage.getItem(KEY);
     if (!raw) return emptyState();
     const data = JSON.parse(raw);
-    const base = emptyState();
     return {
       edition: data.edition === "shangdi" ? "shangdi" : "shen",
       shareFeelings: data.shareFeelings === true,
       careDismissedOn: typeof data.careDismissedOn === "string" ? data.careDismissedOn : "",
-      days: data.days && typeof data.days === "object" ? data.days : base.days,
+      days: normalizeDays(data.days),
     };
   } catch {
     return emptyState();
@@ -42,13 +43,26 @@ export function blankDay() {
     reached: "quiet",
     feelingShared: false,
     completionSent: false,
+    words: [],
   };
+}
+
+function normalizeDays(days) {
+  if (!days || typeof days !== "object") return {};
+  const out = {};
+  for (const [key, entry] of Object.entries(days)) {
+    if (!entry || typeof entry !== "object") continue;
+    out[key] = { ...blankDay(), ...entry, words: normalizeWords(entry.words) };
+  }
+  return out;
 }
 
 export function dayState(state, dayNumber) {
   const key = String(dayNumber);
   if (!state.days[key]) state.days[key] = blankDay();
-  return state.days[key];
+  const entry = state.days[key];
+  entry.words = normalizeWords(entry.words);
+  return entry;
 }
 
 export function clearJournal(state) {

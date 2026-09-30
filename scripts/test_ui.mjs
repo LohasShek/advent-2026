@@ -23,7 +23,7 @@ for (const line of copy) {
 assert.ok(copy.includes("匿名分享我今天的感受"));
 assert.ok(copy.includes("再選一次就好。和剛才不同，或是一樣，都可以。"));
 assert.ok(copy.includes("點外面一圈，再選更細緻的感受，然後強度。"));
-assert.ok(copy.includes("你選的感受、寫下的「因為……」和反思，都只存在這部裝置的瀏覽器裏。沒有帳號，沒有姓名，這些文字也不會上傳。"));
+assert.ok(copy.includes("你選的感受、字詞、寫下的「因為……」和反思，都只存在這部裝置的瀏覽器裏。沒有帳號，沒有姓名，這些文字也不會上傳。"));
 
 for (const value of [
   ui.shell.documentTitle,

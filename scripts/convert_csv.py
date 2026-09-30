@@ -235,6 +235,10 @@ def convert_plan(scripture_path: Path, guide_path: Path) -> dict:
                 "samplePrayer": pick(emo, "示範禱文"),
                 "review": review,
                 "passage": {"shen": shen, "shangdi": shangdi},
+                "segments": {
+                    "shen": clean_passage(pick(row, "分詞（神版）", "分詞(神版)")),
+                    "shangdi": clean_passage(pick(row, "分詞（上帝版）", "分詞(上帝版)")),
+                },
             }
         )
 
@@ -272,6 +276,44 @@ def convert_plan(scripture_path: Path, guide_path: Path) -> dict:
     }
 
 
+DEFAULT_PRAYER_FRAMES = [
+    {
+        "id": "1",
+        "name": "字詞觸動",
+        "text": "主啊，今天經文裏的〔字詞〕觸動了我。我在這些話中聽見你對我說：＿＿。求你讓你的話在我心裏生根。奉主耶穌的名，阿們。",
+    },
+    {
+        "id": "2",
+        "name": "感受轉變",
+        "text": "主啊，讀經前我感到〔讀經前感受〕，讀完經文，我感到〔讀經後感受〕。〔字詞〕提醒我＿＿。無論我的感受怎樣，求你與我同在。奉主耶穌的名，阿們。",
+    },
+    {
+        "id": "3",
+        "name": "交託與回應",
+        "text": "主啊，謝謝你今天藉著〔字詞〕向我說話。我想把＿＿交託給你，也想在今天用＿＿回應你。求你幫助我。奉主耶穌的名，阿們。",
+    },
+]
+
+
+def load_prayer_frames() -> list[dict[str, str]]:
+    matches = sorted(CONTENT.glob("禱文框架*.csv"))
+    if not matches:
+        return DEFAULT_PRAYER_FRAMES
+    frames = []
+    for row in rows_as_dicts(read_csv(matches[0])):
+        item = {
+            "id": pick(row, "編號"),
+            "name": pick(row, "名稱"),
+            "text": pick(row, "框架文字"),
+        }
+        if not item["id"] or not item["name"] or not item["text"]:
+            raise SystemExit("禱文框架 has an empty id, name, or text")
+        frames.append(item)
+    if not frames:
+        raise SystemExit("禱文框架 has no rows")
+    return frames
+
+
 def patch_church_contact(contact: str) -> None:
     if not CONFIG.exists():
         return
@@ -289,6 +331,7 @@ def main() -> None:
     feelings_path = find_one("感受之輪詞彙*.csv")
 
     plan = convert_plan(scripture_path, guide_path)
+    plan["prayerFrames"] = load_prayer_frames()
     feelings = convert_feelings(feelings_path)
     contact = feelings["care"].pop("contact")
 

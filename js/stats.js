@@ -4,9 +4,8 @@
  * Feeling events are sent only after the reader opts in, and only with
  * day number, core id, finer-feeling id, and intensity — never notes.
  *
- * Reading those counts back needs a GoatCounter API token. That token is a
- * credential, so this static site never requests the stats API. The public
- * dashboard therefore still shows finer-feeling totals below 5.
+ * Counts stay in the GoatCounter dashboard, which needs a login.
+ * This site has no stats page and never requests the stats API.
  */
 
 import ui from "../ui-strings.json" with { type: "json" };
