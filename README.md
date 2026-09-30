@@ -79,7 +79,7 @@ python3 scripts/convert_csv.py
 - `scriptureCopyright`：畫面上唯一的版權句。關於頁和讀經頁底部都用這一句。
 - `sheetId`：Google 試算表 ID。留空代表不讀試算表。
 
-填了網站代碼之後，打開頁面會自動計一次，事件名稱是 `open`；按下「完成今天的讀經」會自動計一次，事件名稱是 `day-1-done` 至 `day-27-done`。不用 cookie，不收集身分，referrer 送空字串，也不附帶網址上的 `?asof`、`?week`、`?bgm` 或 `#` 後面的內容。
+填了網站代碼之後，打開頁面會自動計一次，事件名稱是 `open`；按下「完成今天的讀經」會自動計一次，事件名稱是 `day-1-done` 至 `day-27-done`。程式直接請求 `https://lohasshek.goatcounter.com/count`，不載入 `count.js`。每個請求只有 `p`、`t`、`e`、`rnd` 四個參數，title 是固定英文（`open`、`day-5-done` 或 `feeling`）。不送 referrer、螢幕闊度或網址上的 query，不用 cookie，也不寫統計用的 localStorage 識別碼。
 
 「關於」頁有一個預設關閉的開關「匿名分享我今天的感受」。關閉時不會送出任何感受事件。打開並完成當日之後，才會匿名送出該日的感受代號（英文核心、英文細分感受和強度）。不會送出「因為……」、反思、圈選字詞或身分。
 

@@ -2,7 +2,7 @@
  * GoatCounter counts use a fixed path and title whitelist.
  * Page views are "open". Completed reading is "day-N-done".
  * Feelings are English codes and are sent only when the reader opts in.
- * The count request sends an empty referrer and omits the page address.
+ * The count request is a direct GET to /count with only p, t, e, and rnd.
  */
 
 import { FEELING_CORE_IDS, FEELING_SLUGS, STATS_DAY_MAX } from "./logic.js";
@@ -12,7 +12,6 @@ const INTENSITIES = Object.freeze(["1", "2", "3", "4", "5"]);
 let configured = false;
 let usageAllowed = false;
 let endpoint = "";
-let scriptRequested = false;
 const queue = [];
 let transport = defaultTransport;
 
@@ -77,28 +76,25 @@ export function statsPathWhitelist() {
   };
 }
 
-export function statsCountUrl(countEndpoint, hit, screenWidth) {
+export function statsCountUrl(countEndpoint, hit, randomValue) {
+  const rnd = String(randomValue ?? Math.random().toString(36).slice(2, 8)).replace(/[^a-z0-9]/gi, "") || "1";
   const params = new URLSearchParams();
   params.set("p", hit.path);
   params.set("t", hit.title);
-  params.set("r", "");
   params.set("e", hit.event ? "true" : "false");
-  if (screenWidth) params.set("s", String(screenWidth));
+  params.set("rnd", rnd);
   return `${countEndpoint}?${params.toString()}`;
-}
-
-function screenWidth() {
-  const width = globalThis.window?.screen?.width;
-  return Number.isFinite(width) && width > 0 ? Math.round(width) : 0;
 }
 
 function defaultTransport(url) {
   if (typeof fetch !== "function") return;
   fetch(url, {
-    method: "POST",
+    method: "GET",
     mode: "no-cors",
-    keepalive: true,
+    credentials: "omit",
     referrerPolicy: "no-referrer",
+    keepalive: true,
+    cache: "no-store",
   }).catch(() => {});
 }
 
@@ -110,36 +106,15 @@ export function resetStatsState() {
   configured = false;
   usageAllowed = false;
   endpoint = "";
-  scriptRequested = false;
   queue.length = 0;
   transport = defaultTransport;
-}
-
-function loadScript() {
-  if (scriptRequested || !endpoint || typeof document === "undefined") return;
-  scriptRequested = true;
-  const settings = { no_onload: true, no_events: true, referrer: "" };
-  window.goatcounter = Object.assign(window.goatcounter || {}, settings, {
-    path() {
-      return null;
-    },
-  });
-  const script = document.createElement("script");
-  script.async = true;
-  script.src = "https://gc.zgo.at/count.js";
-  script.dataset.goatcounter = endpoint;
-  script.dataset.goatcounterSettings = JSON.stringify(settings);
-  script.addEventListener("load", () => {
-    flush();
-  });
-  document.head.appendChild(script);
 }
 
 function flush() {
   if (!usageAllowed || !endpoint) return;
   while (queue.length) {
     const hit = queue.shift();
-    transport(statsCountUrl(endpoint, hit, screenWidth()));
+    transport(statsCountUrl(endpoint, hit));
   }
 }
 
@@ -159,15 +134,10 @@ export function initStats(code) {
   usageAllowed = policy.usage;
   endpoint = endpointFor(code);
   configured = policy.configured;
-  if (usageAllowed) loadScript();
 }
 
 export function statsEnabled() {
   return configured;
-}
-
-export function statsScriptRequested() {
-  return scriptRequested;
 }
 
 export function trackOpen() {

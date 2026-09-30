@@ -83,7 +83,6 @@ import {
   doneStatsPath,
   initStats,
   resetStatsState,
-  statsScriptRequested,
   trackOpen,
   trackComplete,
   trackFeelings,
@@ -387,7 +386,7 @@ assert.equal(shownCount(4, "feeling"), UNDER_FIVE);
 assert.equal(shownCount(4, "core"), "4");
 assert.equal(appSource.includes('data-setting="statsOptIn"'), false);
 assert.equal(appSource.includes("statsRequireOptIn"), false);
-assert.match(readFileSync(new URL("../ui-strings.json", import.meta.url), "utf8"), /我們只計算有多少次打開頁面和完成當日讀經/);
+assert.match(readFileSync(new URL("../ui-strings.json", import.meta.url), "utf8"), /我們只計算打開頁面和完成讀經的次數，不會收集或儲存你的個人資料。/);
 assert.equal(appSource.includes("trackPage"), false);
 assert.equal(appSource.includes("location.pathname"), false);
 assert.equal(appSource.includes("location.href"), false);
@@ -396,7 +395,9 @@ const statsPage = readFileSync(new URL("../js/stats-page.js", import.meta.url), 
 const statsHtml = readFileSync(new URL("../stats.html", import.meta.url), "utf8");
 assert.doesNotMatch(statsSource, /location\.(pathname|href|search|hash)/);
 assert.doesNotMatch(statsSource, /document\.(title|referrer)/);
+assert.doesNotMatch(statsSource, /gc\.zgo\.at|count\.js|localStorage|document\.cookie/);
 assert.match(statsSource, /referrerPolicy: "no-referrer"/);
+assert.match(statsSource, /credentials: "omit"/);
 assert.match(statsHtml, /data-clear/);
 assert.match(statsPage, /removeItem\(TOKEN_KEY\)/);
 for (const file of [config, appSource, statsSource, statsPage, statsHtml]) {
@@ -454,35 +455,25 @@ assert.equal(trackFeelings({ ...event, because: "因為我好驚", feelingZh: "�
 assert.equal(trackComplete(5), true);
 assert.equal(trackComplete(28), false);
 const joined = sent.join("\n");
-assert.match(sent[0], /[?&]p=open(&|$)/);
-assert.match(sent[0], /[?&]t=open(&|$)/);
-assert.match(sent[0], /[?&]r=(&|$)/);
-assert.match(sent[1], /[?&]p=open(&|$)/);
-assert.match(sent[2], /[?&]p=feeling%2F3%2Fsad%2Flonely%2F4%2Fpeace%2Fcared_for%2F2(&|$)/);
-assert.match(sent[2], /[?&]t=feeling(&|$)/);
-assert.match(sent[3], /[?&]p=day-5-done(&|$)/);
-assert.doesNotMatch(joined, /asof|week|bgm|because|我好驚|孤單|q=/);
+function assertCountQuery(url) {
+  const params = new URL(url).searchParams;
+  assert.deepEqual([...params.keys()], ["p", "t", "e", "rnd"]);
+  assert.match(params.get("rnd"), /^[a-z0-9]+$/);
+  assert.equal(params.get("t") === "feeling" || params.get("t") === params.get("p"), true);
+}
+for (const url of sent) assertCountQuery(url);
+assert.equal(new URL(sent[0]).searchParams.get("p"), "open");
+assert.equal(new URL(sent[0]).searchParams.get("t"), "open");
+assert.equal(new URL(sent[0]).searchParams.get("e"), "false");
+assert.equal(new URL(sent[2]).searchParams.get("t"), "feeling");
+assert.equal(new URL(sent[2]).searchParams.get("e"), "true");
+assert.equal(new URL(sent[3]).searchParams.get("p"), "day-5-done");
+assert.equal(new URL(sent[3]).searchParams.get("t"), "day-5-done");
+assert.doesNotMatch(joined, /asof|week|bgm|because|我好驚|孤單|[?&](r|s|q)=/);
 assert.equal(joined.includes("location"), false);
-const previousDocument = globalThis.document;
-const previousWindow = globalThis.window;
-globalThis.window = previousWindow || {};
-globalThis.document = {
-  head: { nodes: [], appendChild(node) { this.nodes.push(node); } },
-  createElement() {
-    return { dataset: {}, addEventListener() {} };
-  },
-};
+const fixed = statsCountUrl("https://lohasshek.goatcounter.com/count", { path: "open", title: "open", event: false }, "abc123");
+assert.equal(fixed, "https://lohasshek.goatcounter.com/count?p=open&t=open&e=false&rnd=abc123");
 resetStatsState();
-initStats("lohasshek");
-assert.equal(statsScriptRequested(), true);
-assert.equal(globalThis.document.head.nodes.length, 1);
-assert.equal(globalThis.document.head.nodes[0].src, "https://gc.zgo.at/count.js");
-assert.equal(JSON.parse(globalThis.document.head.nodes[0].dataset.goatcounterSettings).referrer, "");
-assert.equal(JSON.parse(globalThis.document.head.nodes[0].dataset.goatcounterSettings).no_onload, true);
-globalThis.document = previousDocument;
-globalThis.window = previousWindow;
-resetStatsState();
-assert.equal(statsCountUrl("https://lohasshek.goatcounter.com/count", { path: "open", title: "open", event: false }, 390).includes("r="), true);
 
 function mockAudio() {
   const element = {

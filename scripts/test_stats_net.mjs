@@ -63,8 +63,9 @@ const browser = await chromium.launch({
 });
 const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
 const hits = [];
-await context.route(/goatcounter\.com|gc\.zgo\.at/i, (route) => {
-  hits.push(route.request().url());
+await context.route(/goatcounter\.com|zgo\.at/i, (route) => {
+  const request = route.request();
+  hits.push({ url: request.url(), referer: request.headers().referer || "" });
   return route.fulfill({ status: 204, body: "" });
 });
 await context.addInitScript((state) => {
@@ -77,37 +78,36 @@ await page.waitForSelector("article h1");
 const complete = page.getByRole("button", { name: "完成今天的讀經" });
 await complete.click();
 await page.waitForTimeout(400);
-const counts = hits.filter((url) => /\/count\?/.test(url));
-const paths = counts.map((url) => new URL(url).searchParams.get("p"));
+assert.equal(hits.some((hit) => /zgo\.at/i.test(hit.url)), false, hits.map((hit) => hit.url).join(" "));
+const counts = hits.filter((hit) => /\/count\?/.test(hit.url));
+const paths = counts.map((hit) => new URL(hit.url).searchParams.get("p"));
 assert.ok(paths.includes("open"), `missing open in ${paths.join(", ")}`);
 assert.ok(paths.includes("day-1-done"), `missing day-1-done in ${paths.join(", ")}`);
-for (const path of paths) {
-  assert.match(path, /^(open|day-(?:[1-9]|1\d|2[0-7])-done)$/, path);
+for (const hit of counts) {
+  const params = new URL(hit.url).searchParams;
+  assert.deepEqual([...params.keys()], ["p", "t", "e", "rnd"]);
+  assert.match(params.get("p"), /^(open|day-(?:[1-9]|1\d|2[0-7])-done)$/);
+  assert.equal(params.get("t"), params.get("p"));
+  assert.match(params.get("rnd"), /^[a-z0-9]+$/);
+  assert.equal(hit.referer, "", hit.url);
+  assert.equal(/asof|week|bgm|because|孤單|因為|反思|嫩枝/.test(hit.url), false, hit.url);
 }
 assert.equal(paths.some((path) => path.startsWith("feeling")), false, paths.join(", "));
-for (const url of counts) {
-  const params = new URL(url).searchParams;
-  assert.equal(params.get("r"), "");
-  assert.equal(params.has("q"), false);
-  assert.equal(/asof|week|bgm|because|孤單|因為|反思|嫩枝/.test(url), false, url);
-}
 assert.equal(await page.locator("[data-setting='shareFeelings']").count(), 0);
 
 await page.goto(`${base}/?asof=2026-11-29#/about`, { waitUntil: "domcontentloaded" });
 await page.waitForSelector("article.about h1");
 const about = await page.locator("article.about").innerText();
-assert.match(about, /我們只計算有多少次打開頁面和完成當日讀經/);
-assert.match(about, /不用 cookie/);
-assert.match(about, /不收集任何個人資料/);
+assert.match(about, /我們只計算打開頁面和完成讀經的次數，不會收集或儲存你的個人資料。/);
 const share = page.locator("[data-setting='shareFeelings']");
 assert.equal(await share.isChecked(), false);
-const more = hits.filter((url) => /\/count\?/.test(url)).map((url) => new URL(url).searchParams.get("p"));
+const more = hits.filter((hit) => /\/count\?/.test(hit.url)).map((hit) => new URL(hit.url).searchParams.get("p"));
 assert.equal(more.some((path) => String(path).startsWith("feeling")), false);
 await page.locator("article.about .card", { hasText: "匿名統計" }).screenshot({
-  path: "/tmp/about-stats-auto-390.png",
+  path: "/tmp/about-stats-plain-390.png",
 });
 await mkdir("/opt/cursor/artifacts/screenshots", { recursive: true });
-await copyFile("/tmp/about-stats-auto-390.png", "/opt/cursor/artifacts/screenshots/about-stats-auto-390.png");
+await copyFile("/tmp/about-stats-plain-390.png", "/opt/cursor/artifacts/screenshots/about-stats-plain-390.png");
 
 const statsPage = await context.newPage();
 await statsPage.goto(`${base}/stats.html`, { waitUntil: "domcontentloaded" });
@@ -117,6 +117,13 @@ await statsPage.click("[data-clear]");
 assert.equal(await statsPage.inputValue("[data-token]"), "");
 assert.equal(await statsPage.evaluate(() => localStorage.getItem("advent2026.goatcounterToken")), null);
 
+assert.equal(hits.some((hit) => /zgo\.at/i.test(hit.url)), false);
+for (const hit of hits) {
+  const params = new URL(hit.url).searchParams;
+  assert.deepEqual([...params.keys()].sort(), ["e", "p", "rnd", "t"]);
+  assert.equal(hit.referer, "", hit.url);
+}
 await browser.close();
 server.close();
+console.log(`stats network example: ${counts[0]?.url}`);
 console.log(`stats network tests passed: ${paths.join(", ")}`);
