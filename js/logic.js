@@ -3,7 +3,6 @@
 import ui from "../ui-strings.json" with { type: "json" };
 
 export const TIMEZONE = "Asia/Hong_Kong";
-export const SCRIPTURE_COPYRIGHT = ui.passage.copyright;
 
 export function fill(template, vars = {}) {
   return String(template ?? "").replace(/\{(\w+)\}/g, (_, key) =>
@@ -170,23 +169,49 @@ export function parseVerses(text) {
     });
 }
 
+function verseKey(label) {
+  const text = String(label || "");
+  if (!text) return null;
+  if (text.includes(":")) {
+    const [chapter, verse] = text.split(":").map(Number);
+    if (!Number.isInteger(chapter) || !Number.isInteger(verse)) return null;
+    return { chapter, verse };
+  }
+  const verse = Number(text);
+  if (!Number.isInteger(verse)) return null;
+  return { chapter: null, verse };
+}
+
+function versesContinue(previous, next) {
+  if (!previous || !next) return true;
+  if (previous.chapter == null && next.chapter == null) return next.verse === previous.verse + 1;
+  if (previous.chapter != null && next.chapter != null) {
+    if (previous.chapter === next.chapter) return next.verse === previous.verse + 1;
+    return next.chapter === previous.chapter + 1 && next.verse === 1;
+  }
+  return false;
+}
+
 export function passageHtml(text) {
   const verses = parseVerses(text);
   if (!verses.length) {
     return `<p class="placeholder">${esc(ui.passage.placeholder)}</p>`;
   }
-  const body = verses
-    .map((verse) => {
-      const spoken = verse.n
-        ? `<span class="sr-only">${esc(verseSpoken(verse.n))}。</span>`
-        : "";
-      const num = verse.n
-        ? `<sup class="vnum">${esc(verse.n)}</sup>`
-        : "";
-      return `<p class="verse">${num}${spoken}${esc(verse.text)}</p>`;
-    })
-    .join("");
-  return `<div class="passage">${body}</div>`;
+  const parts = [];
+  let previous = null;
+  for (const verse of verses) {
+    const key = verseKey(verse.n);
+    if (previous && key && !versesContinue(previous, key)) {
+      parts.push(`<p class="verse-gap">${esc(ui.passage.skip)}</p>`);
+    }
+    if (key) previous = key;
+    const spoken = verse.n
+      ? `<span class="sr-only">${esc(verseSpoken(verse.n))}。</span>`
+      : "";
+    const num = verse.n ? `<sup class="vnum">${esc(verse.n)}</sup>` : "";
+    parts.push(`<p class="verse">${num}${spoken}${esc(verse.text)}</p>`);
+  }
+  return `<div class="passage">${parts.join("")}</div>`;
 }
 
 export function paragraphsHtml(text) {

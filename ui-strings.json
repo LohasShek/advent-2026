@@ -48,9 +48,9 @@
   ],
   "passage": {
     "placeholder": "經文全文尚未放進這一日。請按上面的出處打開聖經，慢慢讀兩遍。",
+    "skip": "……",
     "verse": "第{n}節",
-    "chapterVerse": "第{chapter}章{verse}節",
-    "copyright": "經文取自《聖經．和合本修訂版》，香港聖經公會，蒙允准使用。"
+    "chapterVerse": "第{chapter}章{verse}節"
   },
   "comparison": {
     "same": "讀經前後的感受很接近。一樣的感受，也可以安然放在神面前。",
@@ -125,7 +125,7 @@
     "finePrompt": "細一點，比較像……",
     "chooseCore": "先在圓環上點一種核心情緒。",
     "intensityLabel": "強度",
-    "intensityPrompt": "有幾強烈？",
+    "intensityPrompt": "有多強烈？",
     "intensitySpoken": "強度 {label}",
     "becauseLabel": "因為……（可留空）",
     "becausePlaceholder": "只留一句，也可以不寫",

@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  SCRIPTURE_COPYRIGHT,
   activeStepId,
   addDays,
   anonymousFeelingEvent,
@@ -156,10 +155,17 @@ assert.equal(activeStepId(reviewDay, entry, "read"), "read");
 entry.completed = true;
 assert.equal(activeStepId(reviewDay, entry, "review"), "review");
 
-assert.equal(SCRIPTURE_COPYRIGHT, "經文取自《聖經．和合本修訂版》，香港聖經公會，蒙允准使用。");
+assert.match(config, /scriptureCopyright:\s*"經文取自《聖經．和合本修訂版》，香港聖經公會，蒙允准使用。"/);
+assert.match(passageHtml("1 甲\n2 乙\n7 丙"), /verse-gap">……<\/p>/);
+assert.doesNotMatch(passageHtml("1 甲\n2 乙"), /verse-gap/);
+assert.match(passageHtml("3:4 甲\n4:5 乙"), /verse-gap/);
+assert.doesNotMatch(passageHtml("3:4 甲\n4:1 乙"), /verse-gap/);
+const day1Passage = passageHtml(plan.days[0].passage.shen);
+assert.equal((day1Passage.match(/verse-gap/g) || []).length, 1);
 assert.ok(readFileSync(new URL("../ui-strings.json", import.meta.url), "utf8").includes("匿名分享我今天的感受"));
+assert.ok(readFileSync(new URL("../ui-strings.json", import.meta.url), "utf8").includes("有多強烈？"));
 assert.equal(appSource.includes("匿名分享我今日嘅感受"), false);
-assert.ok(appSource.includes("SCRIPTURE_COPYRIGHT"));
+assert.ok(appSource.includes("scriptureCopyright"));
 assert.match(readFileSync(new URL("../.github/workflows/pages.yml", import.meta.url), "utf8"), /deploy-pages/);
 
 for (const match of sw.matchAll(/"(\.\/[^"]+)"/g)) {

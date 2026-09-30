@@ -268,7 +268,6 @@ def convert_plan(scripture_path: Path, guide_path: Path) -> dict:
             "end": days[-1]["date"],
             "timezone": "Asia/Hong_Kong",
         },
-        "copyright": "經文取自《聖經．和合本修訂版》，香港聖經公會，蒙允准使用。",
         "days": days,
     }
 

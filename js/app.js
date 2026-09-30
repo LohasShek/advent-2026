@@ -1,5 +1,4 @@
 import {
-  SCRIPTURE_COPYRIGHT,
   activeStepId,
   anonymousFeelingEvent,
   candleAlt,
@@ -59,6 +58,10 @@ const app = {
 
 function siteConfig() {
   return window.ADVENT_CONFIG || {};
+}
+
+function scriptureCopyright() {
+  return String(siteConfig().scriptureCopyright || "").trim();
 }
 
 function activeChurchContact() {
@@ -280,8 +283,8 @@ function renderPicker(which, entry) {
       </div>`
     : `<p class="muted center">${esc(ui.picker.chooseCore)}</p>`;
   const intensity = selected
-    ? `<div class="intensity" role="group" aria-label="${esc(ui.picker.intensityLabel)}">
-        <p class="section-label">${esc(ui.picker.intensityPrompt)}</p>
+    ? `<p class="section-label">${esc(ui.picker.intensityPrompt)}</p>
+      <div class="intensity" role="group" aria-label="${esc(ui.picker.intensityLabel)}">
         ${app.feelings.intensities
           .map((item) => {
             const on = Number(draft.intensity) === item.level;
@@ -436,6 +439,7 @@ function renderRead(day) {
     </div>
     ${day.focus ? `<p class="focus">${esc(fill(ui.day.focus, { focus: day.focus }))}</p>` : ""}
     ${passageHtml(text)}
+    ${scriptureCopyright() ? `<p class="copyright">${esc(scriptureCopyright())}</p>` : ""}
     <button type="button" class="btn" data-action="next">${esc(ui.read.next)}</button>
   </div>`;
 }
@@ -502,7 +506,8 @@ function renderDay(day, requestedStep, today, phase) {
   main.dataset.step = stepId;
   main.innerHTML = `<article class="day">
     ${careBanner(today)}
-    <p class="kicker">${esc(fill(ui.day.kicker, { day: day.day, date: formatFullDate(day.date, day.weekday) }))}${day.kind && day.kind !== "經文" ? ` · ${esc(day.kind)}` : ""}</p>
+    <p class="kicker">${esc(fill(ui.day.kicker, { day: day.day, date: formatFullDate(day.date, day.weekday) }))}</p>
+    ${day.kind && day.kind !== "經文" ? `<p class="kicker kind">${esc(day.kind)}</p>` : ""}
     <h1>${esc(day.title)}</h1>
     <p class="ref">${esc(day.reference)}</p>
     ${candleFigure(day.week, `${esc(day.weekLabel)} · ${esc(day.weekTheme)}`)}
@@ -627,7 +632,7 @@ function renderAbout(today) {
         <button type="button" data-action="set-edition" data-edition="shen" aria-pressed="${edition === "shen" ? "true" : "false"}">${esc(ui.read.shen)}</button>
         <button type="button" data-action="set-edition" data-edition="shangdi" aria-pressed="${edition === "shangdi" ? "true" : "false"}">${esc(ui.read.shangdi)}</button>
       </div>
-      <p class="copyright">${esc(SCRIPTURE_COPYRIGHT)}</p>
+      <p class="copyright">${esc(scriptureCopyright())}</p>
     </div>
     <div class="card">
       <h2>${esc(ui.about.privacyTitle)}</h2>
@@ -639,6 +644,7 @@ function renderAbout(today) {
       ${stats}
       <label class="toggle">
         <input type="checkbox" data-setting="shareFeelings" ${share ? "checked" : ""}>
+        <span class="switch" aria-hidden="true"></span>
         <span>
           <strong>${esc(ui.about.shareLabel)}</strong>
           <small>${esc(ui.about.shareHelp)}</small>
