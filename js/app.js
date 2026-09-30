@@ -29,6 +29,7 @@ import {
   segmentMode,
   toggleWord,
   reviewBounds,
+  reviewIntensity,
   reviewSummary,
   seasonPhase,
   weeksOf,
@@ -375,7 +376,9 @@ function renderComparison(day, entry) {
 function feelBit(pick) {
   if (!pick) return `<span class="muted">${esc(ui.review.notRecorded)}</span>`;
   const color = coreById(pick.coreId)?.color || "#E4DCCF";
-  return `<span class="feel-bit"><i class="dot" style="background:${esc(color)}"></i>${esc(pick.coreZh)} · ${esc(pick.feelingZh)}</span>`;
+  const level = reviewIntensity(pick.intensity);
+  const levelHtml = level ? `<span class="feel-level">${esc(level)}</span>` : "";
+  return `<span class="feel-bit"><i class="dot" style="background:${esc(color)}"></i>${esc(pick.coreZh)} · ${esc(pick.feelingZh)}${levelHtml}</span>`;
 }
 
 function renderBars(counts, label) {

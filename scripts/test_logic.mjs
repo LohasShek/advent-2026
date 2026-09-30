@@ -23,6 +23,7 @@ import {
   toggleWord,
   parseVerses,
   reviewBounds,
+  reviewIntensity,
   reviewSummary,
   seasonPhase,
 } from "../js/logic.js";
@@ -228,8 +229,38 @@ for (const day of plan.days) {
     for (const match of html.matchAll(/data-word="([^"]*)"/g)) {
       assert.match(match[1], /[\u4e00-\u9fff]/, `第 ${day.day} 日 ${edition} 不應點選 ${match[1]}`);
     }
+    const words = day.segments[edition]
+      .split("｜")
+      .map((token) => token.trim())
+      .filter((token) => /[\u4e00-\u9fff]/.test(token));
+    const single = words.filter((token) => token.length === 1).length;
+    assert.ok(words.length > 0 && single < words.length, `第 ${day.day} 日 ${edition} 不應整段退回逐字分詞`);
   }
 }
+const psalm = plan.days.find((day) => day.reference.startsWith("詩 80"));
+assert.equal(psalm.day, 1);
+for (const edition of ["shen", "shangdi"]) {
+  const tokens = psalm.segments[edition].split("｜");
+  assert.equal(tokens.includes("量出"), true, `${edition} 應把「量出」收成一個詞`);
+  assert.equal(tokens.includes("滿碗"), true, `${edition} 應把「滿碗」收成一個詞`);
+  assert.equal(psalm.segments[edition].includes("量｜出"), false);
+  assert.equal(psalm.segments[edition].includes("滿｜碗"), false);
+  const marked = passageHtml(psalm.passage[edition], psalm.segments[edition], ["量出", "滿碗"]);
+  assert.match(marked, /data-word="量出"[^>]*aria-pressed="true"/);
+  assert.match(marked, /data-word="滿碗"[^>]*aria-pressed="true"/);
+}
+assert.equal(reviewIntensity(4), "4");
+assert.equal(reviewIntensity(1), "1");
+assert.equal(reviewIntensity(5), "5");
+assert.equal(reviewIntensity("2"), "2");
+assert.equal(reviewIntensity(0), "");
+assert.equal(reviewIntensity(6), "");
+assert.equal(reviewIntensity(2.5), "");
+assert.equal(reviewIntensity(null), "");
+assert.equal(reviewIntensity(undefined), "");
+assert.equal(reviewIntensity(""), "");
+assert.match(appSource, /reviewIntensity\(pick\.intensity\)/);
+assert.match(appSource, /class="feel-level"/);
 const countToken = (edition, word) =>
   plan.days.reduce(
     (sum, day) => sum + day.segments[edition].split("｜").filter((token) => token === word).length,
@@ -247,6 +278,12 @@ assert.equal(editionGuide("主上帝與神", "shangdi"), "主上帝與上帝");
 assert.equal(countToken("shen", "看哪"), 12);
 assert.equal(countToken("shangdi", "看哪"), 12);
 assert.equal(plan.days.some((day) => day.segments.shen.includes("看｜哪") || day.segments.shangdi.includes("看｜哪")), false);
+const day19 = plan.days.find((day) => day.day === 19);
+for (const edition of ["shen", "shangdi"]) {
+  const tokens = day19.segments[edition].split("｜");
+  assert.equal(tokens.filter((token) => token === "懷的胎").length, 2, `${edition} 第 19 日應有兩處「懷的胎」`);
+  assert.equal(day19.segments[edition].includes("懷｜的｜胎"), false);
+}
 const day18 = plan.days.find((day) => day.day === 18);
 assert.equal(day18.segments.shen.split("｜").includes("主神"), true);
 assert.equal(day18.segments.shangdi.split("｜").includes("主上帝"), true);

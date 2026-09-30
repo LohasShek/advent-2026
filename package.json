@@ -2,5 +2,8 @@
   "name": "advent-2026",
   "private": true,
   "type": "module",
-  "description": "將臨期情感讀經 2026 static PWA"
+  "description": "將臨期情感讀經 2026 static PWA",
+  "scripts": {
+    "sync": "node scripts/sync-from-sheet.mjs"
+  }
 }

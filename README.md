@@ -45,10 +45,10 @@ node scripts/test_ui.mjs
 
 改完請再請校對者看一次經文和用字。
 
-若要更新離線用的內建檔，在 GitHub 的 Actions 手動執行「Sync sheet content」，填上試算表 ID。它會下載經文、每日引導和感受詞彙；若試算表有 `禱文框架`，也一併下載。然後重新產生 JSON，並開一張拉取請求。內容沒有變動就不會開。`禱文框架` 不存在時，同步不會失敗，會留下內建的框架。本地也可以：
+若要更新離線用的內建檔，在 GitHub 的 Actions 手動執行「Sync sheet content」，填上試算表 ID。它會下載經文、每日引導和感受詞彙；若試算表有 `禱文框架`，也一併下載。然後重新產生 JSON，並開一張拉取請求。內容沒有變動就不會開。`禱文框架` 不存在時，同步不會失敗，會留下內建的框架。本地也可以。試算表 ID 已寫在 `config.js`，重跑這一行就會重新下載全部分頁並更新內建 CSV 和 JSON：
 
 ```bash
-node scripts/sync-from-sheet.mjs --sheet-id 試算表ID
+npm run sync
 ```
 
 ## 更新經文或引導
