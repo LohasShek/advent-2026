@@ -11,6 +11,8 @@ import {
   comparisonNote,
   daysBetween,
   editionGuide,
+  SHEN_KEEP_WORDS,
+  teamTextEntries,
   addWord,
   fillPrayerFrame,
   flowSteps,
@@ -271,10 +273,25 @@ assert.deepEqual(
   [4, 11, 17, 26]
 );
 assert.equal(plan.days.filter((day) => !day.experience).length, 23);
-assert.equal(editionGuide(plan.days[16].experience, "shen").includes("帶到神面前"), true);
+assert.equal(editionGuide(plan.days[16].experience, "shen"), plan.days[16].experience);
 assert.equal(editionGuide(plan.days[16].experience, "shangdi").includes("帶到上帝面前"), true);
 assert.equal(editionGuide(plan.days[16].experience, "shangdi").includes("帶到神面前"), false);
 assert.equal(editionGuide("主上帝與神", "shangdi"), "主上帝與上帝");
+assert.equal(editionGuide("神啊", "shangdi"), "上帝啊");
+assert.equal(editionGuide("主神", "shangdi"), "主上帝");
+assert.equal(editionGuide("主上帝", "shangdi"), "主上帝");
+assert.equal(editionGuide("上帝", "shangdi"), "上帝");
+assert.equal(editionGuide("主上帝啊", "shangdi"), "主上帝啊");
+assert.equal(editionGuide("主神與上帝", "shangdi"), "主上帝與上帝");
+assert.equal(editionGuide("主神與上帝", "shangdi").includes("上上帝"), false);
+assert.equal(SHEN_KEEP_WORDS.includes("神奇"), false);
+assert.equal(SHEN_KEEP_WORDS.includes("天神"), false);
+const keptSentence = "這是神聖的時刻，我把這份安靜交給神。";
+assert.equal(editionGuide(keptSentence, "shen"), keptSentence);
+assert.equal(editionGuide(keptSentence, "shangdi"), "這是神聖的時刻，我把這份安靜交給上帝。");
+for (const word of SHEN_KEEP_WORDS) {
+  assert.equal(editionGuide(`請留心${word}，也把神交託`, "shangdi"), `請留心${word}，也把上帝交託`);
+}
 assert.equal(countToken("shen", "看哪"), 12);
 assert.equal(countToken("shangdi", "看哪"), 12);
 assert.equal(plan.days.some((day) => day.segments.shen.includes("看｜哪") || day.segments.shangdi.includes("看｜哪")), false);
@@ -284,6 +301,55 @@ for (const edition of ["shen", "shangdi"]) {
   assert.equal(tokens.filter((token) => token === "懷的胎").length, 2, `${edition} 第 19 日應有兩處「懷的胎」`);
   assert.equal(day19.segments[edition].includes("懷｜的｜胎"), false);
 }
+assert.equal(editionGuide(day19.reflect1, "shen"), day19.reflect1);
+assert.equal(editionGuide(day19.reflect1, "shangdi").includes("蒙上帝奇妙懷孕"), true);
+assert.equal(editionGuide(day19.reflect1, "shangdi").includes("神奇"), false);
+const day27 = plan.days.find((day) => day.day === 27);
+assert.equal(editionGuide(day27.review.prompt, "shen"), day27.review.prompt);
+assert.match(editionGuide(day27.review.prompt, "shangdi"), /哪一天上帝特別親近你/);
+assert.equal(editionGuide(day27.review.prompt, "shangdi").includes("天神"), false);
+const uiCopy = JSON.parse(readFileSync(new URL("../ui-strings.json", import.meta.url), "utf8"));
+const uiKept = new Set(["read.shen", "about.editionBody"]);
+function walkUi(value, path, found) {
+  if (typeof value === "string") found.push([path, value]);
+  else if (value && typeof value === "object") {
+    for (const [key, item] of Object.entries(value)) walkUi(item, path ? `${path}.${key}` : key, found);
+  }
+}
+const uiStrings = [];
+walkUi(uiCopy, "", uiStrings);
+for (const [path, text] of uiStrings) {
+  if (!text.includes("神") || uiKept.has(path)) continue;
+  assert.equal(editionGuide(text, "shangdi").includes("神"), false, path);
+  assert.equal(editionGuide(text, "shen"), text, path);
+}
+let keptShen = [];
+for (const day of plan.days) {
+  for (const [field, raw] of teamTextEntries(day)) {
+    assert.equal(editionGuide(raw, "shen"), raw, `第 ${day.day} 日 ${field} 神版應與原文相同`);
+    const converted = editionGuide(raw, "shangdi");
+    if (converted.includes("神")) keptShen.push(`第 ${day.day} 日 ${field}`);
+  }
+  assert.equal(editionGuide(day.passage.shen, "shen"), day.passage.shen);
+  assert.equal(editionGuide(day.passage.shangdi, "shen"), day.passage.shangdi);
+}
+assert.deepEqual(keptShen, []);
+assert.equal(plan.days[0].passage.shen.includes("神"), true);
+assert.equal(appSource.includes("shown(day.passage"), false);
+assert.equal(appSource.includes("editionGuide(day.passage"), false);
+assert.ok(appSource.includes("shown(day.reflect1)"));
+assert.ok(appSource.includes("shown(day.reflect2)"));
+assert.ok(appSource.includes("shown(day.samplePrayer)"));
+assert.ok(appSource.includes("shown(day.openingPrayer)"));
+assert.ok(appSource.includes("shown(ui.prayer.lead)"));
+assert.ok(appSource.includes("paragraphsHtml(shown(day.review?.prompt))"));
+assert.ok(appSource.includes("shown(item.title)"));
+assert.equal(appSource.includes("esc(item.title)"), false);
+assert.equal(appSource.includes("esc(day.title)"), false);
+const day24 = plan.days.find((day) => day.day === 24);
+assert.equal(day24.title, "神為大衛建立家室");
+assert.equal(editionGuide(day24.title, "shen"), "神為大衛建立家室");
+assert.equal(editionGuide(day24.title, "shangdi"), "上帝為大衛建立家室");
 const day18 = plan.days.find((day) => day.day === 18);
 assert.equal(day18.segments.shen.split("｜").includes("主神"), true);
 assert.equal(day18.segments.shangdi.split("｜").includes("主上帝"), true);
