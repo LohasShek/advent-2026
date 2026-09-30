@@ -5,6 +5,7 @@ import {
   addDays,
   anonymousFeelingEvent,
   canOpenStep,
+  careHtml,
   careMessage,
   careStreak,
   comparisonNote,
@@ -94,8 +95,13 @@ assert.match(config, /churchContact:\s*"歡迎聯絡石守賢傳道"/);
 assert.match(config, /goatcounter:\s*""/);
 assert.equal(
   careMessage(feelings.care.template, "歡迎聯絡石守賢傳道"),
-  "這幾天你好像背著沉重的感受。你不必獨自承受，可以找牧者或信得過的弟兄姊妹傾談。歡迎聯絡石守賢傳道。"
+  "這幾天你好像背著沉重的感受。你不必獨自承受，可以找牧者或信得過的弟兄姊妹傾談。歡迎聯絡石守賢傳道。如果想找人傾談，也可以致電明愛向晴熱線 18288（24 小時）。"
 );
+assert.equal(
+  careHtml(careMessage(feelings.care.template, "歡迎聯絡石守賢傳道")),
+  '這幾天你好像背著沉重的感受。你不必獨自承受，可以找牧者或信得過的弟兄姊妹傾談。歡迎聯絡石守賢傳道。如果想找人傾談，也可以致電明愛向晴熱線 <a href="tel:18288">18288</a>（24 小時）。'
+);
+assert.equal(careHtml("18288<script>"), '<a href="tel:18288">18288</a>&lt;script&gt;');
 
 assert.equal(hongKongDate(new Date("2026-11-28T15:30:00Z")), "2026-11-28");
 assert.equal(hongKongDate(new Date("2026-11-28T16:30:00Z")), "2026-11-29");
@@ -198,6 +204,40 @@ assert.match(glued, /class="token-glue"><span[^>]*data-word="說"[^>]*>說，<\/
 assert.match(glued, /class="token-glue"><span[^>]*data-word="嫩枝"[^>]*aria-pressed="true"[^>]*>「嫩枝」。<\/span>/);
 assert.doesNotMatch(glued, /<\/span>！/);
 assert.doesNotMatch(glued, /<\/span>，/);
+const inlineVerse = passageHtml("來！2 在以法蓮", "來｜！2 ｜在｜以法蓮", []);
+assert.match(inlineVerse, /class="token-glue"><span[^>]*data-word="來"[^>]*>來！<\/span>/);
+assert.match(inlineVerse, /<sup class="vnum">2<\/sup>/);
+assert.doesNotMatch(inlineVerse, /data-word="2"/);
+assert.doesNotMatch(inlineVerse, /data-word="！"/);
+assert.equal(toggleWord([], "，").words.length, 0);
+assert.equal(toggleWord([], "2").words.length, 0);
+assert.deepEqual(toggleWord([], "看哪").words, ["看哪"]);
+assert.deepEqual(toggleWord([], "主上帝").words, ["主上帝"]);
+for (const day of plan.days) {
+  for (const edition of ["shen", "shangdi"]) {
+    assert.equal(
+      segmentMode(day.passage[edition], day.segments[edition]),
+      "tokens",
+      `第 ${day.day} 日 ${edition} 分詞與經文全文不一致`
+    );
+    const html = passageHtml(day.passage[edition], day.segments[edition], []);
+    for (const match of html.matchAll(/data-word="([^"]*)"/g)) {
+      assert.match(match[1], /[\u4e00-\u9fff]/, `第 ${day.day} 日 ${edition} 不應點選 ${match[1]}`);
+    }
+  }
+}
+const countToken = (edition, word) =>
+  plan.days.reduce(
+    (sum, day) => sum + day.segments[edition].split("｜").filter((token) => token === word).length,
+    0
+  );
+assert.equal(countToken("shen", "看哪"), 12);
+assert.equal(countToken("shangdi", "看哪"), 12);
+assert.equal(plan.days.some((day) => day.segments.shen.includes("看｜哪") || day.segments.shangdi.includes("看｜哪")), false);
+const day18 = plan.days.find((day) => day.day === 18);
+assert.equal(day18.segments.shen.split("｜").includes("主神"), true);
+assert.equal(day18.segments.shangdi.split("｜").includes("主上帝"), true);
+assert.equal(day18.segments.shangdi.includes("主｜上帝"), false);
 assert.doesNotMatch(passageHtml(sample, "1 耶西的｜別的"), /toggle-word/);
 let marked = [];
 for (const word of ["殘幹", "嫩枝", "必", "長出", "耶西的"]) marked = addWord(marked, word).words;

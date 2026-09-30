@@ -3,6 +3,7 @@ import {
   anonymousFeelingEvent,
   candleAlt,
   canOpenStep,
+  careHtml,
   careMessage,
   careStreak,
   comparisonNote,
@@ -214,7 +215,7 @@ function careBanner(today) {
   const text = careText(today);
   if (!text) return "";
   return `<aside class="care">
-    <p>${esc(text)}</p>
+    <p>${careHtml(text)}</p>
     <button type="button" class="btn ghost" data-action="dismiss-care">${esc(ui.care.dismiss)}</button>
   </aside>`;
 }
@@ -700,7 +701,7 @@ function renderAbout(today) {
   const share = app.state.shareFeelings === true;
   const contact = activeChurchContact();
   const stats = statsEnabled() ? `<p>${esc(ui.about.statsOn)}</p>` : `<p>${esc(ui.about.statsOff)}</p>`;
-  const careContact = contact ? `${esc(contact)}。` : "";
+  const careContact = contact ? (contact.endsWith("。") ? contact : `${contact}。`) : "";
   setTitle(ui.about.title);
   delete main.dataset.day;
   delete main.dataset.step;
@@ -744,7 +745,7 @@ function renderAbout(today) {
     </div>
     <div class="card">
       <h2>${esc(ui.about.careTitle)}</h2>
-      <p>${fill(ui.about.careBody, { contact: careContact })}</p>
+      <p>${careHtml(fill(ui.about.careBody, { contact: careContact }))}</p>
     </div>
   </article>`;
 }

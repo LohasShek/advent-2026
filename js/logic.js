@@ -158,15 +158,27 @@ function verseSpoken(n) {
 
 export function parseVerses(text) {
   if (!text || !String(text).trim()) return [];
-  return String(text)
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const match = line.match(/^(\d+(?::\d+)?)\s*(.*)$/);
-      if (!match) return { n: "", text: line };
-      return { n: match[1], text: match[2] };
-    });
+  const verses = [];
+  const marker = /(\d+(?::\d+)?)(?=\s)/g;
+  for (const rawLine of String(text).split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const marks = [...line.matchAll(marker)];
+    if (!marks.length) {
+      verses.push({ n: "", text: line });
+      continue;
+    }
+    if (marks[0].index > 0) {
+      const lead = line.slice(0, marks[0].index).trim();
+      if (lead) verses.push({ n: "", text: lead });
+    }
+    for (let index = 0; index < marks.length; index += 1) {
+      const start = marks[index].index + marks[index][1].length;
+      const end = index + 1 < marks.length ? marks[index + 1].index : line.length;
+      verses.push({ n: marks[index][1], text: line.slice(start, end).trim() });
+    }
+  }
+  return verses;
 }
 
 function verseKey(label) {
@@ -194,8 +206,6 @@ function versesContinue(previous, next) {
 
 export const WORD_LIMIT = 5;
 
-const WORD_PUNCT = /^[\s，。！？；：、,.!?;:「」『』（）()…—\-～~]+$/;
-
 export function segmentMode(passage, segmented) {
   const raw = String(segmented ?? "");
   if (!raw.trim()) return "empty";
@@ -206,30 +216,62 @@ export function segmentMode(passage, segmented) {
 function isSelectableWord(text) {
   const trimmed = String(text || "").trim();
   if (!trimmed) return false;
-  if (/^\d+(?::\d+)?$/.test(trimmed)) return false;
-  if (WORD_PUNCT.test(trimmed)) return false;
-  return true;
+  return /[\u4e00-\u9fff]/.test(trimmed);
+}
+
+const CLOSING_CHARS = "！，。？、；：」』）)…";
+const OPENING_CHARS = "「『（(";
+
+function expandPiece(piece) {
+  const atoms = [];
+  let index = 0;
+  const source = String(piece);
+  while (index < source.length) {
+    const verse = /^(\d+(?::\d+)?)(\s*)/.exec(source.slice(index));
+    if (verse) {
+      atoms.push({ text: verse[1], selectable: false, kind: "verse" });
+      index += verse[0].length;
+      continue;
+    }
+    const char = source[index];
+    if (CLOSING_CHARS.includes(char)) {
+      let end = index + 1;
+      while (end < source.length && CLOSING_CHARS.includes(source[end])) end += 1;
+      atoms.push({ text: source.slice(index, end), selectable: false, kind: "close" });
+      index = end;
+      continue;
+    }
+    if (OPENING_CHARS.includes(char)) {
+      let end = index + 1;
+      while (end < source.length && OPENING_CHARS.includes(source[end])) end += 1;
+      atoms.push({ text: source.slice(index, end), selectable: false, kind: "open" });
+      index = end;
+      continue;
+    }
+    if (/\s/.test(char)) {
+      index += 1;
+      continue;
+    }
+    let end = index + 1;
+    while (end < source.length) {
+      const next = source[end];
+      if (/\s/.test(next) || /\d/.test(next) || CLOSING_CHARS.includes(next) || OPENING_CHARS.includes(next)) break;
+      end += 1;
+    }
+    const text = source.slice(index, end);
+    const selectable = isSelectableWord(text);
+    atoms.push({ text, selectable, kind: selectable ? "word" : "other" });
+    index = end;
+  }
+  return atoms;
 }
 
 export function lineTokens(line) {
-  const pieces = String(line).split("｜");
   const tokens = [];
-  const push = (text, selectable) => {
-    if (text === "") return;
-    tokens.push({ text, selectable });
-  };
-  pieces.forEach((piece, index) => {
-    if (index === 0) {
-      const match = piece.match(/^(\d+(?::\d+)?)(\s+)([\s\S]*)$/);
-      if (match) {
-        push(match[1], false);
-        push(match[2], false);
-        if (match[3]) push(match[3], isSelectableWord(match[3]));
-        return;
-      }
-    }
-    push(piece, isSelectableWord(piece));
-  });
+  for (const piece of String(line).split("｜")) {
+    if (!piece) continue;
+    tokens.push(...expandPiece(piece));
+  }
   return tokens;
 }
 
@@ -326,9 +368,6 @@ export function prayerFrameHtml(text) {
     .join("");
 }
 
-const CLOSING_PUNCT = /^[！，。？、；：」』）)…\.!?;:]+$/;
-const OPENING_PUNCT = /^[「『（(]+$/;
-
 function verseBodyHtml(verse) {
   const spoken = verse.n ? `<span class="sr-only">${esc(verseSpoken(verse.n))}。</span>` : "";
   const num = verse.n ? `<sup class="vnum">${esc(verse.n)}</sup>` : "";
@@ -342,31 +381,30 @@ function tokenButton(token, selected, prefix = "", suffix = "") {
   return prefix || suffix ? `<span class="token-glue">${button}</span>` : button;
 }
 
-function tokenLineHtml(line, selected) {
-  const tokens = lineTokens(line);
+function versePrefix(n) {
+  if (!n) return "";
+  return `<span class="sr-only">${esc(verseSpoken(n))}。</span><sup class="vnum">${esc(n)}</sup>`;
+}
+
+function atomsHtml(tokens, selected) {
   let html = "";
-  let index = 0;
-  if (tokens[0] && !tokens[0].selectable && /^\d+(?::\d+)?$/.test(tokens[0].text)) {
-    const n = tokens[0].text;
-    html += `<span class="sr-only">${esc(verseSpoken(n))}。</span><sup class="vnum">${esc(n)}</sup>`;
-    index = 1;
-    if (tokens[1] && !tokens[1].selectable && /^\s+$/.test(tokens[1].text)) index = 2;
-  }
-  const body = tokens.slice(index);
-  for (let cursor = 0; cursor < body.length; cursor += 1) {
-    const token = body[cursor];
-    const trimmed = token.text.trim();
-    if (!token.selectable && CLOSING_PUNCT.test(trimmed)) {
+  for (let cursor = 0; cursor < tokens.length; cursor += 1) {
+    const token = tokens[cursor];
+    if (token.kind === "verse") {
+      html += versePrefix(token.text);
+      continue;
+    }
+    if (token.kind === "close" || token.kind === "other") {
       html += esc(token.text);
       continue;
     }
-    if (!token.selectable && OPENING_PUNCT.test(trimmed)) {
-      const next = body[cursor + 1];
-      if (next?.selectable) {
+    if (token.kind === "open") {
+      const next = tokens[cursor + 1];
+      if (next?.kind === "word") {
         let suffix = "";
         let look = cursor + 2;
-        while (look < body.length && !body[look].selectable && CLOSING_PUNCT.test(body[look].text.trim())) {
-          suffix += body[look].text;
+        while (look < tokens.length && tokens[look].kind === "close") {
+          suffix += tokens[look].text;
           look += 1;
         }
         html += tokenButton(next, selected, token.text, suffix);
@@ -376,20 +414,34 @@ function tokenLineHtml(line, selected) {
       html += esc(token.text);
       continue;
     }
-    if (!token.selectable) {
-      html += esc(token.text);
-      continue;
-    }
     let suffix = "";
     let look = cursor + 1;
-    while (look < body.length && !body[look].selectable && CLOSING_PUNCT.test(body[look].text.trim())) {
-      suffix += body[look].text;
+    while (look < tokens.length && tokens[look].kind === "close") {
+      suffix += tokens[look].text;
       look += 1;
     }
     html += tokenButton(token, selected, "", suffix);
     cursor = look - 1;
   }
-  return `<p class="verse">${html}</p>`;
+  return html;
+}
+
+function tokenBlocks(line) {
+  const blocks = [];
+  let current = null;
+  const start = (verseText) => {
+    current = { key: verseKey(verseText), prefix: versePrefix(verseText), tokens: [] };
+    blocks.push(current);
+  };
+  for (const token of lineTokens(line)) {
+    if (token.kind === "verse") {
+      start(token.text);
+      continue;
+    }
+    if (!current) start("");
+    current.tokens.push(token);
+  }
+  return blocks;
 }
 
 export function passageHtml(text, segmented = "", words = []) {
@@ -403,14 +455,14 @@ export function passageHtml(text, segmented = "", words = []) {
   if (tokens) {
     const selected = new Set(normalizeWords(words));
     for (const line of String(segmented).split("\n")) {
-      const stripped = line.split("｜").join("");
-      const match = stripped.match(/^(\d+(?::\d+)?)\s*/);
-      const key = verseKey(match ? match[1] : "");
-      if (previous && key && !versesContinue(previous, key)) {
-        parts.push(`<p class="verse-gap">${esc(ui.passage.skip)}</p>`);
+      if (!line.trim()) continue;
+      for (const block of tokenBlocks(line)) {
+        if (previous && block.key && !versesContinue(previous, block.key)) {
+          parts.push(`<p class="verse-gap">${esc(ui.passage.skip)}</p>`);
+        }
+        if (block.key) previous = block.key;
+        parts.push(`<p class="verse">${block.prefix}${atomsHtml(block.tokens, selected)}</p>`);
       }
-      if (key) previous = key;
-      parts.push(tokenLineHtml(line, selected));
     }
   } else {
     for (const verse of parseVerses(source)) {
@@ -474,6 +526,13 @@ export function careMessage(template, contact) {
   const cleaned = String(contact || "").trim();
   const piece = cleaned ? (cleaned.endsWith("。") ? cleaned : `${cleaned}。`) : "";
   return String(template || "").replace("{churchContact}", piece);
+}
+
+export function careHtml(text) {
+  return String(text ?? "")
+    .split("18288")
+    .map((part) => esc(part))
+    .join('<a href="tel:18288">18288</a>');
 }
 
 export function comparisonNote(before, after) {

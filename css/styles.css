@@ -697,6 +697,12 @@ input[type="text"], textarea {
   margin-bottom: 0.8rem;
 }
 
+.care a[href^="tel:"],
+article.about a[href^="tel:"] {
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
 .copyright {
   font-size: 0.95rem;
   padding-top: 0.2rem;

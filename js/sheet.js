@@ -233,22 +233,26 @@ function parseCare(rows) {
   const daysMatch = header.match(/連續\s*(\d+|[一二兩三四五六七八九十])\s*[日天]/);
   const levelMatch = header.match(/強度\s*(\d+)/);
   const coreIds = ["悲傷", "懼怕"].filter((name) => header.includes(name)).map((name) => CORE_ZH_TO_ID[name]);
-  const contactMatch = message.match(/^(.*?傾談。)(.*)$/s);
-  if (!contactMatch) {
-    return {
-      consecutiveDays: daysMatch ? careCount(daysMatch[1], 3) : 3,
-      minIntensity: levelMatch ? Number(levelMatch[1]) : 4,
-      coreIds: coreIds.length ? coreIds : ["sad", "scared"],
-      template: message,
-      contact: "",
-    };
-  }
+  const split = splitCareMessage(message);
   return {
     consecutiveDays: daysMatch ? careCount(daysMatch[1], 3) : 3,
     minIntensity: levelMatch ? Number(levelMatch[1]) : 4,
     coreIds: coreIds.length ? coreIds : ["sad", "scared"],
-    template: `${contactMatch[1]}{churchContact}`,
-    contact: contactMatch[2].trim().replace(/。$/, ""),
+    template: split ? split.template : message,
+    contact: split ? split.contact : "",
+  };
+}
+
+function splitCareMessage(message) {
+  const contactMatch = message.match(/^(.*?傾談。)(.*)$/s);
+  if (!contactMatch) return null;
+  const rest = contactMatch[2].trim();
+  const sentence = rest.match(/^([^。]*。)([\s\S]*)$/);
+  const contact = (sentence ? sentence[1] : rest).trim().replace(/。$/, "");
+  const tail = sentence ? sentence[2] : "";
+  return {
+    template: `${contactMatch[1]}{churchContact}${tail}`,
+    contact,
   };
 }
 
