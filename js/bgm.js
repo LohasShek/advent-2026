@@ -14,11 +14,7 @@
  * iOS 在 speechSynthesis 開始或結束時，可能把正在播的 audio 暫停。
  * 只要開關仍然開著，系統暫停會再 play()，朗讀和音樂可以同時聽。
  *
- * 曲目按讀經週次。?week=1..4 強制週次，?bgm=a|b|c|d 揀該週有的候選。
- * 有 a 的週預設播 a；沒有 a 就播 b。指定的字母不存在時，播回該週預設。
- * 第一週 a、b 仍是舊錄音，c、d 是新的旋律候選。
- * 第二週沒有 a，b 是 Calm Ambient Piano Loop，c 是另一首候選。
- * 第三、四週只有一首。
+ * 曲目按讀經週次。每週一首。?week=1..4 強制週次，用來試聽。
  * 計劃開始前用第一週，結束後用第四週。
  */
 
@@ -31,6 +27,7 @@ export const BGM_DUCK_RATIO = 0.25;
 export const BGM_FADE = 0.12;
 
 const CC0 = "http://creativecommons.org/publicdomain/zero/1.0/";
+const PIXABAY = "https://pixabay.com/service/license-summary/";
 
 function track(fields) {
   return Object.freeze({
@@ -60,72 +57,36 @@ const BY = "https://creativecommons.org/licenses/by/3.0/";
 export const BGM_WEEKS = Object.freeze({
   1: Object.freeze({
     a: track({
-      id: "w1-a",
+      id: "w1",
       week: 1,
       slot: "a",
-      src: "./assets/bgm/w1-a.mp3",
-      title: "07 Worms Cathedral organ practice.wav",
-      author: "blaukreuz",
-      source: "https://freesound.org/people/blaukreuz/sounds/131112/",
-      weekLabel: "第一週",
-      theme: "在黑暗中等候",
-    }),
-    b: track({
-      id: "w1-b",
-      week: 1,
-      slot: "b",
-      src: "./assets/bgm/w1-b.mp3",
-      title: "Harmonium Drone2",
-      author: "easy_thunder",
-      source: "https://freesound.org/people/easy_thunder/sounds/264442/",
-      weekLabel: "第一週",
-      theme: "在黑暗中等候",
-    }),
-    c: track({
-      id: "w1-c",
-      week: 1,
-      slot: "c",
-      src: "./assets/bgm/w1-c.mp3",
-      title: "Music box lullaby",
-      author: "csnmedia",
-      source: "https://freesound.org/people/csnmedia/sounds/381973/",
-      weekLabel: "第一週",
-      theme: "在黑暗中等候",
-    }),
-    d: track({
-      id: "w1-d",
-      week: 1,
-      slot: "d",
-      src: "./assets/bgm/w1-d.mp3",
-      title: "Tender Moments Acoustic Loop C.wav",
-      author: "BaDoink",
+      src: "./assets/bgm/w1.mp3",
+      title: "Lead Me Back",
+      author: "Adrian_Huminiak",
+      creditAuthor: "Adrian_Huminiak（Pixabay）",
       edited: true,
-      source: "https://freesound.org/people/BaDoink/sounds/548174/",
+      source: "https://pixabay.com/music/modern-classical-lead-me-back-179847/",
+      license: PIXABAY,
+      licenseName: "Pixabay Content License",
+      licenseLabel: "Pixabay Content License",
       weekLabel: "第一週",
       theme: "在黑暗中等候",
     }),
   }),
   2: Object.freeze({
-    b: track({
-      id: "w2-b",
+    a: track({
+      id: "w2",
       week: 2,
-      slot: "b",
-      src: "./assets/bgm/w2-b.mp3",
-      title: "Calm Ambient Piano Loop",
-      author: "Jadis0x",
-      source: "https://freesound.org/people/Jadis0x/sounds/832628/",
-      weekLabel: "第二週",
-      theme: "預備道路",
-    }),
-    c: track({
-      id: "w2-c",
-      week: 2,
-      slot: "c",
-      src: "./assets/bgm/w2-c.mp3",
-      title: "soft piano.wav",
-      author: "SonOfTheSinfull",
+      slot: "a",
+      src: "./assets/bgm/w2.mp3",
+      title: "Morning Worship",
+      author: "Adrian_Huminiak",
+      creditAuthor: "Adrian_Huminiak（Pixabay）",
       edited: true,
-      source: "https://freesound.org/people/SonOfTheSinfull/sounds/342909/",
+      source: "https://pixabay.com/music/modern-classical-morning-worship-180330/",
+      license: PIXABAY,
+      licenseName: "Pixabay Content License",
+      licenseLabel: "Pixabay Content License",
       weekLabel: "第二週",
       theme: "預備道路",
     }),
@@ -209,10 +170,7 @@ export function resolveBgmTrack(search = "", dateIso = "", days = null, season =
   const params = new URLSearchParams(String(search || "").replace(/^\?/, ""));
   const forced = Number(params.get("week"));
   const week = forced >= 1 && forced <= 4 ? forced : readingWeek(dateIso, days, season);
-  const requested = params.get("bgm");
-  const weekTracks = BGM_WEEKS[week];
-  if (requested && weekTracks[requested]) return weekTracks[requested];
-  return weekTracks.a || weekTracks.b || weekTracks.c || weekTracks.d;
+  return BGM_WEEKS[week].a;
 }
 
 export function bgmTrack() {

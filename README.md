@@ -93,6 +93,11 @@ python3 scripts/convert_csv.py
 
 倉庫的 Pages 來源必須在 GitHub 設定裏改為 **GitHub Actions**（Settings → Pages → Build and deployment → Source）。只選分支部署的話，這個 workflow 不會把網站發佈出去。
 
+## 背景音樂
+
+音樂檔只供本 app 使用，不屬於本 repo 的程式授權，請勿單獨再用或轉發；如需使用請到 Pixabay 來源頁下載。
+The music files are for this app only and are not covered by this repository's software licence. Do not reuse or redistribute them on their own; if you need them, download from the Pixabay source page.
+
 ## 離線
 
 網站可以加到主畫面。Service worker 會把頁面和圖檔留在裝置上，沒有網絡時仍可打開讀過的內容。

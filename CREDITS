@@ -1,81 +1,31 @@
 背景音樂
 
-第一週有四首候選：a、b 仍是舊錄音，c、d 是新的有旋律候選，預設播 a。第二週沒有 a，保留 b，並加 c；沒有 a 時預設播 b。第三、四週各有一首。讀經日期（包括 ?asof）決定週次；計劃開始前用第一週，結束後用第四週。
-網址加上 ?week=1、?week=2、?week=3 或 ?week=4 可強制週次。?bgm=a、?bgm=b、?bgm=c 或 ?bgm=d 改播該週有的那一首；字母不存在時播回該週預設。第三、四週沒有另一首，其他字母會播回那一首。
+每週一首。讀經日期（包括 ?asof）決定週次；計劃開始前用第一週，結束後用第四週。
+網址加上 ?week=1、?week=2、?week=3 或 ?week=4 可強制週次，用來試聽。
 
-這些都是符合該週氣氛的輕柔器樂。第四週是 Kevin MacLeod 的 Silent Night，授權是 CC BY 3.0，和前面幾首的 CC0 不同。
-來源頁上的人聲詩歌（例如 Mystery Mammal 的 O Come, O Come, Emmanuel 和 Silent Night）雖標 CC0，但 Free Music Archive 標明 Instrumental: No，所以沒有用作讀經背景音樂。
-再次搜尋後，仍然沒有找到可核實為 CC0 的 O Come, O Come, Emmanuel、On Jordan's Bank、尊主頌或 O Little Town of Bethlehem 純器樂錄音。Freesound 以 CC0 搜尋 Veni Emmanuel 沒有結果。Wikimedia Commons 上美軍 Old Guard Fife and Drum Corps 的演奏屬美國聯邦政府作品，是笛鼓禮儀樂，不是慢而安靜的器樂，因此沒有採用。
+第一、二週是 Pixabay 上的樂曲，授權是 Pixabay Content License，不是 CC0。授權不准把音訊以大致未改的形式單獨分發，所以倉庫裏只放為本 app 剪過的版本：單聲道、約 96 kbps，並在樂句邊界做交叉淡入。頁面上沒有下載這些音檔的按鈕或連結。
+第三週仍是 blankie.rest 的 Sleepy Upright Piano Seamless Loop，CC0。第四週是 Kevin MacLeod 的 Silent Night，授權是 CC BY 3.0。
 
-CC0 曲目的授權都在 Freesound 的聲音頁核實：頁面寫「Creative Commons 0」，並連結到 CC0 1.0 授權頁。
-旋律屬公有領域，不代表錄音屬公有領域。第一至三週採用的是錄音本身的 CC0。
-沒有使用 Pixabay。第四週的 Silent Night 是明確採用的 CC BY 3.0，其餘不是 CC-BY、CC-BY-SA 或來源不明的音樂。
+音樂檔只供本 app 使用，不屬於本 repo 的程式授權，請勿單獨再用或轉發；如需使用請到 Pixabay 來源頁下載。
+The music files are for this app only and are not covered by this repository's software licence. Do not reuse or redistribute them on their own; if you need them, download from the Pixabay source page.
 
-音樂：07 Worms Cathedral organ practice.wav，blaukreuz。來源頁 CC0 授權
-第一週 a（預設）assets/bgm/w1-a.mp3　「在黑暗中等候」
-曲名：07 Worms Cathedral organ practice.wav
-旋律：不是 Veni Emmanuel。沃爾姆斯主教座堂裏的管風琴練習，慢，連續，音區有低音，沒有節拍。
-作者：blaukreuz
-來源頁：https://freesound.org/people/blaukreuz/sounds/131112/
-授權：CC0 1.0 Universal（公眾領域貢獻）
-授權頁：http://creativecommons.org/publicdomain/zero/1.0/
-長度：約 129 秒。來源頁標 2:08.512，沒有標 bpm。開頭和結尾都有聲音，循環沒有靜音段。
-來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
+音樂：Lead Me Back，Adrian_Huminiak（Pixabay）。已剪輯。來源頁 Pixabay Content License
+第一週 assets/bgm/w1.mp3　「在黑暗中等候」
+曲名：Lead Me Back
+作者：Adrian_Huminiak（Pixabay）
+來源頁：https://pixabay.com/music/modern-classical-lead-me-back-179847/
+授權：Pixabay Content License
+授權頁：https://pixabay.com/service/license-summary/
+長度：約 112 秒。來源頁標 3:04。取原曲 36.2 秒至 148.2 秒，共 14 個 8 秒樂句，再以約 0.15 秒交叉淡入接成循環。單聲道，約 96 kbps。
 
-音樂：Harmonium Drone2，easy_thunder。來源頁 CC0 授權
-第一週 b　assets/bgm/w1-b.mp3
-曲名：Harmonium Drone2
-旋律：不是 Veni Emmanuel。印度簧風琴的持續音，比同一作者的 Drone1 再低一點，慢，安靜，沒有旋律。
-作者：easy_thunder
-來源頁：https://freesound.org/people/easy_thunder/sounds/264442/
-授權：CC0 1.0 Universal（公眾領域貢獻）
-授權頁：http://creativecommons.org/publicdomain/zero/1.0/
-長度：約 87 秒。來源頁標 1:33.859。錄音結尾有淡出，使用時剪去淡出並做交叉淡入，循環沒有靜音，也沒有硬接。
-來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
-
-音樂：Music box lullaby，csnmedia。來源頁 CC0 授權
-第一週 c　assets/bgm/w1-c.mp3　「在黑暗中等候」
-曲名：Music box lullaby
-旋律：八音盒搖籃曲，有清楚的旋律，不是管風琴，也不是單音持續音。和第四週不是同一首。
-作者：csnmedia
-來源頁：https://freesound.org/people/csnmedia/sounds/381973/
-授權：CC0 1.0 Universal（公眾領域貢獻）
-授權頁：http://creativecommons.org/publicdomain/zero/1.0/
-長度：約 84 秒。來源頁標 1:23.980。錄音本身以約 21 秒為一圈重複四次，循環位沒有另做剪接。
-來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
-
-音樂：Tender Moments Acoustic Loop C.wav，BaDoink。已剪輯。來源頁 CC0 授權
-第一週 d　assets/bgm/w1-d.mp3　「在黑暗中等候」
-曲名：Tender Moments Acoustic Loop C.wav
-旋律：木吉他的輕柔撥弦循環，有音符進行，不是管風琴，也不是單音持續音。和八音盒、第二週鋼琴都不同。
-作者：BaDoink
-來源頁：https://freesound.org/people/BaDoink/sounds/548174/
-授權：CC0 1.0 Universal（公眾領域貢獻）
-授權頁：http://creativecommons.org/publicdomain/zero/1.0/
-長度：約 88 秒。來源頁標 1:29.908。循環位做了交叉淡入，沒有靜音段。
-來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。作者說明全部錄音都是 Creative Commons 0。
-
-音樂：Calm Ambient Piano Loop，Jadis0x。來源頁 CC0 授權
-第二週 b（沒有 a 時的預設）assets/bgm/w2-b.mp3
-曲名：Calm Ambient Piano Loop
-旋律：不是上述詩歌。簡單的輕柔鋼琴循環。
-作者：Jadis0x
-來源頁：https://freesound.org/people/Jadis0x/sounds/832628/
-授權：CC0 1.0 Universal（公眾領域貢獻）
-授權頁：http://creativecommons.org/publicdomain/zero/1.0/
-長度：約 84 秒。來源頁標 1:26.399。循環位做了交叉淡入，沒有靜音段。
-來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
-
-音樂：soft piano.wav，SonOfTheSinfull。已剪輯。來源頁 CC0 授權
-第二週 c　assets/bgm/w2-c.mp3　「預備道路」
-曲名：soft piano.wav
-旋律：柔和的鋼琴小旋律（Piano One），比同一週的 Calm Ambient Piano Loop 更亮、句子更短，也不是八音盒或木吉他。
-作者：SonOfTheSinfull
-來源頁：https://freesound.org/people/SonOfTheSinfull/sounds/342909/
-授權：CC0 1.0 Universal（公眾領域貢獻）
-授權頁：http://creativecommons.org/publicdomain/zero/1.0/
-長度：約 60 秒。來源頁標 0:59.590。旋律約每 15 秒重複，循環位做了交叉淡入，沒有靜音段。
-來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
+音樂：Morning Worship，Adrian_Huminiak（Pixabay）。已剪輯。來源頁 Pixabay Content License
+第二週 assets/bgm/w2.mp3　「預備道路」
+曲名：Morning Worship
+作者：Adrian_Huminiak（Pixabay）
+來源頁：https://pixabay.com/music/modern-classical-morning-worship-180330/
+授權：Pixabay Content License
+授權頁：https://pixabay.com/service/license-summary/
+長度：約 106 秒。來源頁標 4:03。取原曲 48.9 秒至 156.8 秒，共 6 個約 18 秒樂句，再以約 1.6 秒交叉淡入接成循環。單聲道，約 96 kbps。
 
 音樂：Sleepy Upright Piano Seamless Loop，blankie.rest。來源頁 CC0 授權
 第三週 a（預設，只有這一首）assets/bgm/w3-a.mp3　「等候的人」
