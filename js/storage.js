@@ -47,12 +47,21 @@ export function blankDay() {
   };
 }
 
+const MARK_LOCKS = ["locked", "marking", "markingLocked", "wordsLocked", "markLocked"];
+
+/** Older journals may store a finished-marking flag. It must not block taps. */
+export function withoutMarkLock(entry) {
+  if (!entry || typeof entry !== "object") return entry;
+  for (const key of MARK_LOCKS) delete entry[key];
+  return entry;
+}
+
 function normalizeDays(days) {
   if (!days || typeof days !== "object") return {};
   const out = {};
   for (const [key, entry] of Object.entries(days)) {
     if (!entry || typeof entry !== "object") continue;
-    out[key] = { ...blankDay(), ...entry, words: normalizeWords(entry.words) };
+    out[key] = withoutMarkLock({ ...blankDay(), ...entry, words: normalizeWords(entry.words) });
   }
   return out;
 }
@@ -62,7 +71,7 @@ export function dayState(state, dayNumber) {
   if (!state.days[key]) state.days[key] = blankDay();
   const entry = state.days[key];
   entry.words = normalizeWords(entry.words);
-  return entry;
+  return withoutMarkLock(entry);
 }
 
 export function clearJournal(state) {

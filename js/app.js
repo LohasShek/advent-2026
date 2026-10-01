@@ -45,15 +45,10 @@ import {
   loadState,
   saveState,
 } from "./storage.js";
-import {
-  initStats,
-  statsEnabled,
-  trackComplete,
-  trackFeelings,
-  trackPage,
-} from "./stats.js";
+import { initStats, trackComplete, trackFeelings, trackOpen } from "./stats.js";
 import { applySheetCache, loadSheetCache, refreshFromSheet, saveSheetCache } from "./sheet.js";
-import { initDeviceSpeech } from "./speech.js";
+import { initDeviceSpeech, speechVoiceStatus, speechPhase, speechRate, setSpeechRate, speechRates, speakPassage, pauseSpeech, resumeSpeech, stopSpeech, passageUtterances, speechCursor } from "./speech.js";
+import { BGM_WEEKS, bgmTrack, screenTrackTitle, readBgmEnabled, readBgmVolume, setBgmEnabled, setBgmVolume, selectBgmTrack, bindBgmGesture, duckBgm, restoreBgm } from "./bgm.js";
 import ui from "../ui-strings.json" with { type: "json" };
 
 const main = document.querySelector("#app");
@@ -75,6 +70,7 @@ const app = {
   frameIndex: 0,
   frameDay: 0,
   touchStart: null,
+  bgmOpen: false,
 };
 
 function siteConfig() {
@@ -204,10 +200,11 @@ function setTab(name) {
   }
 }
 
-function maybeTrack(path) {
-  if (path === app.lastTracked) return;
-  app.lastTracked = path;
-  trackPage(path);
+function maybeTrack(page, dayNumber) {
+  const key = page === "day" ? `day:${dayNumber}` : page;
+  if (key === app.lastTracked) return;
+  app.lastTracked = key;
+  trackOpen(page, dayNumber);
 }
 
 function careText(today) {
@@ -261,18 +258,23 @@ function wheelHtml(selectedId) {
     if (!core) continue;
     path.setAttribute("tabindex", "0");
     path.setAttribute("role", "button");
-    path.setAttribute("aria-label", core.zh);
-    path.setAttribute("aria-pressed", core.id === selectedId ? "true" : "false");
+    const picked = core.id === selectedId;
+    const state = picked ? ui.picker.selected : ui.picker.unselected;
+    path.setAttribute("aria-label", fill(ui.picker.coreSpoken, { name: core.zh, state }));
+    path.setAttribute("aria-pressed", picked ? "true" : "false");
     path.dataset.action = "pick-core";
     path.dataset.core = core.id;
     if (selectedId && core.id !== selectedId) path.classList.add("is-dim");
     if (core.id === selectedId) {
       path.classList.add("is-selected");
-      path.setAttribute("stroke", "#7A6A9E");
+      path.setAttribute("stroke", "#64547E");
       path.setAttribute("stroke-width", "8");
     }
   }
-  for (const text of svg.querySelectorAll("text")) text.setAttribute("pointer-events", "none");
+  for (const text of svg.querySelectorAll("text")) {
+    text.setAttribute("pointer-events", "none");
+    text.setAttribute("aria-hidden", "true");
+  }
   const selected = coreById(selectedId);
   if (selected) {
     const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -282,7 +284,8 @@ function wheelHtml(selectedId) {
     label.setAttribute("font-size", "16");
     label.setAttribute("fill", "#4A4060");
     label.setAttribute("pointer-events", "none");
-    label.textContent = selected.zh;
+    label.textContent = `✓ ${selected.zh}`;
+    label.setAttribute("aria-hidden", "true");
     svg.appendChild(label);
   }
   return holder.innerHTML;
@@ -300,8 +303,9 @@ function renderPicker(which, entry) {
         ${selected.feelings
           .map((item) => {
             const on = item.order === Number(draft.feelingOrder);
-            return `<button type="button" class="choice ${on ? "is-on" : ""}" style="--chip:${esc(selected.color)}" data-action="pick-feeling" data-order="${item.order}" aria-pressed="${on ? "true" : "false"}">
-              <span>${esc(item.zh)}</span><small>${esc(item.en)}</small>
+            const state = on ? ui.picker.selected : ui.picker.unselected;
+            return `<button type="button" class="choice ${on ? "is-on" : ""}" style="--chip:${esc(selected.color)}" data-action="pick-feeling" data-order="${item.order}" aria-pressed="${on ? "true" : "false"}" aria-label="${esc(fill(ui.picker.outerSpoken, { name: item.zh, state }))}">
+              <span>${esc(item.zh)}${on ? `<span class="tick" aria-hidden="true"> ✓</span>` : ""}</span><small aria-hidden="true">${esc(item.en)}</small>
             </button>`;
           })
           .join("")}
@@ -313,8 +317,9 @@ function renderPicker(which, entry) {
         ${app.feelings.intensities
           .map((item) => {
             const on = Number(draft.intensity) === item.level;
-            return `<button type="button" class="choice level ${on ? "is-on" : ""}" data-action="pick-intensity" data-level="${item.level}" aria-pressed="${on ? "true" : "false"}">
-              <span class="lv">${item.level}</span><span class="lb">${esc(item.label)}</span>
+            const state = on ? ui.picker.selected : ui.picker.unselected;
+            return `<button type="button" class="choice level ${on ? "is-on" : ""}" data-action="pick-intensity" data-level="${item.level}" aria-pressed="${on ? "true" : "false"}" aria-label="${esc(fill(ui.picker.intensityChoice, { level: item.level, label: item.label, state }))}">
+              <span class="lv">${item.level}${on ? `<span class="tick" aria-hidden="true"> ✓</span>` : ""}</span><span class="lb">${esc(item.label)}</span>
             </button>`;
           })
           .join("")}
@@ -499,9 +504,137 @@ function renderWordBar(day, entry, mode) {
     mode === "tokens"
       ? ""
       : `<button type="button" class="btn ghost" data-action="add-word">${esc(ui.words.add)}</button>`;
-  const hint =
-    app.wordHintDay === day.day ? `<p class="word-hint" role="status">${esc(ui.words.limit)}</p>` : "";
+  const hint = `<p class="word-hint" aria-live="assertive" aria-atomic="true">${
+    app.wordHintDay === day.day ? esc(ui.words.limit) : ""
+  }</p>`;
   return `${list}${add}${hint}`;
+}
+
+function bgmPercent() {
+  return Math.round(readBgmVolume() * 100);
+}
+
+function bgmStatusLabel() {
+  const on = readBgmEnabled();
+  return fill(ui.bgm.status, {
+    state: on ? ui.bgm.stateOn : ui.bgm.stateOff,
+    percent: String(bgmPercent()),
+  });
+}
+
+function bgmToggle() {
+  const on = readBgmEnabled();
+  const name = fill(ui.bgm.status, {
+    state: on ? ui.bgm.stateOn : ui.bgm.stateOff,
+    percent: String(bgmPercent()),
+  });
+  return `<label class="toggle">
+    <input type="checkbox" data-setting="bgm" aria-label="${esc(name)}" ${on ? "checked" : ""}>
+    <span class="switch" aria-hidden="true"></span>
+    <span>
+      <strong>${esc(on ? ui.bgm.stateOn : ui.bgm.stateOff)}</strong>
+      <small>${esc(ui.bgm.help)}</small>
+    </span>
+  </label>`;
+}
+
+function bgmCreditLine(credit = bgmTrack()) {
+  const week = credit.weekLabel
+    ? `<span class="bgm-week">${esc(fill(ui.bgm.weekLine, { week: credit.weekLabel, theme: credit.theme }))}</span>`
+    : "";
+  const sentence = fill(credit.edited ? ui.bgm.creditEdited : ui.bgm.creditLine, {
+    title: screenTrackTitle(credit.title),
+    author: credit.creditAuthor || credit.author,
+  });
+  return `<p class="bgm-credit">${week}${esc(sentence)}<a href="${esc(credit.source)}" target="_blank" rel="noopener noreferrer">${esc(ui.bgm.sourceLink)}</a> <a href="${esc(credit.license)}" target="_blank" rel="noopener noreferrer">${esc(credit.licenseLabel || ui.bgm.licenseLink)}</a></p>`;
+}
+
+function aboutMusicCredits() {
+  const lines = [];
+  for (const week of [1, 2, 3, 4]) {
+    for (const slot of ["a", "b", "c", "d"]) {
+      const credit = BGM_WEEKS[week]?.[slot];
+      if (credit) lines.push(bgmCreditLine(credit));
+    }
+  }
+  return `<div class="about-credits">${lines.join("")}</div>`;
+}
+
+function bgmSpeakerIcon(on) {
+  const waves = on
+    ? `<path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M16 9.2a3.6 3.6 0 010 5.6M18.4 7a6.4 6.4 0 010 10"/>`
+    : `<path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M16 9.5l5 5M21 9.5l-5 5"/>`;
+  return `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M3.5 9.2h3.2L12 4.6v14.8l-5.3-4.6H3.5z"/>${waves}</svg>`;
+}
+
+function bgmHeaderHtml() {
+  const on = readBgmEnabled();
+  const percent = bgmPercent();
+  const volumeText = fill(ui.bgm.volumeValue, { percent: String(percent) });
+  const open = app.bgmOpen ? "true" : "false";
+  const hidden = app.bgmOpen ? "" : " hidden";
+  return `<button type="button" class="bgm-speaker" data-action="bgm-panel" aria-expanded="${open}" aria-controls="bgm-panel" aria-label="${esc(bgmStatusLabel())}">${bgmSpeakerIcon(on)}</button>
+    <div id="bgm-panel" class="bgm-panel" role="group" aria-label="${esc(ui.bgm.panelLabel)}"${hidden}>
+      ${bgmToggle()}
+      <label class="bgm-volume">
+        <span>${esc(ui.bgm.volumeLabel)}</span>
+        <input type="range" min="0" max="100" step="1" value="${percent}" data-setting="bgm-volume" aria-label="${esc(volumeText)}" aria-valuetext="${esc(volumeText)}">
+      </label>
+      ${bgmCreditLine()}
+    </div>`;
+}
+
+function paintBgmHeader(options = {}) {
+  const root = document.getElementById("bgm-control");
+  if (!root) return;
+  const active = document.activeElement;
+  const mode = options.focus
+    || (active?.matches?.("[data-setting='bgm']") ? "toggle" : "")
+    || (active?.closest?.("[data-action='bgm-panel']") ? "speaker" : "");
+  root.innerHTML = bgmHeaderHtml();
+  if (mode === "toggle") root.querySelector("[data-setting='bgm']")?.focus();
+  if (mode === "speaker") root.querySelector("[data-action='bgm-panel']")?.focus();
+}
+
+function renderSpeakBar() {
+  if (speechVoiceStatus() !== "ready") return "";
+  const phase = speechPhase();
+  const playing = phase === "playing";
+  const paused = phase === "paused";
+  const playLabel = playing ? ui.read.speakPause : paused ? ui.read.speakResume : ui.read.speakPlay;
+  const state = playing ? ui.read.speakPlaying : paused ? ui.read.speakPaused : "";
+  const rates = speechRates()
+    .map((value) => {
+      const on = value === speechRate();
+      const label = fill(ui.read.speakRateOption, { rate: value });
+      return `<button type="button" data-action="speak-rate" data-rate="${value}" aria-pressed="${on ? "true" : "false"}" aria-label="${esc(label)}">${esc(label)}</button>`;
+    })
+    .join("");
+  return `<div class="speak" data-speak-bar role="group" aria-label="${esc(ui.read.speakGroup)}">
+    <p class="speak-hint">${esc(ui.read.speakHint)}</p>
+    <div class="speak-row">
+      <button type="button" class="btn" data-action="speak-toggle" aria-pressed="${playing ? "true" : "false"}">${esc(playLabel)}</button>
+      <button type="button" class="btn ghost" data-action="speak-stop">${esc(ui.read.speakStop)}</button>
+    </div>
+    <div class="speak-rates" role="group" aria-label="${esc(ui.read.speakRate)}">${rates}</div>
+    <p class="speak-status" aria-live="polite">${esc(state)}</p>
+  </div>`;
+}
+
+function paintSpeakingVerse() {
+  const verse = speechCursor()?.verse || "";
+  for (const node of document.querySelectorAll(".passage .verse")) {
+    node.classList.toggle("is-speaking", Boolean(verse) && node.dataset.verse === verse);
+  }
+}
+
+function editionSwitch(edition) {
+  const button = (id, label) => {
+    const on = edition === id;
+    const mark = on ? `<span class="tick" aria-hidden="true">✓</span>` : "";
+    return `<button type="button" data-action="set-edition" data-edition="${id}" aria-pressed="${on ? "true" : "false"}" aria-label="${esc(label)}">${mark}${esc(label)}</button>`;
+  };
+  return `<div class="segmented" role="group" aria-label="${esc(ui.read.editionLabel)}">${button("shen", ui.read.shen)}${button("shangdi", ui.read.shangdi)}</div>`;
 }
 
 function renderRead(day) {
@@ -524,13 +657,11 @@ function renderRead(day) {
   return `<div class="card reading">
     <h2>${esc(ui.read.title)}</h2>
     <p class="hint">${esc(ui.read.hint)}</p>
-    <p class="hint">${esc(markHint)}</p>
-    <div class="segmented" role="group" aria-label="${esc(ui.read.editionLabel)}">
-      <button type="button" data-action="set-edition" data-edition="shen" aria-pressed="${edition === "shen" ? "true" : "false"}">${esc(ui.read.shen)}</button>
-      <button type="button" data-action="set-edition" data-edition="shangdi" aria-pressed="${edition === "shangdi" ? "true" : "false"}">${esc(ui.read.shangdi)}</button>
-    </div>
+    <p class="hint" data-live-hint aria-live="polite">${esc(markHint)}</p>
+    ${editionSwitch(edition)}
+    ${renderSpeakBar()}
     ${day.focus ? `<p class="focus">${esc(shown(fill(ui.day.focus, { focus: day.focus })))}</p>` : ""}
-    ${passageHtml(text, mode === "tokens" ? segmented : "", entry.words, edition)}
+    ${passageHtml(text, mode === "tokens" ? segmented : "", entry.words, edition, { speakingVerse: speechCursor()?.verse || "" })}
     ${renderWordBar(day, entry, mode)}
     ${scriptureCopyright() ? `<p class="copyright">${esc(scriptureCopyright())}</p>` : ""}
     <button type="button" class="btn" data-action="next">${esc(ui.read.next)}</button>
@@ -709,7 +840,7 @@ function miniDots(entry) {
     .filter(Boolean)
     .map((pick) => {
       const color = coreById(pick.coreId)?.color || "#E4DCCF";
-      return `<i class="dot" style="background:${esc(color)}" title="${esc(pick.coreZh)}"></i>`;
+      return `<i class="dot" style="background:${esc(color)}" aria-hidden="true"></i><span class="sr-only">${esc(pick.coreZh)}</span>`;
     });
   return bits.length ? `<span class="mini-dots">${bits.join("")}</span>` : "";
 }
@@ -749,7 +880,6 @@ function renderAbout(today) {
   const edition = app.state.edition === "shangdi" ? "shangdi" : "shen";
   const share = app.state.shareFeelings === true;
   const contact = activeChurchContact();
-  const stats = statsEnabled() ? `<p>${esc(ui.about.statsOn)}</p>` : `<p>${esc(ui.about.statsOff)}</p>`;
   const careContact = contact ? (contact.endsWith("。") ? contact : `${contact}。`) : "";
   setTitle(ui.about.title);
   delete main.dataset.day;
@@ -765,10 +895,7 @@ function renderAbout(today) {
     <div class="card">
       <h2>${esc(ui.about.editionTitle)}</h2>
       <p>${esc(ui.about.editionBody)}</p>
-      <div class="segmented" role="group" aria-label="${esc(ui.read.editionLabel)}">
-        <button type="button" data-action="set-edition" data-edition="shen" aria-pressed="${edition === "shen" ? "true" : "false"}">${esc(ui.read.shen)}</button>
-        <button type="button" data-action="set-edition" data-edition="shangdi" aria-pressed="${edition === "shangdi" ? "true" : "false"}">${esc(ui.read.shangdi)}</button>
-      </div>
+      ${editionSwitch(edition)}
       <p class="copyright">${esc(scriptureCopyright())}</p>
     </div>
     <div class="card">
@@ -778,7 +905,6 @@ function renderAbout(today) {
     </div>
     <div class="card">
       <h2>${esc(ui.about.statsTitle)}</h2>
-      ${stats}
       <label class="toggle">
         <input type="checkbox" data-setting="shareFeelings" ${share ? "checked" : ""}>
         <span class="switch" aria-hidden="true"></span>
@@ -787,6 +913,12 @@ function renderAbout(today) {
           <small>${esc(ui.about.shareHelp)}</small>
         </span>
       </label>
+    </div>
+    <div class="card" id="music-credit">
+      <h2>${esc(ui.bgm.aboutTitle)}</h2>
+      <p>${esc(ui.bgm.aboutBody)}</p>
+      <p>${esc(ui.bgm.duckNote)}</p>
+      ${aboutMusicCredits()}
     </div>
     <div class="card">
       <h2>${esc(ui.about.installTitle)}</h2>
@@ -799,13 +931,64 @@ function renderAbout(today) {
   </article>`;
 }
 
+function focusKey(node) {
+  if (!node?.dataset?.action && !node?.dataset?.setting) return "";
+  const id =
+    node.dataset.slot ||
+    node.dataset.rate ||
+    node.dataset.edition ||
+    node.dataset.index ||
+    node.dataset.order ||
+    node.dataset.level ||
+    node.dataset.core ||
+    node.dataset.setting ||
+    "";
+  return `${node.dataset.action || node.dataset.setting}:${id}`;
+}
+
 function rerenderKeepingPlace() {
+  const active = document.activeElement;
+  const key = focusKey(active);
   const y = window.scrollY;
   render();
   window.scrollTo(0, y);
+  if (!key) return;
+  const [action, id] = key.split(":");
+  const candidates = [
+    ...main.querySelectorAll(`[data-action="${action}"]`),
+    ...main.querySelectorAll(`[data-setting="${action}"]`),
+  ];
+  const next = candidates.find((node) => {
+    const nodeId =
+      node.dataset.slot ||
+      node.dataset.rate ||
+      node.dataset.edition ||
+      node.dataset.index ||
+      node.dataset.order ||
+      node.dataset.level ||
+      node.dataset.core ||
+      node.dataset.setting ||
+      "";
+    return nodeId === id;
+  });
+  next?.focus?.({ preventScroll: true });
+}
+
+function announce(message) {
+  const live = document.querySelector("#live-status");
+  if (!live) return;
+  const next = message || "";
+  if (live.dataset.message === next) return;
+  live.dataset.message = next;
+  live.textContent = "";
+  window.setTimeout(() => {
+    if (live.dataset.message === next) live.textContent = next;
+  }, 40);
 }
 
 function render() {
+  if (app.plan) selectBgmTrack(location.search || "", todayISO(), app.plan.days, app.plan.season);
+  paintBgmHeader();
   stopBreath();
   const route = parseRoute();
   const today = todayISO();
@@ -825,15 +1008,19 @@ function render() {
   const viewKey = `${route.name}:${route.day || ""}:${route.step || ""}:${phase}`;
   const viewChanged = viewKey !== app.lastView;
   app.lastView = viewKey;
+  if (viewChanged) {
+    stopSpeech();
+    restoreBgm();
+  }
 
   if (route.name === "about") {
     renderAbout(today);
     setTab("about");
-    maybeTrack("/about");
+    maybeTrack("about");
   } else if (route.name === "plan" || (route.name === "home" && phase === "after")) {
     renderPlan(today, phase, route.name === "home");
     setTab(route.name === "home" ? "home" : "plan");
-    maybeTrack(route.name === "home" ? "/" : "/plan");
+    maybeTrack(route.name === "home" ? "home" : "plan");
   } else if (route.name === "day") {
     const day = app.plan.days.find((item) => item.day === route.day);
     if (!day) {
@@ -843,17 +1030,19 @@ function render() {
       renderDay(day, route.step, today, phase);
       const onToday = phase === "during" && todayDay && todayDay.day === day.day;
       setTab(onToday ? "home" : "plan");
-      maybeTrack(`/day/${day.day}`);
+      maybeTrack("day", day.day);
     }
   } else {
     renderHome(today);
     setTab("home");
-    maybeTrack("/");
+    maybeTrack("home");
   }
 
+  paintSpeakingVerse();
   if (viewChanged) {
     window.scrollTo(0, 0);
     main.focus({ preventScroll: true });
+    if (main.dataset.step === "read") announce(main.querySelector("[data-live-hint]")?.textContent || "");
   }
 }
 
@@ -906,14 +1095,12 @@ function finishDay(day) {
   captureFields();
   const entry = dayState(app.state, day.day);
   entry.completed = true;
-  if (!entry.completionSent) {
-    trackComplete(day.day);
+  if (!entry.completionSent && trackComplete(day.day)) {
     entry.completionSent = true;
   }
   if (app.state.shareFeelings && !entry.feelingShared) {
     const payload = anonymousFeelingEvent(day.day, entry.before, entry.after);
-    if (payload) {
-      trackFeelings(payload);
+    if (payload && trackFeelings(payload, app.state.shareFeelings === true)) {
       entry.feelingShared = true;
     }
   }
@@ -944,9 +1131,42 @@ function onClick(event) {
     return;
   }
   if (action === "set-edition") {
+    stopSpeech();
+    restoreBgm();
     app.state.edition = button.dataset.edition === "shangdi" ? "shangdi" : "shen";
     saveState(app.state);
-    render();
+    rerenderKeepingPlace();
+    return;
+  }
+  if (action === "speak-toggle") {
+    if (!day) return;
+    const phase = speechPhase();
+    if (phase === "playing") pauseSpeech();
+    else if (phase === "paused") resumeSpeech();
+    else {
+      const edition = currentEdition();
+      const lines = passageUtterances(day.reference, day.passage?.[edition] || "");
+      speakPassage(lines, {
+        onstart: () => duckBgm(),
+        onsentence: () => paintSpeakingVerse(),
+        onend: () => {
+          restoreBgm();
+          rerenderKeepingPlace();
+        },
+      });
+    }
+    rerenderKeepingPlace();
+    return;
+  }
+  if (action === "speak-stop") {
+    stopSpeech();
+    restoreBgm();
+    rerenderKeepingPlace();
+    return;
+  }
+  if (action === "speak-rate") {
+    setSpeechRate(button.dataset.rate);
+    rerenderKeepingPlace();
     return;
   }
   if (action === "prayer-frame") {
@@ -978,6 +1198,7 @@ function onClick(event) {
     }
     saveState(app.state);
     render();
+    main.querySelector("[data-action='pick-feeling']")?.focus();
     return;
   }
   if (action === "pick-feeling") {
@@ -986,14 +1207,17 @@ function onClick(event) {
     draft.feelingOrder = Number(button.dataset.order);
     saveState(app.state);
     render();
+    main.querySelector("[data-action='pick-intensity']")?.focus();
     return;
   }
   if (action === "pick-intensity") {
     captureFields();
     const draft = ensureDraft(entry, main.dataset.step === "after" ? "after" : "before");
-    draft.intensity = Number(button.dataset.level);
+    const level = button.dataset.level;
+    draft.intensity = Number(level);
     saveState(app.state);
     render();
+    main.querySelector(`[data-action='pick-intensity'][data-level='${level}']`)?.focus();
     return;
   }
   if (action === "save-before" || action === "save-after") {
@@ -1044,6 +1268,7 @@ function onClick(event) {
           );
     entry.words = result.words;
     app.wordHintDay = action === "toggle-word" && result.limited ? day.day : 0;
+    if (app.wordHintDay === day.day) announce(ui.words.limit);
     saveState(app.state);
     rerenderKeepingPlace();
     return;
@@ -1054,8 +1279,10 @@ function onClick(event) {
     const before = normalizeWords(entry.words).length;
     const result = addWord(entry.words, selected);
     entry.words = result.words;
-    if (result.limited) app.wordHintDay = day.day;
-    else if (result.words.length !== before) app.wordHintDay = 0;
+    if (result.limited) {
+      app.wordHintDay = day.day;
+      announce(ui.words.limit);
+    } else if (result.words.length !== before) app.wordHintDay = 0;
     app.pendingSelection = "";
     saveState(app.state);
     window.getSelection?.()?.removeAllRanges?.();
@@ -1123,7 +1350,10 @@ async function mainInit() {
   app.wheelSvg = wheelSvg;
   app.state = loadState();
   initStats(siteConfig().goatcounter || "");
-  initDeviceSpeech();
+  let booted = false;
+  initDeviceSpeech(undefined, () => {
+    if (booted) rerenderKeepingPlace();
+  });
   document.addEventListener("selectionchange", () => {
     const text = window.getSelection?.().toString() || "";
     if (text.trim()) app.pendingSelection = text;
@@ -1171,15 +1401,52 @@ async function mainInit() {
     { passive: true }
   );
   main.addEventListener("change", (event) => {
-    const input = event.target.closest("[data-setting='shareFeelings']");
-    if (!input) return;
-    app.state.shareFeelings = input.checked === true;
-    saveState(app.state);
+    const share = event.target.closest("[data-setting='shareFeelings']");
+    if (share) {
+      app.state.shareFeelings = share.checked === true;
+      saveState(app.state);
+    }
   });
+  document.addEventListener("click", (event) => {
+    const opener = event.target.closest?.("[data-action='bgm-panel']");
+    if (opener) {
+      app.bgmOpen = !app.bgmOpen;
+      paintBgmHeader();
+      return;
+    }
+    if (app.bgmOpen && !event.target.closest?.("#bgm-control")) {
+      app.bgmOpen = false;
+      paintBgmHeader();
+    }
+  });
+  document.addEventListener("change", (event) => {
+    const bgm = event.target.closest?.("[data-setting='bgm']");
+    if (!bgm) return;
+    setBgmEnabled(bgm.checked === true);
+    paintBgmHeader({ focus: "toggle" });
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || !app.bgmOpen) return;
+    event.preventDefault();
+    app.bgmOpen = false;
+    paintBgmHeader({ focus: "speaker" });
+  });
+  document.addEventListener("input", (event) => {
+    const range = event.target.closest?.("[data-setting='bgm-volume']");
+    if (!range) return;
+    const percent = setBgmVolume(Number(range.value) / 100);
+    const volumeText = fill(ui.bgm.volumeValue, { percent: String(percent) });
+    range.setAttribute("aria-label", volumeText);
+    range.setAttribute("aria-valuetext", volumeText);
+    const button = document.querySelector("[data-action='bgm-panel']");
+    if (button) button.setAttribute("aria-label", bgmStatusLabel());
+  });
+  bindBgmGesture(document);
   window.addEventListener("hashchange", () => {
     app.thanksDay = 0;
     render();
   });
+  booted = true;
   render();
   if (sheetId) {
     refreshFromSheet({

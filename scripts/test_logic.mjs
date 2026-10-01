@@ -22,6 +22,7 @@ import {
   nextStepId,
   passageHtml,
   passageSlots,
+  verseScreenLabel,
   resolveWords,
   prayerFrameHtml,
   segmentMode,
@@ -33,7 +34,65 @@ import {
   reviewSummary,
   seasonPhase,
 } from "../js/logic.js";
-import { initDeviceSpeech, speakDeviceText, deviceSpeechSupported, cancelDeviceSpeech } from "../js/speech.js";
+import {
+  initDeviceSpeech,
+  speakDeviceText,
+  deviceSpeechSupported,
+  cancelDeviceSpeech,
+  pickChineseVoice,
+  passageUtterances,
+  speakPassage,
+  speechPhase,
+  pauseSpeech,
+  resumeSpeech,
+  stopSpeech,
+  speechVoiceStatus,
+  setSpeechRate,
+  speechCursor,
+  splitSentences,
+} from "../js/speech.js";
+import {
+  bgmLevel,
+  bgmRoute,
+  bgmTrack,
+  readingWeek,
+  resolveBgmTrack,
+  readBgmEnabled,
+  readBgmVolume,
+  writeBgmEnabled,
+  writeBgmVolume,
+  setBgmEnabled,
+  setBgmVolume,
+  selectBgmTrack,
+  handleBgmGesture,
+  duckBgm,
+  restoreBgm,
+  useBgmDrivers,
+  BGM_DUCK_RATIO,
+  BGM_DEFAULT_VOLUME,
+  BGM_FADE,
+  BGM_SRC,
+  BGM_WEEKS,
+  screenTrackTitle,
+} from "../js/bgm.js";
+import { withoutMarkLock } from "../js/storage.js";
+import {
+  statsPolicy,
+  statsPathWhitelist,
+  statsCountUrl,
+  statsTitleFor,
+  isAllowedStatsPath,
+  isFeelingStatsPath,
+  openStatsPath,
+  doneStatsPath,
+  initStats,
+  resetStatsState,
+  trackOpen,
+  trackComplete,
+  trackFeelings,
+  useStatsTransport,
+} from "../js/stats.js";
+import { DEMO_HITS, UNDER_FIVE, shownCount, summarizeStats } from "../js/stats-report.js";
 
 const plan = JSON.parse(readFileSync(new URL("../data/plan.json", import.meta.url), "utf8"));
 const feelings = JSON.parse(readFileSync(new URL("../data/feelings.json", import.meta.url), "utf8"));
@@ -100,7 +159,8 @@ assert.equal(feelings.care.minIntensity, 4);
 assert.deepEqual(feelings.care.coreIds, ["sad", "scared"]);
 assert.match(feelings.care.template, /\{churchContact\}/);
 assert.match(config, /churchContact:\s*"歡迎聯絡石守賢傳道"/);
-assert.match(config, /goatcounter:\s*""/);
+assert.match(config, /goatcounter:\s*"lohasshek"/);
+assert.equal(config.includes("statsRequireOptIn"), false);
 assert.equal(
   careMessage(feelings.care.template, "歡迎聯絡石守賢傳道"),
   "這幾天你好像背著沉重的感受。你不必獨自承受，可以找牧者或信得過的弟兄姊妹傾談。歡迎聯絡石守賢傳道。如果想找人傾談，也可以致電明愛向晴熱線 18288（24 小時）。"
@@ -149,11 +209,16 @@ const event = anonymousFeelingEvent(
   { coreId: "sad", feelingEn: "Lonely", intensity: 4, because: "我好驚", feelingZh: "孤單" },
   { coreId: "peace", feelingEn: "Cared for", intensity: 2, because: "有人在", feelingZh: "被關顧" }
 );
-assert.equal(event.path, "anon-feeling/3/sad/lonely/4/peace/cared_for/2");
+assert.equal(event.path, "feeling/3/sad/lonely/4/peace/cared_for/2");
 assert.equal(event.event, true);
 assert.equal(JSON.stringify(event).includes("我好驚"), false);
 assert.equal(JSON.stringify(event).includes("有人在"), false);
+assert.equal(JSON.stringify(event).includes("孤單"), false);
+assert.equal(JSON.stringify(event).includes("因為"), false);
 assert.equal(anonymousFeelingEvent(1, { coreId: "sad" }, { coreId: "joy", feelingEn: "Hopeful", intensity: 1 }), null);
+assert.equal(anonymousFeelingEvent(3, { coreId: "悲傷", feelingEn: "孤單", intensity: 4 }, { coreId: "sad", feelingEn: "Lonely", intensity: 2 }), null);
+assert.equal(anonymousFeelingEvent(3, { coreId: "sad", feelingEn: "因為我好驚", intensity: 4 }, { coreId: "peace", feelingEn: "Content", intensity: 2 }), null);
+assert.equal(anonymousFeelingEvent(99, { coreId: "sad", feelingEn: "Lonely", intensity: 4 }, { coreId: "peace", feelingEn: "Content", intensity: 2 }), null);
 
 for (const note of [comparisonNote(
   { coreId: "sad", feelingZh: "孤單", intensity: 4 },
@@ -183,16 +248,539 @@ const copyright = "經文引自《和合本2010（和合本修訂版）》，版
 assert.ok(config.includes(`scriptureCopyright: "${copyright}"`));
 assert.equal(config.includes("經文取自"), false);
 assert.equal(appSource.includes("經文取自"), false);
-const spoken = { speak() { throw new Error("不應朗讀"); }, cancel() { throw new Error("不應停止"); } };
-assert.equal(initDeviceSpeech(spoken), true);
+assert.equal(pickChineseVoice([{ lang: "zh-CN", name: "Mandarin" }, { lang: "zh-TW", name: "Taiwan" }, { lang: "zh-HK", name: "Cantonese" }]).name, "Cantonese");
+assert.equal(pickChineseVoice([{ lang: "en-US", name: "Alex" }, { lang: "zh-CN", name: "Mandarin" }]).name, "Mandarin");
+assert.equal(pickChineseVoice([{ lang: "zh-TW", name: "Taiwan" }, { lang: "zh-CN", name: "Mandarin" }]).name, "Taiwan");
+assert.equal(pickChineseVoice([{ lang: "en-US", name: "Alex" }]), null);
+assert.equal(verseScreenLabel("5", "你以眼淚當食物給他們吃"), "第5節，你以眼淚當食物給他們吃");
+assert.equal(verseScreenLabel("80:5", "你以眼淚"), "第80章5節，你以眼淚");
+const calls = [];
+let last = null;
+const synth = {
+  getVoices() {
+    return [
+      { lang: "zh-CN", name: "Mandarin" },
+      { lang: "zh-HK", name: "Cantonese" },
+    ];
+  },
+  createUtterance(text) {
+    return { text, rate: 1, lang: "", voice: null, onstart: null, onend: null, onerror: null };
+  },
+  speak(utter) {
+    calls.push(utter.text);
+    last = utter;
+    assert.equal(utter.voice.name, "Cantonese");
+    utter.onstart?.();
+  },
+  cancel() {
+    calls.push("cancel");
+  },
+  pause() {
+    calls.push("native-pause");
+  },
+  resume() {
+    calls.push("native-resume");
+  },
+  addEventListener() {},
+};
+assert.equal(initDeviceSpeech(synth), true);
 assert.equal(deviceSpeechSupported(), true);
-assert.equal(speakDeviceText("主啊"), false);
-assert.equal(cancelDeviceSpeech(), undefined);
+assert.equal(speechVoiceStatus(), "ready");
+const spokenLines = passageUtterances("詩篇 80:5", "5 你以眼淚當食物給他們吃。\n6 神使他們。");
+assert.deepEqual(spokenLines.map((line) => line.text), ["詩篇 80:5", "第5節，你以眼淚當食物給他們吃。", "第6節，神使他們。"]);
+assert.deepEqual(spokenLines.map((line) => line.verse), ["", "5", "6"]);
+assert.deepEqual(splitSentences("甲。乙！丙？丁；戊"), ["甲。", "乙！", "丙？", "丁；", "戊"]);
+const multi = passageUtterances("以賽亞", "1 甲。乙！");
+assert.deepEqual(multi.map((line) => line.text), ["以賽亞", "第1節，甲。", "乙！"]);
+assert.deepEqual(multi.map((line) => line.verse), ["", "1", "1"]);
+assert.equal(speakPassage(spokenLines), true);
+assert.equal(calls[0], spokenLines[0].text);
+assert.equal(speechPhase(), "playing");
+assert.equal(speechCursor().index, 0);
+last.onend();
+assert.equal(calls.at(-1), spokenLines[1].text);
+assert.equal(speechCursor().verse, "5");
+pauseSpeech();
+assert.equal(speechPhase(), "paused");
+assert.equal(calls.at(-1), "cancel");
+assert.equal(speechCursor().index, 1);
+resumeSpeech();
+assert.equal(speechPhase(), "playing");
+assert.equal(calls.at(-1), spokenLines[1].text);
+assert.equal(last.rate, 1);
+setSpeechRate(0.75);
+assert.equal(calls.at(-1), spokenLines[1].text);
+assert.equal(last.rate, 0.75);
+assert.equal(speechCursor().index, 1);
+pauseSpeech();
+setSpeechRate(1.25);
+assert.equal(speechPhase(), "paused");
+assert.equal(calls.at(-1), "cancel");
+resumeSpeech();
+assert.equal(last.text, spokenLines[1].text);
+assert.equal(last.rate, 1.25);
+stopSpeech();
+assert.equal(speechPhase(), "idle");
+assert.equal(speechCursor(), null);
+assert.equal(speakPassage(spokenLines), true);
+assert.equal(calls.at(-1), spokenLines[0].text);
+assert.equal(calls.includes("native-pause"), false);
+assert.equal(calls.includes("native-resume"), false);
+cancelDeviceSpeech();
+assert.equal(speechPhase(), "idle");
+assert.equal(speakDeviceText("主啊"), true);
+cancelDeviceSpeech();
+assert.equal(speechPhase(), "idle");
 assert.equal(initDeviceSpeech(null), false);
 assert.equal(deviceSpeechSupported(), false);
+assert.equal(speakDeviceText("主啊"), false);
+assert.equal(cancelDeviceSpeech(), undefined);
+const speechSource = readFileSync(new URL("../js/speech.js", import.meta.url), "utf8");
+const bgmSource = readFileSync(new URL("../js/bgm.js", import.meta.url), "utf8");
+const credits = readFileSync(new URL("../CREDITS", import.meta.url), "utf8");
 assert.ok(appSource.includes("initDeviceSpeech"));
+assert.ok(appSource.includes("speakPassage"));
+assert.ok(appSource.includes("duckBgm()"));
+assert.ok(appSource.includes('aria-live="polite"'));
+assert.ok(appSource.includes('aria-live="assertive"'));
 assert.equal(appSource.includes("speechSynthesis.speak"), false);
 assert.equal(appSource.includes("new Audio"), false);
+assert.match(speechSource, /粵語/);
+assert.match(speechSource, /voiceschanged/);
+assert.match(speechSource, /engine\.speak\(utter\)/);
+assert.equal(speechSource.includes(".pause("), false);
+assert.equal(speechSource.includes(".resume("), false);
+assert.match(speechSource, /。！？；/);
+assert.match(bgmSource, /new Ctor\(\)/);
+assert.match(bgmSource, /createMediaElementSource/);
+assert.match(bgmSource, /setTargetAtTime/);
+assert.match(bgmSource, /crossOrigin = "anonymous"/);
+assert.match(bgmSource, /webkitAudioContext/);
+assert.match(bgmSource, /addEventListener\("pointerup"/);
+assert.match(bgmSource, /keydown/);
+assert.match(bgmSource, /touchend/);
+assert.doesNotMatch(bgmSource, /addEventListener\("pointerdown"/);
+assert.equal(BGM_DEFAULT_VOLUME, 0.2);
+assert.equal(BGM_DUCK_RATIO, 0.25);
+assert.equal(bgmLevel(true), 0.05);
+assert.equal(bgmLevel(false), 0.2);
+assert.equal(bgmLevel(true, 0.4), 0.1);
+assert.equal(bgmLevel(false, 0.4), 0.4);
+const memory = { store: {}, getItem(key) { return this.store[key] ?? null; }, setItem(key, value) { this.store[key] = String(value); } };
+assert.equal(readBgmEnabled(memory), true);
+assert.equal(readBgmVolume(memory), 0.2);
+writeBgmEnabled(false, memory);
+assert.equal(readBgmEnabled(memory), false);
+writeBgmEnabled(true, memory);
+assert.equal(readBgmEnabled(memory), true);
+writeBgmVolume(0.4, memory);
+assert.equal(readBgmVolume(memory), 0.4);
+const season = plan.season;
+const pickTrack = (search, date) => resolveBgmTrack(search, date, plan.days, season);
+assert.equal(readingWeek("2026-11-01", plan.days, season), 1);
+assert.equal(readingWeek("2026-11-29", plan.days, season), 1);
+assert.equal(readingWeek("2026-12-05", plan.days, season), 1);
+assert.equal(readingWeek("2026-12-06", plan.days, season), 2);
+assert.equal(readingWeek("2026-12-12", plan.days, season), 2);
+assert.equal(readingWeek("2026-12-13", plan.days, season), 3);
+assert.equal(readingWeek("2026-12-19", plan.days, season), 3);
+assert.equal(readingWeek("2026-12-20", plan.days, season), 4);
+assert.equal(readingWeek("2026-12-25", plan.days, season), 4);
+assert.equal(readingWeek("2026-12-26", plan.days, season), 4);
+assert.equal(pickTrack("", "2026-11-29").id, "w1");
+assert.equal(pickTrack("", "2026-11-29").src, BGM_SRC);
+assert.equal(pickTrack("?bgm=b", "2026-11-29").id, "w1");
+assert.equal(pickTrack("?week=2", "2026-11-29").id, "w2");
+assert.equal(pickTrack("?week=2", "2026-11-29").src, "./assets/bgm/w2.mp3");
+assert.equal(pickTrack("?week=2&bgm=b", "2026-11-01").id, "w2");
+assert.equal(pickTrack("?week=2&bgm=b", "2026-11-01").src, BGM_WEEKS[2].a.src);
+assert.equal(pickTrack("?week=1&bgm=c", "2026-11-29").id, "w1");
+assert.equal(pickTrack("?week=1", "2026-11-29").src, "./assets/bgm/w1.mp3");
+assert.equal(pickTrack("?week=3&bgm=c", "2026-12-15").id, "w3-a");
+assert.equal(pickTrack("?week=3&bgm=a", "2026-12-25").week, 3);
+assert.equal(pickTrack("?bgm=b", "2026-12-15").id, "w3-a");
+assert.equal(pickTrack("?bgm=b", "2026-12-15").src, BGM_WEEKS[3].a.src);
+assert.equal(pickTrack("?bgm=b", "2026-12-24").id, "w4");
+assert.equal(pickTrack("?bgm=old", "2026-12-24").id, "w4");
+assert.equal(pickTrack("?bgm=old", "2026-12-24").src, BGM_WEEKS[4].a.src);
+assert.equal(pickTrack("?bgm=nope", "2026-12-08").id, "w2");
+assert.equal(pickTrack("?bgm=nope", "2026-11-29").slot, "a");
+assert.equal(pickTrack("?week=9", "2026-12-08").week, 2);
+assert.equal(BGM_WEEKS[1].a.title, "Lead Me Back");
+assert.equal(screenTrackTitle(BGM_WEEKS[1].a.title), "Lead Me Back");
+assert.equal(screenTrackTitle(BGM_WEEKS[2].a.title), "Morning Worship");
+assert.equal(BGM_WEEKS[1].a.creditAuthor, "Adrian_Huminiak（Pixabay）");
+assert.equal(BGM_WEEKS[2].a.creditAuthor, "Adrian_Huminiak（Pixabay）");
+assert.equal(BGM_WEEKS[1].a.edited, true);
+assert.equal(BGM_WEEKS[2].a.edited, true);
+assert.equal(BGM_WEEKS[1].b, undefined);
+assert.equal(BGM_WEEKS[2].b, undefined);
+assert.equal(BGM_WEEKS[3].a.author, "blankie.rest");
+assert.equal(BGM_WEEKS[4].a.creditAuthor, "Kevin MacLeod（incompetech.com）");
+assert.equal(BGM_WEEKS[4].a.edited, true);
+assert.equal(BGM_WEEKS[3].b, undefined);
+assert.equal(BGM_WEEKS[4].b, undefined);
+assert.equal(BGM_WEEKS[1].a.license, "https://pixabay.com/service/license-summary/");
+assert.equal(BGM_WEEKS[1].a.licenseName, "Pixabay Content License");
+assert.equal(BGM_WEEKS[1].a.licenseLabel, "Pixabay Content License");
+assert.equal(BGM_WEEKS[4].a.license, "https://creativecommons.org/licenses/by/3.0/");
+assert.equal(BGM_WEEKS[4].a.licenseName, "CC BY 3.0");
+assert.equal(BGM_WEEKS[4].a.licenseLabel, "CC BY 3.0");
+assert.equal(bgmTrack().id, "w1");
+for (const week of [1, 2, 3, 4]) {
+  for (const slot of ["a", "b", "c", "d"]) {
+    const item = BGM_WEEKS[week][slot];
+    if (!item) continue;
+    assert.match(credits, new RegExp(item.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.match(credits, new RegExp(item.source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    const licenseName = week === 4 ? "CC BY 3.0" : week === 3 ? "CC0 1.0" : "Pixabay Content License";
+    assert.equal(item.licenseName, licenseName);
+  }
+}
+assert.equal(credits.includes("已轉換"), false);
+assert.equal(credits.includes("播過的檔案"), false);
+assert.match(credits, /音樂：Silent Night，Kevin MacLeod（incompetech\.com）。已剪輯。來源頁 CC BY 3\.0/);
+assert.match(credits, /音樂：Lead Me Back，Adrian_Huminiak（Pixabay）。已剪輯。來源頁 Pixabay Content License/);
+assert.match(credits, /音樂：Morning Worship，Adrian_Huminiak（Pixabay）。已剪輯。來源頁 Pixabay Content License/);
+assert.match(credits, /音樂：Sleepy Upright Piano Seamless Loop，blankie\.rest。來源頁 CC0 授權/);
+assert.match(credits, /第一、二週的音樂檔（w1\.mp3、w2\.mp3，Pixabay）只供本 app 使用，請勿單獨再用或轉發；如需使用請到 Pixabay 來源頁下載。第三、四週的音樂按其 CC0／CC BY 3\.0 授權使用。/);
+assert.equal(credits.includes("程式授權"), false);
+const speakingCss = readFileSync(new URL("../css/styles.css", import.meta.url), "utf8");
+const speakingRule = speakingCss.slice(speakingCss.indexOf(".verse.is-speaking"), speakingCss.indexOf(".verse-gap"));
+assert.match(speakingRule, /background/);
+assert.match(speakingRule, /box-shadow/);
+assert.equal(/padding|margin/.test(speakingRule), false);
+assert.match(speakingCss, /\.verse \{[^}]*padding: 0\.7em 0\.28em 0\.2em 0\.85em;/s);
+assert.equal(appSource.includes("speak-note"), false);
+assert.equal(appSource.includes("speakMissing"), false);
+assert.ok(appSource.includes('speechVoiceStatus() !== "ready"'));
+assert.ok(appSource.includes('aria-label="${esc(volumeText)}"'));
+assert.match(readFileSync(new URL("../ui-strings.json", import.meta.url), "utf8"), /背景音樂音量 \{percent\}%/);
+assert.ok(appSource.includes('class="tick" aria-hidden="true"'));
+assert.equal(speakingCss.includes('content: "✓ '), false);
+assert.equal(credits.includes("Light Piano Retro Loop 110bpm"), false);
+assert.equal(credits.includes("?bgm=old"), false);
+assert.equal(credits.includes("RokZRooM"), false);
+assert.equal(bgmSource.includes("bgm.mp3"), false);
+assert.equal(bgmSource.includes("BGM_OLD"), false);
+assert.match(credits, /http:\/\/creativecommons\.org\/publicdomain\/zero\/1\.0\//);
+assert.match(credits, /CC0/);
+assert.match(credits, /\?week=/);
+assert.equal(sw.includes("./assets/bgm/w1.mp3"), false);
+assert.equal(sw.includes("./assets/bgm/w3-a.mp3"), false);
+assert.equal(statsPolicy({ code: "lohasshek" }).usage, true);
+assert.equal(statsPolicy({ code: "" }).usage, false);
+const summary = summarizeStats(DEMO_HITS);
+assert.equal(summary.opens.find((row) => row.key === "2026-11-29").label, "14");
+assert.equal(summary.completes.find((row) => row.key === "2026-11-30").label, "3");
+assert.equal(summary.cores.find((row) => row.key === "joy").label, "2");
+assert.equal(summary.cores.find((row) => row.key === "sad").count, 8);
+assert.equal(summary.feelings.find((row) => row.key === "hopeful").label, UNDER_FIVE);
+assert.equal(summary.feelings.find((row) => row.key === "lonely").label, "8");
+assert.equal(summary.intensities.find((row) => row.key === "3").label, UNDER_FIVE);
+assert.equal(summary.intensities.find((row) => row.key === "4").label, "6");
+assert.equal(shownCount(4, "feeling"), UNDER_FIVE);
+assert.equal(shownCount(4, "core"), "4");
+assert.equal(appSource.includes('data-setting="statsOptIn"'), false);
+assert.equal(appSource.includes("statsRequireOptIn"), false);
+const uiText = readFileSync(new URL("../ui-strings.json", import.meta.url), "utf8");
+assert.equal(uiText.includes("我們只計算打開頁面和完成讀經的次數"), false);
+assert.equal(uiText.includes("開啟後只會匿名送出日序、感受代號和強度。"), true);
+assert.equal(appSource.includes("ui.about.statsOn"), false);
+assert.equal(appSource.includes("ui.about.statsOff"), false);
+assert.equal(appSource.includes("trackPage"), false);
+assert.equal(appSource.includes("location.pathname"), false);
+assert.equal(appSource.includes("location.href"), false);
+const statsSource = readFileSync(new URL("../js/stats.js", import.meta.url), "utf8");
+const statsPage = readFileSync(new URL("../js/stats-page.js", import.meta.url), "utf8");
+const statsHtml = readFileSync(new URL("../stats.html", import.meta.url), "utf8");
+assert.doesNotMatch(statsSource, /location\.(pathname|href|search|hash)/);
+assert.doesNotMatch(statsSource, /document\.(title|referrer)/);
+assert.doesNotMatch(statsSource, /gc\.zgo\.at|count\.js|localStorage|document\.cookie/);
+assert.match(statsSource, /referrerPolicy: "no-referrer"/);
+assert.match(statsSource, /credentials: "omit"/);
+assert.match(statsHtml, /data-clear/);
+assert.match(statsPage, /removeItem\(TOKEN_KEY\)/);
+for (const file of [config, appSource, statsSource, statsPage, statsHtml]) {
+  assert.equal(/Authorization:\s*Bearer\s+[A-Za-z0-9_-]{8,}/.test(file), false);
+}
+const whitelist = statsPathWhitelist();
+assert.deepEqual(whitelist.opens, ["open"]);
+assert.equal(whitelist.done.length, 27);
+assert.equal(whitelist.done[4], "day-5-done");
+assert.equal(whitelist.feelingTitle, "feeling");
+for (const path of [...whitelist.opens, ...whitelist.done]) {
+  assert.equal(isAllowedStatsPath(path), true);
+  assert.equal(statsTitleFor(path), path);
+  assert.equal(isFeelingStatsPath(path), false);
+}
+assert.equal(isAllowedStatsPath(event.path), true);
+assert.equal(statsTitleFor(event.path), "feeling");
+for (const blocked of [
+  "/about",
+  "/day/5",
+  "open-day-5?asof=2026-11-29",
+  "?week=2&bgm=b",
+  "#/about",
+  "complete-reading/5",
+  "anon-feeling/3/sad/lonely/4/peace/cared_for/2",
+  "feeling/3/sad/孤單/4/peace/cared_for/2",
+  "feeling/3/sad/lonely/4/peace/cared_for/2/because",
+  "feeling/0/sad/lonely/4/peace/cared_for/2",
+  "feeling/28/sad/lonely/4/peace/cared_for/2",
+  "feeling/3/sad/lonely/6/peace/cared_for/2",
+  "open-plan",
+  "open-about",
+  "open-day-5",
+  "open-day-0",
+  "open-day-28",
+  "day-5-done?asof=1",
+]) {
+  assert.equal(isAllowedStatsPath(blocked), false, blocked);
+}
+assert.equal(openStatsPath("home"), "open");
+assert.equal(openStatsPath("day", 5), "open");
+assert.equal(doneStatsPath(5), "day-5-done");
+resetStatsState();
+const sent = [];
+useStatsTransport((url) => sent.push(url));
+initStats("");
+assert.equal(trackOpen(), false);
+assert.equal(trackComplete(5), false);
+assert.equal(trackFeelings(event, true), false);
+initStats("lohasshek");
+assert.equal(trackOpen("about"), true);
+assert.equal(trackOpen("day", 5), false);
+assert.equal(trackOpen(), false);
+assert.equal(trackFeelings(event, false), false);
+assert.equal(trackFeelings({ ...event, because: "因為我好驚", feelingZh: "孤單", title: "因為我好驚" }, true), true);
+assert.equal(trackComplete(5), true);
+assert.equal(trackComplete(28), false);
+const joined = sent.join("\n");
+function assertCountQuery(url) {
+  const params = new URL(url).searchParams;
+  assert.deepEqual([...params.keys()], ["p", "t", "e", "rnd"]);
+  assert.match(params.get("rnd"), /^[a-z0-9]+$/);
+  assert.equal(params.get("t") === "feeling" || params.get("t") === params.get("p"), true);
+}
+for (const url of sent) assertCountQuery(url);
+assert.equal(new URL(sent[0]).searchParams.get("p"), "open");
+assert.equal(new URL(sent[0]).searchParams.get("t"), "open");
+assert.equal(new URL(sent[0]).searchParams.get("e"), "false");
+assert.equal(sent.filter((url) => new URL(url).searchParams.get("p") === "open").length, 1);
+assert.equal(new URL(sent[1]).searchParams.get("t"), "feeling");
+assert.equal(new URL(sent[1]).searchParams.get("e"), "true");
+assert.equal(new URL(sent[2]).searchParams.get("p"), "day-5-done");
+assert.equal(new URL(sent[2]).searchParams.get("t"), "day-5-done");
+assert.doesNotMatch(joined, /asof|week|bgm|because|我好驚|孤單|[?&](r|s|q)=/);
+assert.equal(joined.includes("location"), false);
+const fixed = statsCountUrl("https://lohasshek.goatcounter.com/count", { path: "open", title: "open", event: false }, "abc123");
+assert.equal(fixed, "https://lohasshek.goatcounter.com/count?p=open&t=open&e=false&rnd=abc123");
+resetStatsState();
+
+function mockAudio() {
+  const element = {
+    crossOrigin: "",
+    loop: false,
+    preload: "",
+    volume: 1,
+    paused: true,
+    plays: 0,
+    src: "",
+    order: [],
+    listeners: {},
+    addEventListener(type, fn) {
+      this.listeners[type] = fn;
+    },
+    play() {
+      this.paused = false;
+      this.plays += 1;
+      return Promise.resolve();
+    },
+    pause() {
+      this.paused = true;
+      this.listeners.pause?.();
+    },
+  };
+  const descriptor = {
+    set(value) {
+      element.order.push(element.crossOrigin);
+      element.srcValue = value;
+    },
+    get() {
+      return element.srcValue || "";
+    },
+  };
+  Object.defineProperty(element, "src", descriptor);
+  function AudioMock() {
+    return element;
+  }
+  return { element, AudioMock };
+}
+
+function mockContext() {
+  const targets = [];
+  const instances = [];
+  let constructed = 0;
+  function AudioContextMock() {
+    constructed += 1;
+    instances.push(this);
+    this.state = "suspended";
+    this.currentTime = 4;
+    this.destination = { kind: "destination" };
+    this.resumes = 0;
+    this.element = null;
+    this.resume = () => {
+      this.resumes += 1;
+      this.state = "running";
+      return Promise.resolve();
+    };
+    this.createMediaElementSource = (el) => {
+      this.element = el;
+      return { connect() {} };
+    };
+    this.createGain = () => ({
+      gain: {
+        value: 1,
+        cancelScheduledValues() {},
+        setValueAtTime() {},
+        setTargetAtTime(value, time, constant) {
+          targets.push({ value, time, constant });
+        },
+      },
+      connect(dest) {
+        this.destinationHit = dest;
+      },
+    });
+  }
+  return { AudioContextMock, targets, instances, count: () => constructed };
+}
+
+const memoryBgm = { store: {}, getItem(key) { return this.store[key] ?? null; }, setItem(key, value) { this.store[key] = String(value); } };
+const gained = mockAudio();
+const graph = mockContext();
+useBgmDrivers({ Audio: gained.AudioMock, AudioContext: graph.AudioContextMock });
+assert.equal(graph.count(), 0);
+assert.equal(setBgmEnabled(false, memoryBgm), false);
+assert.equal(graph.count(), 0);
+assert.equal(setBgmEnabled(true, memoryBgm), true);
+assert.equal(graph.count(), 1);
+assert.equal(gained.element.crossOrigin, "anonymous");
+assert.equal(gained.element.order[0], "anonymous");
+assert.equal(gained.element.src, BGM_SRC);
+assert.equal(gained.element.loop, true);
+assert.equal(bgmRoute(), "gain");
+assert.equal(gained.element.volume, 1);
+assert.equal(graph.targets.at(-1).value, BGM_DEFAULT_VOLUME);
+assert.equal(graph.targets.at(-1).time, 4);
+assert.equal(graph.targets.at(-1).constant, BGM_FADE);
+duckBgm();
+assert.equal(graph.targets.at(-1).value, bgmLevel(true));
+assert.equal(gained.element.volume, 1);
+assert.equal(gained.element.paused, false);
+gained.element.paused = true;
+gained.element.listeners.pause();
+assert.equal(gained.element.paused, false);
+assert.equal(gained.element.plays, 2);
+gained.element.paused = true;
+restoreBgm();
+assert.equal(graph.targets.at(-1).value, BGM_DEFAULT_VOLUME);
+assert.equal(gained.element.paused, false);
+const playsAfterSpeech = gained.element.plays;
+setBgmEnabled(false, memoryBgm);
+assert.equal(gained.element.paused, true);
+assert.equal(gained.element.plays, playsAfterSpeech);
+setBgmEnabled(true, memoryBgm);
+assert.equal(graph.count(), 1);
+
+const volumeOnly = mockAudio();
+function BrokenContext() {
+  throw new Error("no web audio");
+}
+useBgmDrivers({ Audio: volumeOnly.AudioMock, AudioContext: BrokenContext });
+assert.equal(setBgmEnabled(true, memoryBgm), true);
+assert.equal(bgmRoute(), "volume");
+assert.equal(volumeOnly.element.crossOrigin, "anonymous");
+duckBgm();
+assert.equal(volumeOnly.element.volume, bgmLevel(true));
+restoreBgm();
+assert.equal(volumeOnly.element.volume, BGM_DEFAULT_VOLUME);
+volumeOnly.element.paused = true;
+volumeOnly.element.listeners.pause();
+assert.equal(volumeOnly.element.paused, false);
+
+const remembered = { store: {}, getItem(key) { return this.store[key] ?? null; }, setItem(key, value) { this.store[key] = String(value); } };
+const rememberedAudio = mockAudio();
+const rememberedGraph = mockContext();
+useBgmDrivers({ Audio: rememberedAudio.AudioMock, AudioContext: rememberedGraph.AudioContextMock });
+assert.equal(handleBgmGesture({ target: { closest() { return null; } } }, remembered), true);
+assert.equal(rememberedGraph.count(), 1);
+assert.equal(remembered.store["advent2026.bgm"], "on");
+assert.equal(rememberedAudio.element.src, BGM_SRC);
+assert.equal(handleBgmGesture({ target: { closest() { return null; } } }, remembered), false);
+assert.equal(rememberedAudio.element.plays, 1);
+writeBgmEnabled(false, remembered);
+const offAudio = mockAudio();
+const offGraph = mockContext();
+useBgmDrivers({ Audio: offAudio.AudioMock, AudioContext: offGraph.AudioContextMock });
+assert.equal(handleBgmGesture({ target: { closest() { return null; } } }, remembered), false);
+assert.equal(offGraph.count(), 0);
+const switchRoot = {
+  querySelector(selector) {
+    return selector === "[data-setting='bgm']" ? { checked: true } : null;
+  },
+};
+const switchTarget = {
+  closest(selector) {
+    if (selector === ".toggle") return switchRoot;
+    return null;
+  },
+};
+const armed = { store: {}, getItem(key) { return this.store[key] ?? null; }, setItem(key, value) { this.store[key] = String(value); } };
+assert.equal(handleBgmGesture({ target: switchTarget }, armed), false);
+assert.equal(offGraph.count(), 0);
+assert.equal(handleBgmGesture({ target: { closest() { return null; } } }, armed), true);
+assert.equal(offGraph.count(), 1);
+setBgmVolume(0.4, armed);
+assert.equal(readBgmVolume(armed), 0.4);
+duckBgm();
+assert.equal(offGraph.targets.at(-1).value, 0.1);
+restoreBgm();
+assert.equal(offGraph.targets.at(-1).value, 0.4);
+selectBgmTrack("?bgm=b", "2026-12-06", plan.days, plan.season);
+const trackAudio = mockAudio();
+const trackGraph = mockContext();
+useBgmDrivers({ Audio: trackAudio.AudioMock, AudioContext: trackGraph.AudioContextMock });
+selectBgmTrack("?week=2&bgm=b", "2026-11-29", plan.days, plan.season);
+assert.equal(setBgmEnabled(true, armed), true);
+assert.equal(trackAudio.element.src, BGM_WEEKS[2].a.src);
+selectBgmTrack("?bgm=old", "2026-12-06", plan.days, plan.season);
+assert.equal(trackAudio.element.src, BGM_WEEKS[2].a.src);
+useBgmDrivers({});
+const flaky = mockAudio();
+const flakyGraph = mockContext();
+let rejectPlay = true;
+flaky.element.play = function play() {
+  this.plays += 1;
+  if (rejectPlay) return Promise.reject(new Error("blocked"));
+  this.paused = false;
+  return Promise.resolve();
+};
+useBgmDrivers({ Audio: flaky.AudioMock, AudioContext: flakyGraph.AudioContextMock });
+const flakyStore = { store: {}, getItem(key) { return this.store[key] ?? null; }, setItem(key, value) { this.store[key] = String(value); } };
+const blankTarget = { target: { closest() { return null; } } };
+assert.equal(handleBgmGesture(blankTarget, flakyStore), true);
+assert.equal(flakyGraph.instances[0].resumes >= 1, true);
+assert.equal(flaky.element.paused, true);
+assert.equal(handleBgmGesture(blankTarget, flakyStore), true);
+assert.equal(flaky.element.plays, 2);
+rejectPlay = false;
+assert.equal(handleBgmGesture(blankTarget, flakyStore), true);
+assert.equal(flaky.element.paused, false);
+assert.equal(flaky.element.plays, 3);
+assert.equal(handleBgmGesture(blankTarget, flakyStore), false);
+assert.equal(flaky.element.plays, 3);
+useBgmDrivers({});
 assert.match(passageHtml("1 甲\n2 乙\n7 丙"), /verse-gap">……<\/p>/);
 assert.doesNotMatch(passageHtml("1 甲\n2 乙"), /verse-gap/);
 assert.match(passageHtml("3:4 甲\n4:5 乙"), /verse-gap/);
@@ -208,16 +796,16 @@ assert.match(tokenHtml, /data-word="殘幹"[^>]*aria-pressed="true"/);
 assert.match(tokenHtml, /class="token is-on is-run-start is-run-end"[^>]*data-word="殘幹"/);
 assert.doesNotMatch(tokenHtml, /role="button"[^>]*>1<\/span>/);
 const glued = passageHtml("1 側耳而聽！他說，「嫩枝」。", "1 側耳而｜聽｜！｜他｜說｜，｜「｜嫩枝｜」。", ["嫩枝"]);
-assert.match(glued, /class="token-glue"><span role="button"[^>]*data-word="聽"[^>]*>聽<\/span><span class="token-punct">！<\/span>/);
-assert.match(glued, /class="token-glue"><span role="button"[^>]*data-word="說"[^>]*>說<\/span><span class="token-punct">，<\/span>/);
+assert.match(glued, /class="token-glue"><span class="token"[^>]*data-word="聽"[^>]*>聽<\/span><span class="token-punct">！<\/span>/);
+assert.match(glued, /class="token-glue"><span class="token"[^>]*data-word="說"[^>]*>說<\/span><span class="token-punct">，<\/span>/);
 assert.match(
   glued,
-  /class="token-glue"><span class="token-punct">「<\/span><span role="button"[^>]*data-word="嫩枝"[^>]*aria-pressed="true"[^>]*>嫩枝<\/span><span class="token-punct">」。<\/span>/
+  /class="token-glue"><span class="token-punct">「<\/span><span class="token is-on[^"]*"[^>]*data-word="嫩枝"[^>]*>嫩枝<\/span><span class="token-punct">」。<\/span>/
 );
 assert.doesNotMatch(glued, /aria-pressed="true"[^>]*>[^<]*[！，。？、；：」』]/);
 assert.doesNotMatch(glued, /data-word="聽"[^>]*>聽！/);
 const inlineVerse = passageHtml("來！2 在以法蓮", "來｜！2 ｜在｜以法蓮", []);
-assert.match(inlineVerse, /class="token-glue"><span role="button"[^>]*data-word="來"[^>]*>來<\/span><span class="token-punct">！<\/span>/);
+assert.match(inlineVerse, /class="token-glue"><span class="token"[^>]*data-word="來"[^>]*>來<\/span><span class="token-punct">！<\/span>/);
 assert.match(inlineVerse, /<sup class="vnum">2<\/sup>/);
 assert.doesNotMatch(inlineVerse, /data-word="2"/);
 assert.doesNotMatch(inlineVerse, /data-word="！"/);
@@ -332,6 +920,15 @@ assert.match(uiCopy.read.selectHint, /最多 5 處/);
 assert.equal(uiCopy.words.limit, "最多選 5 處");
 assert.equal(uiCopy.read.tokenHint.includes("5 個"), false);
 assert.equal(uiCopy.read.selectHint.includes("5 個"), false);
+assert.equal(uiCopy.read.markOn, undefined);
+assert.equal(uiCopy.read.markOff, undefined);
+const bgmCopy = "預設開啟，音量兩成。第一次點按後開始播放。可在頁頂關掉，並會記住。";
+assert.equal(uiCopy.bgm.help, bgmCopy);
+assert.equal(uiCopy.bgm.aboutBody, bgmCopy);
+assert.equal(uiCopy.about.shareHelp, "開啟後只會匿名送出日序、感受代號和強度。");
+assert.equal(uiCopy.about.statsOn, undefined);
+assert.equal(uiCopy.about.statsOff, undefined);
+assert.equal((JSON.stringify(uiCopy.bgm).match(/預設關閉/g) || []).length, 0);
 for (const day of plan.days) {
   for (const edition of ["shen", "shangdi"]) {
     assert.equal(
@@ -511,12 +1108,12 @@ assert.equal(kept[0].from, 1);
 assert.equal(kept[0].to, 2);
 const keptHtml = passageHtml(keptText, keptSegments, keptMark, "shen");
 assert.deepEqual(
-  [...keptHtml.matchAll(/data-word="量出"[^>]*aria-pressed="(true|false)"/g)].map((match) => match[1]),
+  [...keptHtml.matchAll(/data-action="toggle-word"[^>]*data-word="量出"[^>]*aria-pressed="(true|false)"/g)].map((match) => match[1]),
   ["true", "false"]
 );
 const switched = passageHtml(day7.passage.shangdi, day7.segments.shangdi, godWords);
 assert.equal(
-  [...switched.matchAll(/data-word="上帝"[^>]*aria-pressed="(true|false)"/g)].filter((match) => match[1] === "true").length,
+  [...switched.matchAll(/data-action="toggle-word"[^>]*data-word="上帝"[^>]*aria-pressed="(true|false)"/g)].filter((match) => match[1] === "true").length,
   1
 );
 assert.equal(resolveWords(["沒有這個詞"], shenSlots).join(","), "沒有這個詞");
@@ -622,6 +1219,58 @@ assert.ok(readFileSync(new URL("../ui-strings.json", import.meta.url), "utf8").i
 assert.equal(appSource.includes("匿名分享我今日嘅感受"), false);
 assert.ok(appSource.includes("scriptureCopyright"));
 assert.match(readFileSync(new URL("../.github/workflows/pages.yml", import.meta.url), "utf8"), /deploy-pages/);
+assert.equal(appSource.includes('data-action="toggle-marking"'), false);
+assert.equal(appSource.includes("markOff"), false);
+assert.equal(appSource.includes("app.marking"), false);
+assert.ok(appSource.includes('data-setting="bgm"'));
+assert.ok(appSource.includes('data-setting="bgm-volume"'));
+assert.ok(appSource.includes("aria-valuetext"));
+assert.ok(appSource.includes("bindBgmGesture"));
+assert.ok(appSource.includes('aria-label="${esc(name)}"') || appSource.includes("ui.bgm.status"));
+assert.ok(appSource.includes("Escape"));
+assert.ok(appSource.includes("pick-feeling"));
+assert.ok(appSource.includes("pick-intensity"));
+assert.ok(appSource.includes("selectBgmTrack"));
+const day1mark = plan.days[0];
+const plainVerse = passageHtml(day1mark.passage.shen, day1mark.segments.shen, [], "shen");
+const plainTabs = plainVerse.match(/tabindex="0"/g) || [];
+const plainVerses = plainVerse.match(/<p class="verse[\s"]/g) || [];
+assert.equal(plainTabs.length, plainVerses.length);
+assert.match(plainVerse, /class="sr-only">第1節，/);
+assert.doesNotMatch(plainVerse, /aria-label=/);
+assert.match(plainVerse, /verse-visual" aria-hidden="true"/);
+assert.doesNotMatch(plainVerse, /未圈選|已圈選|role="button"/);
+const day19Html = passageHtml(day19.passage.shen, day19.segments.shen, [], "shen");
+const day19Tabs = (day19Html.match(/tabindex="0"/g) || []).length;
+const day19Verses = (day19Html.match(/<p class="verse[\s"]/g) || []).length;
+const day19Words = (day19Html.match(/data-word="/g) || []).length;
+assert.equal(day19Tabs, day19Verses);
+assert.ok(day19Words > day19Tabs);
+assert.doesNotMatch(day19Html, /未圈選/);
+assert.match(day19Html, /class="sr-only">第/);
+assert.doesNotMatch(day19Html, /aria-label=/);
+const legacyLocked = withoutMarkLock({ words: ["量出"], locked: true, marking: false, markingLocked: true, wordsLocked: true, markLocked: true, reached: "read" });
+assert.equal(legacyLocked.locked, undefined);
+assert.equal(legacyLocked.marking, undefined);
+assert.equal(legacyLocked.markingLocked, undefined);
+assert.deepEqual(legacyLocked.words, ["量出"]);
+assert.equal(legacyLocked.reached, "read");
+const markSlots = passageSlots(day1mark.passage.shen, day1mark.segments.shen);
+const liangAt = markSlots.findIndex((slot) => slot.text === "量出" && slot.verse === "5");
+let markWords = toggleWord([], "量出", { slots: markSlots, slotIndex: liangAt }).words;
+markWords = toggleWord(markWords, "滿碗", { slots: markSlots, slotIndex: liangAt + 1 }).words;
+const markingHtml = passageHtml(day1mark.passage.shen, day1mark.segments.shen, markWords, "shen", { speakingVerse: "5" });
+assert.match(markingHtml, /data-word="量出"/);
+assert.match(markingHtml, /class="token is-on/);
+assert.doesNotMatch(markingHtml, /未圈選|已圈選/);
+assert.match(markingHtml, /class="verse is-speaking" data-verse="5"/);
+assert.doesNotMatch(markingHtml, /data-verse="6"[^>]*is-speaking|is-speaking[^>]*data-verse="6"/);
+const day7speak = plan.days.find((day) => day.day === 7);
+const shenSpeak = passageUtterances(day7speak.reference, day7speak.passage.shen).map((line) => line.text).join("\n");
+const shangdiSpeak = passageUtterances(day7speak.reference, day7speak.passage.shangdi).map((line) => line.text).join("\n");
+assert.match(shenSpeak, /神的話/);
+assert.match(shangdiSpeak, /上帝的話/);
+assert.equal(shangdiSpeak.includes("神的話"), false);
 
 for (const match of sw.matchAll(/"(\.\/[^"]+)"/g)) {
   const relative = match[1].replace(/^\.\//, "");

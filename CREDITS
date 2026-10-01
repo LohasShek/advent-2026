@@ -1,0 +1,55 @@
+背景音樂
+
+每週一首。讀經日期（包括 ?asof）決定週次；計劃開始前用第一週，結束後用第四週。
+網址加上 ?week=1、?week=2、?week=3 或 ?week=4 可強制週次，用來試聽。
+
+第一、二週是 Pixabay 上的樂曲，授權是 Pixabay Content License，不是 CC0。授權不准把音訊以大致未改的形式單獨分發，所以倉庫裏只放為本 app 剪過的版本：單聲道、約 96 kbps，並在樂句邊界做交叉淡入。頁面上沒有下載這些音檔的按鈕或連結。
+第三週仍是 blankie.rest 的 Sleepy Upright Piano Seamless Loop，CC0。第四週是 Kevin MacLeod 的 Silent Night，授權是 CC BY 3.0。
+
+第一、二週的音樂檔（w1.mp3、w2.mp3，Pixabay）只供本 app 使用，請勿單獨再用或轉發；如需使用請到 Pixabay 來源頁下載。第三、四週的音樂按其 CC0／CC BY 3.0 授權使用。
+The week 1 and week 2 music files (w1.mp3 and w2.mp3, Pixabay) are for this app only. Do not reuse or redistribute them on their own; if you need them, download from the Pixabay source page. The week 3 and week 4 music is used under its CC0 and CC BY 3.0 licences.
+
+音樂：Lead Me Back，Adrian_Huminiak（Pixabay）。已剪輯。來源頁 Pixabay Content License
+第一週 assets/bgm/w1.mp3　「在黑暗中等候」
+曲名：Lead Me Back
+作者：Adrian_Huminiak（Pixabay）
+來源頁：https://pixabay.com/music/modern-classical-lead-me-back-179847/
+授權：Pixabay Content License
+授權頁：https://pixabay.com/service/license-summary/
+長度：約 112 秒。來源頁標 3:04。取原曲 36.2 秒至 148.2 秒，共 14 個 8 秒樂句，再以約 0.15 秒交叉淡入接成循環。單聲道，約 96 kbps。
+
+音樂：Morning Worship，Adrian_Huminiak（Pixabay）。已剪輯。來源頁 Pixabay Content License
+第二週 assets/bgm/w2.mp3　「預備道路」
+曲名：Morning Worship
+作者：Adrian_Huminiak（Pixabay）
+來源頁：https://pixabay.com/music/modern-classical-morning-worship-180330/
+授權：Pixabay Content License
+授權頁：https://pixabay.com/service/license-summary/
+長度：約 106 秒。來源頁標 4:03。取原曲 48.9 秒至 156.8 秒，共 6 個約 18 秒樂句，再以約 1.6 秒交叉淡入接成循環。單聲道，約 96 kbps。
+
+音樂：Sleepy Upright Piano Seamless Loop，blankie.rest。來源頁 CC0 授權
+第三週 assets/bgm/w3-a.mp3　「等候的人」
+曲名：Sleepy Upright Piano Seamless Loop
+旋律：不是尊主頌。直立鋼琴，比前兩週暖一點，仍保持安靜。
+作者：blankie.rest
+來源頁：https://freesound.org/people/blankie.rest/sounds/859607/
+授權：CC0 1.0 Universal（公眾領域貢獻）
+授權頁：http://creativecommons.org/publicdomain/zero/1.0/
+長度：約 116 秒。來源頁沒有標 bpm。錄音本身可以無縫循環，開頭和結尾都有聲音。
+來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
+
+音樂：Silent Night，Kevin MacLeod（incompetech.com）。已剪輯。來源頁 CC BY 3.0
+第四週 assets/bgm/w4.mp3　「降生」
+曲名：Silent Night
+旋律：Kevin MacLeod 的 Silent Night，ISRC USUAN1100075。
+作者：Kevin MacLeod（incompetech.com）
+來源頁：https://commons.wikimedia.org/wiki/File:Silent_Night_(ISRC_USUAN1100075).mp3
+授權：CC BY 3.0
+授權頁：https://creativecommons.org/licenses/by/3.0/
+長度：約 123 秒。Commons 上的原裝 MP3 是 5,369,410 bytes、320 kbps、約 131 秒，和 File:Silent Night (Kevin MacLeod) (ISRC USUAN1100075).oga 是同一段錄音。使用時剪去頭尾靜音並做交叉淡入，再把響度對齊其他週，所以網站裏的檔案是 1,974,214 bytes。
+來源頁的類別是 CC-BY-3.0，授權名稱是 Creative Commons Attribution 3.0。
+
+各首播出來的響度都在整合響度約 -29.3 至 -29.8 LUFS。
+
+朗讀使用裝置內建的 Web Speech API（speechSynthesis）。
+不收錄、不產生、不發佈任何朗讀聲檔。

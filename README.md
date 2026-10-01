@@ -74,22 +74,31 @@ python3 scripts/convert_csv.py
 
 打開 `config.js`：
 
-- `goatcounter`：填 GoatCounter 的網站代碼，例如 `my-church`（即 `my-church.goatcounter.com`）。留空代表完全不載入統計、不送出任何數字。若填的是完整網址（以 `https://` 開頭），就會直接用那個計數網址。
-- `churchContact`：關懷提示裏的聯絡句子。執行轉換腳本時，會依詞彙 CSV 的關懷提示覆寫這一行。目前是「歡迎聯絡石守賢傳道」。聯絡句子之後的文字（例如明愛向晴熱線）留在提示裡。畫面上的 18288 是 `tel:18288` 連結。若試算表的關懷提示有另一句聯絡，打開應用程式時以試算表那句為準。
+- `goatcounter`：填 GoatCounter 的網站代碼。目前是 `lohasshek`（即 `lohasshek.goatcounter.com`，計數網址 `https://lohasshek.goatcounter.com/count`）。留空代表完全不載入統計、不送出任何數字。若填的是完整網址（以 `https://` 開頭），就會直接用那個計數網址。
+- `churchContact`：關懷提示裏的聯絡句子。執行轉換腳本時，會依詞彙 CSV 的關懷提示覆寫這一行。目前是「歡迎聯絡石守賢傳道」。聯絡句子之後的文字（例如明愛向晴熱線）留在提示裏。畫面上的 18288 是 `tel:18288` 連結。若試算表的關懷提示有另一句聯絡，打開應用程式時以試算表那句為準。
 - `scriptureCopyright`：畫面上唯一的版權句。關於頁和讀經頁底部都用這一句。
 - `sheetId`：Google 試算表 ID。留空代表不讀試算表。
 
-統計開啟之後，只計算有人打開頁面，以及有人按下「完成今天的讀經」。另外，「關於」頁有一個預設關閉的開關「匿名分享我今天的感受」。打開並完成當日之後，才會送出日序、讀經前後的核心情緒、細分感受和強度。不會送出「因為……」、反思，或任何身分。
+填了網站代碼之後，每個瀏覽器分頁載入應用程式時自動計一次，事件名稱是 `open`。這次計數只用記憶體裏的旗標，轉畫面、轉日、轉版本都不會再計，也不寫 localStorage、cookie 或識別碼。按下「完成今天的讀經」會自動計一次，事件名稱是 `day-1-done` 至 `day-27-done`。程式直接請求 `https://lohasshek.goatcounter.com/count`，不載入 `count.js`。每個請求只有 `p`、`t`、`e`、`rnd` 四個參數，title 是固定英文（`open`、`day-5-done` 或 `feeling`）。不送 referrer、螢幕闊度或網址上的 query，不用 cookie，也不寫統計用的 localStorage 識別碼。
+
+「關於」頁有一個預設關閉的開關「匿名分享我今天的感受」。開關旁邊寫「開啟後只會匿名送出日序、感受代號和強度。」關閉時不會送出任何感受事件。打開並完成當日之後，才匿名送出該日的日序、感受代號和強度。不會送出「因為……」、反思、圈選字詞或身分。
 
 畫面上的介面文字集中在 `ui-strings.json`，用書面中文。經文、禱文和感受詞彙仍來自試算表，不在這份檔案。
 
-次數只在 GoatCounter 的儀表板查看，需要登入。這個網站沒有統計頁。讀者點選的字詞和感受一樣，只留在自己的裝置，不會上傳。
+請在 GoatCounter 把儀表板保持不公開。儀表板登入後仍會顯示少於 5 人的原始數字。應用程式的導覽沒有統計頁。另有一頁 `stats.html`（`noindex`，任何導覽都不會連去）：在自己的瀏覽器貼上 GoatCounter API token，token 只存在那部裝置的 localStorage。「清除 token」會從這部裝置刪掉它。不要把 token 寫進這個倉庫、`config.js` 或網頁程式。GoatCounter 的 API 允許瀏覽器跨來源讀取（回應帶 `Access-Control-Allow-Origin: *`，並允許 `Authorization`），所以這頁可以直接讀 `https://lohasshek.goatcounter.com/api/v0/stats/hits`。細分感受或強度少於 5 會顯示「少於 5」；每日打開、完成次數和核心情緒仍顯示數字。網址加上 `?demo=1` 會用內建的示例數字，不必有 token。讀者點選的字詞和寫下的句子一樣，只留在自己的裝置，不會上傳。
 
 ## 發佈到 GitHub Pages
 
 `.github/workflows/pages.yml` 會在 `main` 被推送時，重新轉換 CSV、跑測試，然後用 GitHub Actions 部署。
 
 倉庫的 Pages 來源必須在 GitHub 設定裏改為 **GitHub Actions**（Settings → Pages → Build and deployment → Source）。只選分支部署的話，這個 workflow 不會把網站發佈出去。
+
+## 背景音樂
+
+第一、二週的音樂檔（w1.mp3、w2.mp3，Pixabay）只供本 app 使用，請勿單獨再用或轉發；如需使用請到 Pixabay 來源頁下載。第三、四週的音樂按其 CC0／CC BY 3.0 授權使用。
+The week 1 and week 2 music files (w1.mp3 and w2.mp3, Pixabay) are for this app only. Do not reuse or redistribute them on their own; if you need them, download from the Pixabay source page. The week 3 and week 4 music is used under its CC0 and CC BY 3.0 licences.
+音樂檔另有授權，見 CREDITS。
+Music files have their own licences; see CREDITS.
 
 ## 離線
 

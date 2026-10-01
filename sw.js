@@ -3,7 +3,7 @@
    are fetched from the network first so a new deploy shows up online,
    and fall back to this cache when the phone is offline. */
 
-const CACHE = "advent-2026-v3";
+const CACHE = "advent-2026-v11";
 
 const ASSETS = [
   "./",
@@ -18,6 +18,7 @@ const ASSETS = [
   "./js/storage.js",
   "./js/stats.js",
   "./js/speech.js",
+  "./js/bgm.js",
   "./js/csv.js",
   "./js/sheet.js",
   "./data/plan.json",
@@ -59,6 +60,9 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+/* Background music is not in ASSETS. A played mp3 is cached here on the
+   first successful fetch, so only tracks the reader has heard stay offline. */
+
 function isImage(url) {
   return /\.(png|svg|webp|jpe?g)$/i.test(url.pathname);
 }
@@ -70,14 +74,17 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === "navigate") {
+    const statsPage = url.pathname.endsWith("/stats.html");
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put("./index.html", copy));
+          if (!statsPage && response && response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE).then((cache) => cache.put("./index.html", copy));
+          }
           return response;
         })
-        .catch(() => caches.match("./index.html"))
+        .catch(() => caches.match(statsPage ? request : "./index.html"))
     );
     return;
   }

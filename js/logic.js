@@ -226,6 +226,13 @@ function verseSpoken(n) {
   return fill(ui.passage.verse, { n });
 }
 
+/** One screen-reader sentence for a verse, in the edition already chosen. */
+export function verseScreenLabel(n, body) {
+  const text = String(body || "").replace(/\s+/g, " ").trim();
+  if (!n) return text;
+  return `${verseSpoken(n)}，${text}`;
+}
+
 export function parseVerses(text) {
   if (!text || !String(text).trim()) return [];
   const verses = [];
@@ -766,10 +773,18 @@ export function prayerFrameHtml(text) {
     .join("");
 }
 
-function verseBodyHtml(verse) {
-  const spoken = verse.n ? `<span class="sr-only">${esc(verseSpoken(verse.n))}。</span>` : "";
+function verseAttrs(label, speakingVerse, screenLabel = "") {
+  const on = speakingVerse && String(speakingVerse) === String(label);
+  const verseAttr = label ? ` data-verse="${esc(label)}"` : "";
+  const tab = screenLabel ? ` tabindex="0"` : "";
+  const name = screenLabel ? `<span class="sr-only">${esc(screenLabel)}</span>` : "";
+  return `<p class="verse${on ? " is-speaking" : ""}"${verseAttr}${tab}>${name}`;
+}
+
+function verseBodyHtml(verse, speakingVerse) {
+  const label = verseScreenLabel(verse.n, verse.text);
   const num = verse.n ? `<sup class="vnum">${esc(verse.n)}</sup>` : "";
-  return `<p class="verse">${spoken}${num}${esc(verse.text)}</p>`;
+  return `${verseAttrs(verse.n, speakingVerse, label)}<span class="verse-visual" aria-hidden="true">${num}${esc(verse.text)}</span></p>`;
 }
 
 function tokenPunct(text) {
@@ -790,31 +805,61 @@ function tokenButton(token, face = "", prefix = "", suffix = "", slotIndex = -1)
   const value = token.text.trim();
   const slot = slotIndex >= 0 ? ` data-slot="${slotIndex}"` : "";
   const on = face.includes("is-on");
-  const button = `<span role="button" tabindex="0" class="token${face ? ` ${face}` : ""}" data-action="toggle-word" data-word="${esc(value)}"${slot} aria-pressed="${on ? "true" : "false"}">${esc(token.text)}</span>`;
+  const button = `<span class="token${face ? ` ${face}` : ""}" data-action="toggle-word" data-word="${esc(value)}"${slot} aria-pressed="${on ? "true" : "false"}">${esc(token.text)}</span>`;
   if (!prefix && !suffix) return button;
   return `<span class="token-glue">${tokenPunct(prefix)}${button}${tokenPunct(suffix)}</span>`;
 }
 
 function versePrefix(n) {
   if (!n) return "";
-  return `<span class="sr-only">${esc(verseSpoken(n))}。</span><sup class="vnum">${esc(n)}</sup>`;
+  return `<sup class="vnum">${esc(n)}</sup>`;
+}
+
+function renderRun(run) {
+  if (run.parts.length === 1) {
+    const part = run.parts[0];
+    return tokenButton({ text: part.raw }, part.face, run.prefix, run.suffix, part.slotIndex);
+  }
+  const inner = run.parts
+    .map(
+      (part) =>
+        `<span class="token${part.face ? ` ${part.face}` : ""}" data-word="${esc(part.text)}" aria-pressed="${run.on ? "true" : "false"}">${esc(part.raw)}</span>`
+    )
+    .join("");
+  const first = run.parts[0];
+  const button = `<span class="token-run${run.on ? " is-on" : ""}" data-action="toggle-word" data-word="${esc(first.text)}" data-slot="${first.slotIndex}" aria-pressed="${run.on ? "true" : "false"}">${inner}</span>`;
+  if (!run.prefix && !run.suffix) return button;
+  return `<span class="token-glue">${tokenPunct(run.prefix)}${button}${tokenPunct(run.suffix)}</span>`;
 }
 
 function atomsHtml(tokens, owners, slotState, slots) {
-  let html = "";
+  const items = [];
   const mark = () => {
     const slotIndex = slotState.index;
     slotState.index += 1;
     return { face: tokenFace(slotIndex, slots, owners), slotIndex };
   };
+  const pushWord = (token, prefix, suffix) => {
+    const selected = mark();
+    items.push({
+      kind: "word",
+      text: token.text.trim(),
+      raw: token.text,
+      prefix,
+      suffix,
+      face: selected.face,
+      slotIndex: selected.slotIndex,
+      on: selected.face.includes("is-on"),
+    });
+  };
   for (let cursor = 0; cursor < tokens.length; cursor += 1) {
     const token = tokens[cursor];
     if (token.kind === "verse") {
-      html += versePrefix(token.text);
+      items.push({ kind: "html", html: versePrefix(token.text) });
       continue;
     }
     if (token.kind === "close" || token.kind === "other") {
-      html += esc(token.text);
+      items.push({ kind: "html", html: esc(token.text) });
       continue;
     }
     if (token.kind === "open") {
@@ -826,12 +871,11 @@ function atomsHtml(tokens, owners, slotState, slots) {
           suffix += tokens[look].text;
           look += 1;
         }
-        const selected = mark();
-        html += tokenButton(next, selected.face, token.text, suffix, selected.slotIndex);
+        pushWord(next, token.text, suffix);
         cursor = look - 1;
         continue;
       }
-      html += esc(token.text);
+      items.push({ kind: "html", html: esc(token.text) });
       continue;
     }
     let suffix = "";
@@ -840,10 +884,42 @@ function atomsHtml(tokens, owners, slotState, slots) {
       suffix += tokens[look].text;
       look += 1;
     }
-    const selected = mark();
-    html += tokenButton(token, selected.face, "", suffix, selected.slotIndex);
+    pushWord(token, "", suffix);
     cursor = look - 1;
   }
+  let html = "";
+  let run = null;
+  const flush = () => {
+    if (!run) return;
+    html += renderRun(run);
+    run = null;
+  };
+  for (const item of items) {
+    if (item.kind !== "word") {
+      flush();
+      html += item.html;
+      continue;
+    }
+    const prevSlot = run ? run.slotIndexes[run.slotIndexes.length - 1] : -1;
+    const joined = run && run.on && item.on && !item.prefix && slots[prevSlot]?.joinNext;
+    if (joined) {
+      run.parts.push(item);
+      run.slotIndexes.push(item.slotIndex);
+      run.text += item.text;
+      run.suffix = item.suffix;
+      continue;
+    }
+    flush();
+    run = {
+      on: item.on,
+      text: item.text,
+      prefix: item.prefix,
+      suffix: item.suffix,
+      parts: [item],
+      slotIndexes: [item.slotIndex],
+    };
+  }
+  flush();
   return html;
 }
 
@@ -865,11 +941,12 @@ function tokenBlocks(line) {
   return blocks;
 }
 
-export function passageHtml(text, segmented = "", words = [], edition = "") {
+export function passageHtml(text, segmented = "", words = [], edition = "", options = {}) {
   const source = String(text || "");
   if (!source.trim()) {
     return `<p class="placeholder">${esc(ui.passage.placeholder)}</p>`;
   }
+  const speakingVerse = options?.speakingVerse || "";
   const tokens = segmentMode(source, segmented) === "tokens";
   const parts = [];
   let previous = null;
@@ -884,7 +961,9 @@ export function passageHtml(text, segmented = "", words = [], edition = "") {
           parts.push(`<p class="verse-gap">${esc(ui.passage.skip)}</p>`);
         }
         if (block.key) previous = block.key;
-        parts.push(`<p class="verse">${block.prefix}${atomsHtml(block.tokens, owners, slotState, slots)}</p>`);
+        const body = block.tokens.map((token) => token.text).join("");
+        const visual = `<span class="verse-visual" aria-hidden="true">${block.prefix}${atomsHtml(block.tokens, owners, slotState, slots)}</span>`;
+        parts.push(`${verseAttrs(block.label, speakingVerse, verseScreenLabel(block.label, body))}${visual}</p>`);
       }
     }
   } else {
@@ -894,7 +973,7 @@ export function passageHtml(text, segmented = "", words = [], edition = "") {
         parts.push(`<p class="verse-gap">${esc(ui.passage.skip)}</p>`);
       }
       if (key) previous = key;
-      parts.push(verseBodyHtml(verse));
+      parts.push(verseBodyHtml(verse, speakingVerse));
     }
   }
   return `<div class="passage${tokens ? " is-tokens" : " is-selectable"}">${parts.join("")}</div>`;
@@ -1008,26 +1087,79 @@ function slug(value) {
     .replace(/[^a-z0-9_]/g, "");
 }
 
+/** English codes only. Chinese labels and free text never become a stats path. */
+export const STATS_DAY_MAX = 27;
+export const FEELING_CORE_IDS = Object.freeze(["joy", "peace", "powerful", "sad", "scared", "mad"]);
+export const FEELING_SLUGS = Object.freeze([
+  "excited",
+  "expectant",
+  "cheerful",
+  "energetic",
+  "creative",
+  "hopeful",
+  "cared_for",
+  "trusting",
+  "loved",
+  "close",
+  "thoughtful",
+  "content",
+  "aware",
+  "proud",
+  "respected",
+  "appreciated",
+  "valued",
+  "faithful",
+  "guilty",
+  "ashamed",
+  "depressed",
+  "lonely",
+  "bored",
+  "tired",
+  "rejected",
+  "confused",
+  "helpless",
+  "withdrawn",
+  "insecure",
+  "anxious",
+  "hurt",
+  "hostile",
+  "angry",
+  "jealous",
+  "resentful",
+  "critical",
+]);
+
+function allowedCode(value, list) {
+  const code = slug(value);
+  return list.includes(code) ? code : "";
+}
+
 /**
  * Anonymous feeling event. Callers must not pass notes; this reads only
  * the controlled vocabulary fields and the intensity number.
+ * The path is English codes from the whitelist, never the written sentence.
  */
 export function anonymousFeelingEvent(dayNumber, before, after) {
-  if (!before?.coreId || !after?.coreId) return null;
-  if (!before.feelingEn || !after.feelingEn) return null;
+  const day = Number(dayNumber);
+  if (!Number.isInteger(day) || day < 1 || day > STATS_DAY_MAX) return null;
+  const beforeCore = allowedCode(before?.coreId, FEELING_CORE_IDS);
+  const afterCore = allowedCode(after?.coreId, FEELING_CORE_IDS);
+  const beforeFeeling = allowedCode(before?.feelingEn, FEELING_SLUGS);
+  const afterFeeling = allowedCode(after?.feelingEn, FEELING_SLUGS);
   const intensityOk = (value) => {
     const level = Number(value);
     return Number.isInteger(level) && level >= 1 && level <= 5;
   };
-  if (!intensityOk(before.intensity) || !intensityOk(after.intensity)) return null;
+  if (!beforeCore || !afterCore || !beforeFeeling || !afterFeeling) return null;
+  if (!intensityOk(before?.intensity) || !intensityOk(after?.intensity)) return null;
   const path = [
-    "anon-feeling",
-    String(dayNumber),
-    slug(before.coreId),
-    slug(before.feelingEn),
+    "feeling",
+    String(day),
+    beforeCore,
+    beforeFeeling,
     String(before.intensity),
-    slug(after.coreId),
-    slug(after.feelingEn),
+    afterCore,
+    afterFeeling,
     String(after.intensity),
   ].join("/");
   return { path, event: true };
