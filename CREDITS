@@ -6,8 +6,8 @@
 第一、二週是 Pixabay 上的樂曲，授權是 Pixabay Content License，不是 CC0。授權不准把音訊以大致未改的形式單獨分發，所以倉庫裏只放為本 app 剪過的版本：單聲道、約 96 kbps，並在樂句邊界做交叉淡入。頁面上沒有下載這些音檔的按鈕或連結。
 第三週仍是 blankie.rest 的 Sleepy Upright Piano Seamless Loop，CC0。第四週是 Kevin MacLeod 的 Silent Night，授權是 CC BY 3.0。
 
-音樂檔只供本 app 使用，不屬於本 repo 的程式授權，請勿單獨再用或轉發；如需使用請到 Pixabay 來源頁下載。
-The music files are for this app only and are not covered by this repository's software licence. Do not reuse or redistribute them on their own; if you need them, download from the Pixabay source page.
+第一、二週的音樂檔（w1.mp3、w2.mp3，Pixabay）只供本 app 使用，請勿單獨再用或轉發；如需使用請到 Pixabay 來源頁下載。第三、四週的音樂按其 CC0／CC BY 3.0 授權使用。
+The week 1 and week 2 music files (w1.mp3 and w2.mp3, Pixabay) are for this app only. Do not reuse or redistribute them on their own; if you need them, download from the Pixabay source page. The week 3 and week 4 music is used under its CC0 and CC BY 3.0 licences.
 
 音樂：Lead Me Back，Adrian_Huminiak（Pixabay）。已剪輯。來源頁 Pixabay Content License
 第一週 assets/bgm/w1.mp3　「在黑暗中等候」
@@ -28,7 +28,7 @@ The music files are for this app only and are not covered by this repository's s
 長度：約 106 秒。來源頁標 4:03。取原曲 48.9 秒至 156.8 秒，共 6 個約 18 秒樂句，再以約 1.6 秒交叉淡入接成循環。單聲道，約 96 kbps。
 
 音樂：Sleepy Upright Piano Seamless Loop，blankie.rest。來源頁 CC0 授權
-第三週 a（預設，只有這一首）assets/bgm/w3-a.mp3　「等候的人」
+第三週 assets/bgm/w3-a.mp3　「等候的人」
 曲名：Sleepy Upright Piano Seamless Loop
 旋律：不是尊主頌。直立鋼琴，比前兩週暖一點，仍保持安靜。
 作者：blankie.rest
@@ -39,7 +39,7 @@ The music files are for this app only and are not covered by this repository's s
 來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
 
 音樂：Silent Night，Kevin MacLeod（incompetech.com）。已剪輯。來源頁 CC BY 3.0
-第四週（只有這一首）assets/bgm/w4.mp3　「降生」
+第四週 assets/bgm/w4.mp3　「降生」
 曲名：Silent Night
 旋律：Kevin MacLeod 的 Silent Night，ISRC USUAN1100075。
 作者：Kevin MacLeod（incompetech.com）

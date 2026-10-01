@@ -443,7 +443,8 @@ assert.match(credits, /音樂：Silent Night，Kevin MacLeod（incompetech\.com�
 assert.match(credits, /音樂：Lead Me Back，Adrian_Huminiak（Pixabay）。已剪輯。來源頁 Pixabay Content License/);
 assert.match(credits, /音樂：Morning Worship，Adrian_Huminiak（Pixabay）。已剪輯。來源頁 Pixabay Content License/);
 assert.match(credits, /音樂：Sleepy Upright Piano Seamless Loop，blankie\.rest。來源頁 CC0 授權/);
-assert.match(credits, /音樂檔只供本 app 使用，不屬於本 repo 的程式授權，請勿單獨再用或轉發；如需使用請到 Pixabay 來源頁下載。/);
+assert.match(credits, /第一、二週的音樂檔（w1\.mp3、w2\.mp3，Pixabay）只供本 app 使用，請勿單獨再用或轉發；如需使用請到 Pixabay 來源頁下載。第三、四週的音樂按其 CC0／CC BY 3\.0 授權使用。/);
+assert.equal(credits.includes("程式授權"), false);
 const speakingCss = readFileSync(new URL("../css/styles.css", import.meta.url), "utf8");
 const speakingRule = speakingCss.slice(speakingCss.indexOf(".verse.is-speaking"), speakingCss.indexOf(".verse-gap"));
 assert.match(speakingRule, /background/);

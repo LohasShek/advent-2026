@@ -95,8 +95,10 @@ python3 scripts/convert_csv.py
 
 ## 背景音樂
 
-音樂檔只供本 app 使用，不屬於本 repo 的程式授權，請勿單獨再用或轉發；如需使用請到 Pixabay 來源頁下載。
-The music files are for this app only and are not covered by this repository's software licence. Do not reuse or redistribute them on their own; if you need them, download from the Pixabay source page.
+第一、二週的音樂檔（w1.mp3、w2.mp3，Pixabay）只供本 app 使用，請勿單獨再用或轉發；如需使用請到 Pixabay 來源頁下載。第三、四週的音樂按其 CC0／CC BY 3.0 授權使用。
+The week 1 and week 2 music files (w1.mp3 and w2.mp3, Pixabay) are for this app only. Do not reuse or redistribute them on their own; if you need them, download from the Pixabay source page. The week 3 and week 4 music is used under its CC0 and CC BY 3.0 licences.
+音樂檔另有授權，見 CREDITS。
+Music files have their own licences; see CREDITS.
 
 ## 離線
 
