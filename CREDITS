@@ -1,7 +1,7 @@
 背景音樂
 
-第一、二週各有兩首候選，預設播該週的 a。第三、四週各有一首。讀經日期（包括 ?asof）決定週次；計劃開始前用第一週，結束後用第四週。
-網址加上 ?week=1、?week=2、?week=3 或 ?week=4 可強制週次。?bgm=b 改播該週的 b，?bgm=a 改回 a。第三、四週沒有另一首，?bgm=b 會播回那一首。
+第一週有四首候選：a、b 仍是舊錄音，c、d 是新的有旋律候選，預設播 a。第二週沒有 a，保留 b，並加 c；沒有 a 時預設播 b。第三、四週各有一首。讀經日期（包括 ?asof）決定週次；計劃開始前用第一週，結束後用第四週。
+網址加上 ?week=1、?week=2、?week=3 或 ?week=4 可強制週次。?bgm=a、?bgm=b、?bgm=c 或 ?bgm=d 改播該週有的那一首；字母不存在時播回該週預設。第三、四週沒有另一首，其他字母會播回那一首。
 
 這些都是符合該週氣氛的輕柔器樂。第四週是 Kevin MacLeod 的 Silent Night，授權是 CC BY 3.0，和前面幾首的 CC0 不同。
 來源頁上的人聲詩歌（例如 Mystery Mammal 的 O Come, O Come, Emmanuel 和 Silent Night）雖標 CC0，但 Free Music Archive 標明 Instrumental: No，所以沒有用作讀經背景音樂。
@@ -33,19 +33,30 @@ CC0 曲目的授權都在 Freesound 的聲音頁核實：頁面寫「Creative Co
 長度：約 87 秒。來源頁標 1:33.859。錄音結尾有淡出，使用時剪去淡出並做交叉淡入，循環沒有靜音，也沒有硬接。
 來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
 
-音樂：upright_piano_loop_7000924_083bpm.wav，stixthule。來源頁 CC0 授權
-第二週 a（預設）assets/bgm/w2-a.mp3　「預備道路」
-曲名：upright_piano_loop_7000924_083bpm.wav
-旋律：不是 On Jordan's Bank 或 Comfort, Comfort Ye My People。直立鋼琴的輕柔循環，和第三週不是同一首，也不是同一位作者。
-作者：stixthule
-來源頁：https://freesound.org/people/stixthule/sounds/593837/
+音樂：Music box lullaby，csnmedia。來源頁 CC0 授權
+第一週 c　assets/bgm/w1-c.mp3　「在黑暗中等候」
+曲名：Music box lullaby
+旋律：八音盒搖籃曲，有清楚的旋律，不是管風琴，也不是單音持續音。和第四週不是同一首。
+作者：csnmedia
+來源頁：https://freesound.org/people/csnmedia/sounds/381973/
 授權：CC0 1.0 Universal（公眾領域貢獻）
 授權頁：http://creativecommons.org/publicdomain/zero/1.0/
-長度：約 69 秒。來源頁標 1:09.397，曲名標明 083bpm。錄音本身可以無縫循環。
+長度：約 84 秒。來源頁標 1:23.980。錄音本身以約 21 秒為一圈重複四次，循環位沒有另做剪接。
 來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
 
+音樂：Tender Moments Acoustic Loop C.wav，BaDoink。已剪輯。來源頁 CC0 授權
+第一週 d　assets/bgm/w1-d.mp3　「在黑暗中等候」
+曲名：Tender Moments Acoustic Loop C.wav
+旋律：木吉他的輕柔撥弦循環，有音符進行，不是管風琴，也不是單音持續音。和八音盒、第二週鋼琴都不同。
+作者：BaDoink
+來源頁：https://freesound.org/people/BaDoink/sounds/548174/
+授權：CC0 1.0 Universal（公眾領域貢獻）
+授權頁：http://creativecommons.org/publicdomain/zero/1.0/
+長度：約 88 秒。來源頁標 1:29.908。循環位做了交叉淡入，沒有靜音段。
+來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。作者說明全部錄音都是 Creative Commons 0。
+
 音樂：Calm Ambient Piano Loop，Jadis0x。來源頁 CC0 授權
-第二週 b　assets/bgm/w2-b.mp3
+第二週 b（沒有 a 時的預設）assets/bgm/w2-b.mp3
 曲名：Calm Ambient Piano Loop
 旋律：不是上述詩歌。簡單的輕柔鋼琴循環。
 作者：Jadis0x
@@ -53,6 +64,17 @@ CC0 曲目的授權都在 Freesound 的聲音頁核實：頁面寫「Creative Co
 授權：CC0 1.0 Universal（公眾領域貢獻）
 授權頁：http://creativecommons.org/publicdomain/zero/1.0/
 長度：約 84 秒。來源頁標 1:26.399。循環位做了交叉淡入，沒有靜音段。
+來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
+
+音樂：soft piano.wav，SonOfTheSinfull。已剪輯。來源頁 CC0 授權
+第二週 c　assets/bgm/w2-c.mp3　「預備道路」
+曲名：soft piano.wav
+旋律：柔和的鋼琴小旋律（Piano One），比同一週的 Calm Ambient Piano Loop 更亮、句子更短，也不是八音盒或木吉他。
+作者：SonOfTheSinfull
+來源頁：https://freesound.org/people/SonOfTheSinfull/sounds/342909/
+授權：CC0 1.0 Universal（公眾領域貢獻）
+授權頁：http://creativecommons.org/publicdomain/zero/1.0/
+長度：約 60 秒。來源頁標 0:59.590。旋律約每 15 秒重複，循環位做了交叉淡入，沒有靜音段。
 來源頁的授權名稱是「Creative Commons 0」，並連結到上述 CC0 授權頁。
 
 音樂：Sleepy Upright Piano Seamless Loop，blankie.rest。來源頁 CC0 授權
@@ -77,7 +99,7 @@ CC0 曲目的授權都在 Freesound 的聲音頁核實：頁面寫「Creative Co
 長度：約 123 秒。Commons 上的原裝 MP3 是 5,369,410 bytes、320 kbps、約 131 秒，和 File:Silent Night (Kevin MacLeod) (ISRC USUAN1100075).oga 是同一段錄音。使用時剪去頭尾靜音並做交叉淡入，再把響度對齊其他週，所以網站裏的檔案是 1,974,214 bytes。
 來源頁的類別是 CC-BY-3.0，授權名稱是 Creative Commons Attribution 3.0。
 
-六首播出來的響度都在整合響度約 -29.3 至 -29.8 LUFS。
+各首播出來的響度都在整合響度約 -29.3 至 -29.8 LUFS。
 
 朗讀使用裝置內建的 Web Speech API（speechSynthesis）。
 不收錄、不產生、不發佈任何朗讀聲檔。

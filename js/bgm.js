@@ -14,8 +14,11 @@
  * iOS 在 speechSynthesis 開始或結束時，可能把正在播的 audio 暫停。
  * 只要開關仍然開著，系統暫停會再 play()，朗讀和音樂可以同時聽。
  *
- * 曲目按讀經週次。預設該週的 a。?week=1..4 強制週次，?bgm=a|b 揀候選。
- * 第三、四週只有一首；?bgm=b 會播回那一首。
+ * 曲目按讀經週次。?week=1..4 強制週次，?bgm=a|b|c|d 揀該週有的候選。
+ * 有 a 的週預設播 a；沒有 a 就播 b。指定的字母不存在時，播回該週預設。
+ * 第一週 a、b 仍是舊錄音，c、d 是新的旋律候選。
+ * 第二週沒有 a，b 是 Calm Ambient Piano Loop，c 是另一首候選。
+ * 第三、四週只有一首。
  * 計劃開始前用第一週，結束後用第四週。
  */
 
@@ -78,19 +81,31 @@ export const BGM_WEEKS = Object.freeze({
       weekLabel: "第一週",
       theme: "在黑暗中等候",
     }),
+    c: track({
+      id: "w1-c",
+      week: 1,
+      slot: "c",
+      src: "./assets/bgm/w1-c.mp3",
+      title: "Music box lullaby",
+      author: "csnmedia",
+      source: "https://freesound.org/people/csnmedia/sounds/381973/",
+      weekLabel: "第一週",
+      theme: "在黑暗中等候",
+    }),
+    d: track({
+      id: "w1-d",
+      week: 1,
+      slot: "d",
+      src: "./assets/bgm/w1-d.mp3",
+      title: "Tender Moments Acoustic Loop C.wav",
+      author: "BaDoink",
+      edited: true,
+      source: "https://freesound.org/people/BaDoink/sounds/548174/",
+      weekLabel: "第一週",
+      theme: "在黑暗中等候",
+    }),
   }),
   2: Object.freeze({
-    a: track({
-      id: "w2-a",
-      week: 2,
-      slot: "a",
-      src: "./assets/bgm/w2-a.mp3",
-      title: "upright_piano_loop_7000924_083bpm.wav",
-      author: "stixthule",
-      source: "https://freesound.org/people/stixthule/sounds/593837/",
-      weekLabel: "第二週",
-      theme: "預備道路",
-    }),
     b: track({
       id: "w2-b",
       week: 2,
@@ -99,6 +114,18 @@ export const BGM_WEEKS = Object.freeze({
       title: "Calm Ambient Piano Loop",
       author: "Jadis0x",
       source: "https://freesound.org/people/Jadis0x/sounds/832628/",
+      weekLabel: "第二週",
+      theme: "預備道路",
+    }),
+    c: track({
+      id: "w2-c",
+      week: 2,
+      slot: "c",
+      src: "./assets/bgm/w2-c.mp3",
+      title: "soft piano.wav",
+      author: "SonOfTheSinfull",
+      edited: true,
+      source: "https://freesound.org/people/SonOfTheSinfull/sounds/342909/",
       weekLabel: "第二週",
       theme: "預備道路",
     }),
@@ -182,8 +209,10 @@ export function resolveBgmTrack(search = "", dateIso = "", days = null, season =
   const params = new URLSearchParams(String(search || "").replace(/^\?/, ""));
   const forced = Number(params.get("week"));
   const week = forced >= 1 && forced <= 4 ? forced : readingWeek(dateIso, days, season);
-  const slot = params.get("bgm") === "b" ? "b" : "a";
-  return BGM_WEEKS[week][slot] || BGM_WEEKS[week].a;
+  const requested = params.get("bgm");
+  const weekTracks = BGM_WEEKS[week];
+  if (requested && weekTracks[requested]) return weekTracks[requested];
+  return weekTracks.a || weekTracks.b || weekTracks.c || weekTracks.d;
 }
 
 export function bgmTrack() {

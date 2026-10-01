@@ -552,7 +552,7 @@ function bgmCreditLine(credit = bgmTrack()) {
 function aboutMusicCredits() {
   const lines = [];
   for (const week of [1, 2, 3, 4]) {
-    for (const slot of ["a", "b"]) {
+    for (const slot of ["a", "b", "c", "d"]) {
       const credit = BGM_WEEKS[week]?.[slot];
       if (credit) lines.push(bgmCreditLine(credit));
     }

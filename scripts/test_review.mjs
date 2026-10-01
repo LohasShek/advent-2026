@@ -224,7 +224,7 @@ assert.equal((cc0Text.match(/CC0/g) || []).length, 1);
 assert.equal(await cc0.locator("a").nth(0).innerText(), "來源頁");
 assert.equal(await cc0.locator("a").nth(1).innerText(), "CC0 授權");
 assert.equal(await cc0.locator("a").nth(1).getAttribute("href"), "http://creativecommons.org/publicdomain/zero/1.0/");
-assert.equal(await page.locator("#music-credit .bgm-credit").count(), 6);
+assert.equal(await page.locator("#music-credit .bgm-credit").count(), 8);
 const editionName = await page.locator("[data-edition='shen']").getAttribute("aria-label");
 assert.equal(editionName, "神版");
 assert.doesNotMatch(editionName, /✓/);
@@ -233,7 +233,7 @@ for (const width of [360, 390, 412]) {
   const broken = await page.evaluate(() => {
     const bad = [];
     const blocks = document.querySelectorAll("#music-credit .bgm-credit");
-    if (blocks.length !== 6) bad.push({ blocks: blocks.length });
+    if (blocks.length !== 8) bad.push({ blocks: blocks.length });
     for (const link of document.querySelectorAll("#music-credit .bgm-credit a")) {
       const tops = [];
       for (const rect of link.getClientRects()) {
