@@ -1337,7 +1337,7 @@ const fullRefs = [
   "路加福音2章8–20節",
 ];
 assert.deepEqual(plan.days.map((day) => day.reference), fullRefs);
-assert.match(plan.days[0].reflect2, /（參 來 5:7）/);
+assert.match(plan.days[0].reflect2, /（參希伯來書5章7節）/);
 assert.equal(plan.days[0].reflect2.includes("詩篇80篇"), false);
 const day1Speak = passageUtterances(plan.days[0].reference, plan.days[0].passage.shen);
 const day8Speak = passageUtterances(plan.days[7].reference, plan.days[7].passage.shen);
