@@ -33,6 +33,9 @@ import {
   reviewIntensity,
   reviewSummary,
   seasonPhase,
+  BREATH_INHALE_MS,
+  BREATH_EXHALE_MS,
+  breathPhaseMs,
 } from "../js/logic.js";
 import {
   initDeviceSpeech,
@@ -41,6 +44,7 @@ import {
   cancelDeviceSpeech,
   pickChineseVoice,
   passageUtterances,
+  speakableReference,
   speakPassage,
   speechPhase,
   pauseSpeech,
@@ -293,6 +297,19 @@ assert.deepEqual(splitSentences("甲。乙！丙？丁；戊"), ["甲。", "乙�
 const multi = passageUtterances("以賽亞", "1 甲。乙！");
 assert.deepEqual(multi.map((line) => line.text), ["以賽亞", "第1節，甲。", "乙！"]);
 assert.deepEqual(multi.map((line) => line.verse), ["", "1", "1"]);
+const sheetDay9 = "瑪拉基書3章1–4節；4章5–6節";
+const sheetSpoken = passageUtterances(sheetDay9, "1 甲。乙。");
+assert.deepEqual(sheetSpoken.map((line) => line.text), ["瑪拉基書3章1至4節；", "4章5至6節", "第1節，甲。", "乙。"]);
+assert.deepEqual(sheetSpoken.map((line) => line.verse), ["", "", "1", "1"]);
+assert.equal(sheetDay9.includes("–"), true);
+assert.equal(sheetSpoken.some((line) => line.text.includes("–")), false);
+assert.equal(sheetSpoken[0].text.endsWith("；"), true);
+assert.equal(speakableReference("詩篇80篇1–7, 17–19節"), "詩篇80篇1至7節，17至19節");
+assert.equal(speakableReference("詩篇85篇"), "詩篇85篇");
+const crossRef = passageUtterances("詩篇80篇1–7, 17–19節", "1 正文。（參 來 5:7）還有。");
+assert.equal(crossRef[0].text, "詩篇80篇1至7節，17至19節");
+assert.match(crossRef.slice(1).map((line) => line.text).join(""), /（參 來 5:7）/);
+assert.equal(crossRef.slice(1).some((line) => line.text.includes("至")), false);
 assert.equal(speakPassage(spokenLines), true);
 assert.equal(calls[0], spokenLines[0].text);
 assert.equal(speechPhase(), "playing");
@@ -445,7 +462,26 @@ assert.match(credits, /音樂：Morning Worship，Adrian_Huminiak（Pixabay）�
 assert.match(credits, /音樂：Sleepy Upright Piano Seamless Loop，blankie\.rest。來源頁 CC0 授權/);
 assert.match(credits, /第一、二週的音樂檔（w1\.mp3、w2\.mp3，Pixabay）只供本 app 使用，請勿單獨再用或轉發；如需使用請到 Pixabay 來源頁下載。第三、四週的音樂按其 CC0／CC BY 3\.0 授權使用。/);
 assert.equal(credits.includes("程式授權"), false);
+assert.equal(BREATH_INHALE_MS, 4000);
+assert.equal(BREATH_EXHALE_MS, 6000);
+for (const reduced of [false, true]) {
+  assert.equal(breathPhaseMs("inhale", reduced), 4000, `inhale reduced=${reduced}`);
+  assert.equal(breathPhaseMs("exhale", reduced), 6000, `exhale reduced=${reduced}`);
+}
+assert.equal(appSource.includes("reduce ? 400"), false);
+assert.match(appSource, /breathPhaseMs\("inhale", reduce\)/);
+assert.match(appSource, /breathPhaseMs\("exhale", reduce\)/);
+assert.match(appSource, /orb\.style\.transform = "none"/);
+assert.match(appSource, /orb\.style\.transition = "none"/);
 const speakingCss = readFileSync(new URL("../css/styles.css", import.meta.url), "utf8");
+const reduceAt = speakingCss.indexOf("@media (prefers-reduced-motion: reduce)");
+const reduceCss = speakingCss.slice(reduceAt, speakingCss.indexOf("@media", reduceAt + 8));
+assert.match(reduceCss, /\.breath-orb,\s*\.breath-orb\.is-in,\s*\.breath-orb\.is-out\s*\{[^}]*transform:\s*none;\s*transition:\s*none;/s);
+assert.doesNotMatch(reduceCss, /scale\(/);
+assert.doesNotMatch(reduceCss, /opacity|visibility/);
+assert.match(speakingCss, /\.breath-orb\.is-in \{[^}]*transform: scale\(1\);[^}]*transition-duration: 4s;/s);
+assert.match(speakingCss, /\.breath-orb\.is-out \{[^}]*transform: scale\(0\.78\);[^}]*transition-duration: 6s;/s);
+assert.match(speakingCss, /transition: transform 4s ease-in-out/);
 const speakingRule = speakingCss.slice(speakingCss.indexOf(".verse.is-speaking"), speakingCss.indexOf(".verse-gap"));
 assert.match(speakingRule, /background/);
 assert.match(speakingRule, /box-shadow/);
@@ -915,10 +951,16 @@ for (const edition of ["shen", "shangdi"]) {
   assert.equal(formatMarkedWords(["量出滿碗"], slots), "「量出滿碗」");
 }
 const uiCopy = JSON.parse(readFileSync(new URL("../ui-strings.json", import.meta.url), "utf8"));
-assert.match(uiCopy.read.tokenHint, /最多 5 處/);
+assert.equal(uiCopy.read.title, "細讀經文");
+assert.equal(uiCopy.read.hint, "建議慢慢閱讀經文兩遍。讀的時候不必分析，適當地讓句子停頓。");
+assert.equal(uiCopy.read.tapHint, "若有感受深刻的字詞，可以點一下字詞記下，再點一下就取消。");
+assert.equal(uiCopy.read.limitHint, "最多可以記錄 5 個重點字詞。");
+assert.equal(uiCopy.read.tokenHint, undefined);
+assert.match(uiCopy.home.lead, /細讀經文/);
+assert.equal(uiCopy.home.lead.includes("慢讀經文"), false);
+assert.equal(JSON.stringify(uiCopy).includes("慢讀經文"), false);
 assert.match(uiCopy.read.selectHint, /最多 5 處/);
 assert.equal(uiCopy.words.limit, "最多選 5 處");
-assert.equal(uiCopy.read.tokenHint.includes("5 個"), false);
 assert.equal(uiCopy.read.selectHint.includes("5 個"), false);
 assert.equal(uiCopy.read.markOn, undefined);
 assert.equal(uiCopy.read.markOff, undefined);
@@ -948,7 +990,7 @@ for (const day of plan.days) {
     assert.ok(words.length > 0 && single < words.length, `第 ${day.day} 日 ${edition} 不應整段退回逐字分詞`);
   }
 }
-const psalm = plan.days.find((day) => day.reference.startsWith("詩 80"));
+const psalm = plan.days.find((day) => day.reference.startsWith("詩篇80篇"));
 assert.equal(psalm.day, 1);
 for (const edition of ["shen", "shangdi"]) {
   const tokens = psalm.segments[edition].split("｜");
@@ -1265,6 +1307,48 @@ assert.match(markingHtml, /class="token is-on/);
 assert.doesNotMatch(markingHtml, /未圈選|已圈選/);
 assert.match(markingHtml, /class="verse is-speaking" data-verse="5"/);
 assert.doesNotMatch(markingHtml, /data-verse="6"[^>]*is-speaking|is-speaking[^>]*data-verse="6"/);
+const fullRefs = [
+  "詩篇80篇1–7, 17–19節",
+  "以賽亞書64章1–9節",
+  "以賽亞書7章10–14節",
+  "以賽亞書9章1–7節",
+  "以賽亞書11章1–10節",
+  "以賽亞書35章1–10節",
+  "以賽亞書40章1–11節",
+  "詩篇85篇",
+  "瑪拉基書3章1–4節；4章5–6節",
+  "馬可福音1章1–8節",
+  "路加福音3章1–6節",
+  "路加福音3章7–14節",
+  "約翰福音1章6–8, 19–28節",
+  "彼得後書3章8–15節",
+  "詩篇126篇",
+  "路加福音1章5–17節",
+  "路加福音1章18–25節",
+  "路加福音1章26–38節",
+  "路加福音1章39–45節",
+  "路加福音1章46–56節",
+  "路加福音1章57–66, 76–79節",
+  "詩篇98篇",
+  "馬太福音1章18–25節",
+  "撒母耳記下7章8–16節",
+  "彌迦書5章2–5節",
+  "路加福音2章1–7節",
+  "路加福音2章8–20節",
+];
+assert.deepEqual(plan.days.map((day) => day.reference), fullRefs);
+assert.match(plan.days[0].reflect2, /（參希伯來書5章7節）/);
+assert.equal(plan.days[0].reflect2.includes("詩篇80篇"), false);
+const day1Speak = passageUtterances(plan.days[0].reference, plan.days[0].passage.shen);
+const day8Speak = passageUtterances(plan.days[7].reference, plan.days[7].passage.shen);
+const day9Speak = passageUtterances(plan.days[8].reference, plan.days[8].passage.shen);
+assert.equal(day1Speak[0].text, "詩篇80篇1至7節，17至19節");
+assert.equal(day8Speak[0].text, "詩篇85篇");
+assert.deepEqual(day9Speak.slice(0, 2).map((line) => line.text), ["瑪拉基書3章1至4節；", "4章5至6節"]);
+assert.equal(passageUtterances(plan.days[12].reference, "1 甲。")[0].text, "約翰福音1章6至8節，19至28節");
+assert.equal(passageUtterances(plan.days[20].reference, "1 甲。")[0].text, "路加福音1章57至66節，76至79節");
+assert.equal(plan.days[0].reference.includes("–"), true);
+assert.equal(plan.days[8].reference.includes("；"), true);
 const day7speak = plan.days.find((day) => day.day === 7);
 const shenSpeak = passageUtterances(day7speak.reference, day7speak.passage.shen).map((line) => line.text).join("\n");
 const shangdiSpeak = passageUtterances(day7speak.reference, day7speak.passage.shangdi).map((line) => line.text).join("\n");

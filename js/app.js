@@ -37,6 +37,7 @@ import {
   reviewSummary,
   seasonPhase,
   weeksOf,
+  breathPhaseMs,
 } from "./logic.js";
 import {
   clearJournal,
@@ -457,8 +458,10 @@ function renderQuiet(day) {
     <h2>${esc(ui.quiet.title)}</h2>
     <p>${esc(ui.quiet.lead)}</p>
     <div class="breath" aria-live="polite">
-      <div class="breath-orb" id="breath-orb"></div>
-      <p class="breath-label" id="breath-label">${esc(ui.quiet.ready)}</p>
+      <div class="breath-stage">
+        <div class="breath-orb" id="breath-orb"></div>
+        <p class="breath-label" id="breath-label">${esc(ui.quiet.ready)}</p>
+      </div>
       <p class="breath-count" id="breath-count">${esc(ui.quiet.total)}</p>
     </div>
     <button type="button" class="btn ghost" data-action="start-breath">${esc(ui.quiet.start)}</button>
@@ -653,11 +656,21 @@ function renderRead(day) {
       );
     }
   }
-  const markHint = mode === "tokens" ? ui.read.tokenHint : ui.read.selectHint;
+  const guideLines = mode === "tokens"
+    ? [
+        { text: ui.read.hint },
+        { text: ui.read.tapHint, live: true },
+        { text: ui.read.limitHint },
+      ]
+    : [
+        { text: ui.read.hint },
+        { text: ui.read.selectHint, live: true },
+      ];
   return `<div class="card reading">
     <h2>${esc(ui.read.title)}</h2>
-    <p class="hint">${esc(ui.read.hint)}</p>
-    <p class="hint" data-live-hint aria-live="polite">${esc(markHint)}</p>
+    ${guideLines
+      .map((line) => `<p class="hint"${line.live ? ' data-live-hint aria-live="polite"' : ""}>${esc(line.text)}</p>`)
+      .join("")}
     ${editionSwitch(edition)}
     ${renderSpeakBar()}
     ${day.focus ? `<p class="focus">${esc(shown(fill(ui.day.focus, { focus: day.focus })))}</p>` : ""}
@@ -1060,6 +1073,10 @@ function startBreath() {
   if (!orb || !label || !count) return;
   const gen = ++app.breathGen;
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduce) {
+    orb.style.transform = "none";
+    orb.style.transition = "none";
+  }
   const tick = (phase, cycle) => {
     if (gen !== app.breathGen) return;
     if (phase === "inhale") {
@@ -1067,7 +1084,7 @@ function startBreath() {
       count.textContent = fill(ui.quiet.cycle, { cycle });
       orb.classList.remove("is-out");
       orb.classList.add("is-in");
-      app.breathTimer = setTimeout(() => tick("exhale", cycle), reduce ? 400 : 4000);
+      app.breathTimer = setTimeout(() => tick("exhale", cycle), breathPhaseMs("inhale", reduce));
       return;
     }
     label.textContent = ui.quiet.exhale;
@@ -1086,7 +1103,7 @@ function startBreath() {
         return;
       }
       tick("inhale", cycle + 1);
-    }, reduce ? 400 : 4000);
+    }, breathPhaseMs("exhale", reduce));
   };
   requestAnimationFrame(() => tick("inhale", 1));
 }

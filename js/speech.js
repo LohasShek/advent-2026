@@ -86,11 +86,30 @@ function cue(text, verse, sentence) {
   return { text: String(text || "").trim(), verse: String(verse || ""), sentence };
 }
 
+/**
+ * Spoken form of the day's reference. Used for both the bundled plan and a
+ * Sheet reference (column 「經文（和合本修訂版）」), which may still contain 「–」.
+ * Screen text is left unchanged. 「–」 becomes 至 so the engine does not say 減.
+ * A verse-list comma （", "） becomes 「節，」, so 「1–7, 17–19節」 is spoken
+ * 「1至7節，17至19節」. 「；」 is kept and treated as a sentence boundary,
+ * so the next range starts after a natural pause.
+ */
+export function speakableReference(reference) {
+  return String(reference || "")
+    .trim()
+    .replaceAll("–", "至")
+    .replaceAll(", ", "節，");
+}
+
 /** Reference first, then one cue per sentence. The first sentence of a verse carries the verse label. */
 export function passageUtterances(reference, passage) {
   const lines = [];
-  const ref = String(reference || "").trim();
-  if (ref) lines.push(cue(ref, "", -1));
+  const ref = speakableReference(reference);
+  if (ref) {
+    const parts = splitSentences(ref);
+    const list = parts.length ? parts : [ref];
+    list.forEach((sentence) => lines.push(cue(sentence, "", -1)));
+  }
   const verses = parseVerses(passage);
   if (!verses.length && String(passage || "").trim()) {
     splitSentences(passage).forEach((sentence, order) => lines.push(cue(sentence, "", order)));

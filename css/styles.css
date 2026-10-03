@@ -229,6 +229,8 @@ a { color: var(--c-purple); }
 .ref {
   margin-top: 0;
   font-size: 1.05rem;
+  line-height: 1.45;
+  overflow-wrap: break-word;
 }
 
 .future {
@@ -318,10 +320,14 @@ a { color: var(--c-purple); }
 
 .passage-ref {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: 0.5rem;
-  align-items: center;
+  gap: 0.35rem 0.5rem;
+  align-items: baseline;
+  min-width: 0;
   font-size: 0.92rem;
+  line-height: 1.45;
+  overflow-wrap: break-word;
 }
 
 .done, .tag {
@@ -447,10 +453,20 @@ a { color: var(--c-purple); }
 
 .breath { text-align: center; margin: 0.4rem 0 0.2rem; }
 
+.breath-stage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem 0.85rem;
+  margin: 0.2rem 0 0.45rem;
+}
+
 .breath-orb {
   width: 9.2rem;
   height: 9.2rem;
-  margin: 0.2rem auto 0.6rem;
+  margin: 0;
+  flex: 0 0 auto;
   border-radius: 50%;
   background:
     radial-gradient(circle at 35% 32%, #fff 0%, rgba(243, 217, 139, 0.95) 26%, rgba(201, 184, 220, 0.95) 68%, rgba(217, 181, 106, 0.85) 100%);
@@ -459,14 +475,23 @@ a { color: var(--c-purple); }
   transition: transform 4s ease-in-out;
 }
 
-.breath-orb.is-in { transform: scale(1); }
-.breath-orb.is-out { transform: scale(0.78); }
+.breath-orb.is-in {
+  transform: scale(1);
+  transition-duration: 4s;
+}
+
+.breath-orb.is-out {
+  transform: scale(0.78);
+  transition-duration: 6s;
+}
 
 .breath-label {
   font-family: var(--font-heading);
-  font-size: 1.35rem;
+  font-size: 1rem;
+  line-height: 1.4;
   color: var(--c-purple);
   margin: 0;
+  min-width: 2.5em;
 }
 
 .breath-count { margin: 0.1rem 0 0.4rem; }
@@ -1047,7 +1072,12 @@ textarea,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .breath-orb { transition: none; }
+  .breath-orb,
+  .breath-orb.is-in,
+  .breath-orb.is-out {
+    transform: none;
+    transition: none;
+  }
 }
 
 @media (min-width: 768px) {
