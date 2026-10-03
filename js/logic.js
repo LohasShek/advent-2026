@@ -4,6 +4,14 @@ import ui from "../ui-strings.json" with { type: "json" };
 
 export const TIMEZONE = "Asia/Hong_Kong";
 
+export const BREATH_INHALE_MS = 4000;
+export const BREATH_EXHALE_MS = 6000;
+
+/** One breath phase. Reduced motion keeps the same 4s inhale and 6s exhale. */
+export function breathPhaseMs(phase, _reducedMotion = false) {
+  return phase === "exhale" ? BREATH_EXHALE_MS : BREATH_INHALE_MS;
+}
+
 /** 「神」留在這些詞裏面。不用前後字猜測。清單沒有「神奇」和「天神」。 */
 export const SHEN_KEEP_WORDS = Object.freeze([
   "精神",

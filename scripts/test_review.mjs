@@ -291,6 +291,138 @@ await bare.waitForSelector("article h1");
 assert.equal(await bare.locator("[data-speak-bar]").count(), 0);
 assert.equal(await bare.locator(".speak-note").count(), 0);
 
+const layout = await browser.newPage();
+await layout.route(/goatcounter\.com|zgo\.at/i, (route) => route.abort());
+await layout.emulateMedia({ reducedMotion: "reduce" });
+await layout.setViewportSize({ width: 390, height: 844 });
+await layout.goto(`${base}/?asof=2026-11-29#/day/1/quiet`, { waitUntil: "domcontentloaded" });
+await layout.waitForSelector("#breath-orb");
+await layout.locator("[data-action='start-breath']").click();
+await layout.waitForFunction(() => document.querySelector("#breath-label")?.textContent === "吸氣");
+const reducedOrb = await layout.evaluate(() => {
+  const orb = document.querySelector("#breath-orb");
+  const style = getComputedStyle(orb);
+  return {
+    transform: style.transform,
+    transition: style.transitionDuration,
+    opacity: style.opacity,
+    visibility: style.visibility,
+    label: document.querySelector("#breath-label").textContent,
+  };
+});
+assert.equal(reducedOrb.label, "吸氣");
+assert.equal(reducedOrb.opacity, "1");
+assert.equal(reducedOrb.visibility, "visible");
+assert.ok(reducedOrb.transform === "none" || reducedOrb.transform === "matrix(1, 0, 0, 1, 0, 0)", reducedOrb.transform);
+await layout.waitForTimeout(700);
+const reducedLater = await layout.evaluate(() => getComputedStyle(document.querySelector("#breath-orb")).transform);
+assert.equal(reducedLater, reducedOrb.transform);
+
+for (const width of [320, 360, 390, 412]) {
+  await layout.setViewportSize({ width, height: 900 });
+  for (const spec of [
+    { url: `/?asof=2026-11-29#/day/1/quiet`, expect: "詩篇80篇1–7, 17–19節" },
+    { url: `/?asof=2026-12-07#/day/9/quiet`, expect: "瑪拉基書3章1–4節；4章5–6節" },
+  ]) {
+    await layout.goto(`${base}${spec.url}`, { waitUntil: "domcontentloaded" });
+    await layout.waitForSelector("article h1");
+    const overflow = await layout.evaluate((expected) => {
+      const view = document.documentElement.clientWidth;
+      const ref = document.querySelector(".ref");
+      const bad = [];
+      if (!ref || ref.textContent !== expected) bad.push(`ref ${ref?.textContent || ""}`);
+      const rect = ref.getBoundingClientRect();
+      if (rect.left < -1 || rect.right > view + 1) bad.push(`ref box ${rect.left},${rect.right}`);
+      if (ref.scrollWidth > ref.clientWidth + 2) bad.push("ref scroll");
+      if (document.documentElement.scrollWidth > view + 1) bad.push("page");
+      return bad;
+    }, spec.expect);
+    assert.deepEqual(overflow, [], `${width} ${spec.expect} ${JSON.stringify(overflow)}`);
+  }
+  await layout.goto(`${base}/?asof=2026-12-25#/plan`, { waitUntil: "domcontentloaded" });
+  await layout.waitForSelector(".passage-ref");
+  const planOverflow = await layout.evaluate(() => {
+    const view = document.documentElement.clientWidth;
+    const bad = [];
+    if (document.documentElement.scrollWidth > view + 1) bad.push("page");
+    for (const el of document.querySelectorAll(".passage-ref")) {
+      const rect = el.getBoundingClientRect();
+      if (rect.right > view + 1 || el.scrollWidth > el.clientWidth + 2) bad.push(el.textContent.slice(0, 24));
+    }
+    return bad;
+  });
+  assert.deepEqual(planOverflow, [], `${width} plan ${JSON.stringify(planOverflow)}`);
+}
+
+const shot = await browser.newContext({
+  viewport: { width: 390, height: 844 },
+  deviceScaleFactor: 2,
+});
+const mobile = await shot.newPage();
+await mobile.route(/goatcounter\.com|zgo\.at|docs\.google\.com|googleapis\.com/i, (route) => route.abort());
+await mobile.emulateMedia({ reducedMotion: "no-preference" });
+await mobile.addInitScript(() => {
+  localStorage.setItem(
+    "advent2026.v1",
+    JSON.stringify({ edition: "shen", shareFeelings: false, days: { 1: { reached: "read", words: [] } } })
+  );
+  const synth = window.speechSynthesis;
+  if (!synth) return;
+  const voices = () => [{ name: "Cantonese", lang: "zh-HK", default: true, localService: true, voiceURI: "zh-HK" }];
+  try {
+    Object.defineProperty(synth, "getVoices", { configurable: true, value: voices });
+  } catch {
+    synth.getVoices = voices;
+  }
+  synth.addEventListener = (type, listener, options) => {
+    if (type === "voiceschanged") return undefined;
+    return EventTarget.prototype.addEventListener.call(synth, type, listener, options);
+  };
+});
+await mobile.goto(`${base}/?asof=2026-11-29#/day/1/quiet`, { waitUntil: "domcontentloaded" });
+await mobile.waitForSelector("#breath-orb");
+await mobile.locator("[data-action='start-breath']").click();
+await mobile.waitForFunction(() => document.querySelector("#breath-label")?.textContent === "吸氣");
+await mobile.waitForTimeout(2000);
+const mid = await mobile.evaluate(() => {
+  const orb = document.querySelector("#breath-orb");
+  const match = /matrix\(([^)]+)\)/.exec(getComputedStyle(orb).transform);
+  const scale = match ? Number(match[1].split(",")[0]) : 1;
+  return { scale, label: document.querySelector("#breath-label").textContent, transition: getComputedStyle(orb).transitionDuration };
+});
+assert.equal(mid.label, "吸氣");
+assert.equal(mid.transition, "4s");
+assert.ok(mid.scale > 0.8 && mid.scale < 0.99, `mid inhale scale ${mid.scale}`);
+await mkdir("/opt/cursor/artifacts/screenshots", { recursive: true });
+await mobile.screenshot({ path: "/tmp/quiet-inhale-390.png" });
+await copyFile("/tmp/quiet-inhale-390.png", "/opt/cursor/artifacts/screenshots/quiet-inhale-390.png");
+
+await mobile.goto(`${base}/?asof=2026-11-29#/day/1/read`, { waitUntil: "domcontentloaded" });
+await mobile.waitForSelector("article h1");
+const readCard = mobile.locator(".card.reading");
+await readCard.waitFor();
+assert.equal(await readCard.locator("h2").innerText(), "細讀經文");
+const readText = await readCard.innerText();
+assert.match(readText, /建議慢慢閱讀經文兩遍。讀的時候不必分析，適當地讓句子停頓。/);
+assert.match(readText, /若有感受深刻的字詞，可以點一下字詞記下，再點一下就取消。/);
+assert.match(readText, /最多可以記錄 5 個重點字詞。/);
+assert.doesNotMatch(readText, /點一下字詞就可以記下，再點一下就取消。最多 5 處。/);
+await readCard.screenshot({ path: "/tmp/read-guide-390.png" });
+await copyFile("/tmp/read-guide-390.png", "/opt/cursor/artifacts/screenshots/read-guide-390.png");
+
+await mobile.goto(`${base}/?asof=2026-11-29#/day/1/quiet`, { waitUntil: "domcontentloaded" });
+await mobile.waitForSelector(".ref");
+assert.equal(await mobile.locator(".ref").innerText(), "詩篇80篇1–7, 17–19節");
+await mobile.screenshot({ path: "/tmp/day1-header-390.png", clip: { x: 0, y: 0, width: 390, height: 420 } });
+await copyFile("/tmp/day1-header-390.png", "/opt/cursor/artifacts/screenshots/day1-header-390.png");
+
+await mobile.goto(`${base}/?asof=2026-12-07#/day/9/quiet`, { waitUntil: "domcontentloaded" });
+await mobile.waitForSelector(".ref");
+assert.equal(await mobile.locator(".ref").innerText(), "瑪拉基書3章1–4節；4章5–6節");
+await mobile.screenshot({ path: "/tmp/day9-header-390.png", clip: { x: 0, y: 0, width: 390, height: 420 } });
+await copyFile("/tmp/day9-header-390.png", "/opt/cursor/artifacts/screenshots/day9-header-390.png");
+await shot.close();
+
 await browser.close();
 server.close();
 console.log(`verse height unchanged: ${heightChanges.map((row) => `${row.width}px height ${row.heightChanged}, lines ${row.linesChanged}`).join("; ")}`);
