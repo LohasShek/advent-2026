@@ -358,6 +358,12 @@ a { color: var(--c-purple); }
 
 .steps::-webkit-scrollbar { display: none; }
 
+/* Christmas adds 總回顧. Wrap that row so every label stays on screen. */
+main[data-day="27"] .steps {
+  flex-wrap: wrap;
+  overflow-x: visible;
+}
+
 .steps a,
 .steps span {
   flex: 0 0 auto;
