@@ -1070,6 +1070,52 @@ export function countCores(picks) {
   return [...map.values()].sort((a, b) => b.n - a.n || a.zh.localeCompare(b.zh, "zh-Hant"));
 }
 
+function passageSlotsForEdition(day, edition) {
+  const chosen = edition === "shangdi" ? "shangdi" : "shen";
+  const text = day?.passage?.[chosen] || "";
+  const segmented = day?.segments?.[chosen] || "";
+  if (segmentMode(text, segmented) !== "tokens") return [];
+  return passageSlots(text, segmented);
+}
+
+/**
+ * Circled words inside the same day span as the feeling bars.
+ * Weekly reviews use the previous seven days; the season review uses day 1
+ * through the review day itself. Each saved circle counts once, in the wording
+ * of the edition on screen.
+ */
+export function reviewWordCounts(day, planDays, daysState, edition = "shen") {
+  const bounds = reviewBounds(day);
+  if (!bounds || !Array.isArray(planDays)) return [];
+  const chosen = edition === "shangdi" ? "shangdi" : "shen";
+  const map = new Map();
+  for (const item of planDays) {
+    if (item.day < bounds.fromDay || item.day > bounds.toDay) continue;
+    const entry = daysState?.[String(item.day)] ?? daysState?.[item.day];
+    const slots = passageSlotsForEdition(item, chosen);
+    const list = slots.length ? resolveWords(entry?.words, slots, chosen) : normalizeWords(entry?.words);
+    for (const word of list) {
+      const text = String(wordLabel(word, slots) || "").trim();
+      if (!text) continue;
+      const current = map.get(text) || { word: text, n: 0 };
+      current.n += 1;
+      map.set(text, current);
+    }
+  }
+  return [...map.values()].sort((a, b) => b.n - a.n || a.word.localeCompare(b.word, "zh-Hant"));
+}
+
+/** Font size in rem. One mention stays small; the highest count in the cloud is the largest. */
+export function wordCloudRem(count, highest) {
+  const small = 1;
+  const large = 2.05;
+  const top = Number(highest);
+  const n = Number(count);
+  if (!Number.isFinite(top) || top <= 1 || !Number.isFinite(n) || n <= 1) return small;
+  const span = Math.min(1, Math.max(0, (n - 1) / (top - 1)));
+  return Math.round((small + span * (large - small)) * 100) / 100;
+}
+
 export function reviewSummary(beforeCounts, afterCounts) {
   const line = (counts, label) => {
     if (!counts.length) return "";

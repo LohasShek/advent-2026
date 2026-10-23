@@ -32,6 +32,8 @@ import {
   reviewBounds,
   reviewIntensity,
   reviewSummary,
+  reviewWordCounts,
+  wordCloudRem,
   seasonPhase,
   BREATH_INHALE_MS,
   BREATH_EXHALE_MS,
@@ -144,6 +146,57 @@ assert.equal(reviewBounds(plan.days[14]).fromDay, 8);
 assert.equal(reviewBounds(plan.days[21]).fromDay, 15);
 assert.equal(reviewBounds(plan.days[21]).toDay, 21);
 assert.deepEqual(reviewBounds(plan.days[26]), { fromDay: 1, toDay: 27, scope: "season" });
+
+const wordJournal = {
+  1: { words: ["平安", "光"] },
+  2: { words: ["平安"] },
+  7: { words: ["嫩枝", "平安"] },
+  8: { words: ["伯利恆"] },
+  14: { words: ["等候"] },
+  15: { words: ["天使"] },
+  22: { words: ["馬槽"] },
+  27: { words: ["聖誕", "平安"] },
+};
+const byCount = (counts, word) => counts.find((item) => item.word === word)?.n || 0;
+const week8Words = reviewWordCounts(plan.days[7], plan.days, wordJournal, "shen");
+assert.equal(week8Words[0].word, "平安");
+assert.equal(week8Words[0].n, 3);
+assert.equal(byCount(week8Words, "光"), 1);
+assert.equal(byCount(week8Words, "嫩枝"), 1);
+assert.equal(byCount(week8Words, "伯利恆"), 0);
+assert.equal(byCount(week8Words, "等候"), 0);
+assert.equal(byCount(week8Words, "聖誕"), 0);
+assert.deepEqual(
+  week8Words.slice(1).map((item) => item.word),
+  ["光", "嫩枝"].sort((a, b) => a.localeCompare(b, "zh-Hant"))
+);
+const week15Words = reviewWordCounts(plan.days[14], plan.days, wordJournal, "shen");
+assert.equal(byCount(week15Words, "伯利恆"), 1);
+assert.equal(byCount(week15Words, "等候"), 1);
+assert.equal(byCount(week15Words, "平安"), 0);
+assert.equal(byCount(week15Words, "天使"), 0);
+const week22Words = reviewWordCounts(plan.days[21], plan.days, wordJournal, "shen");
+assert.deepEqual(week22Words, [{ word: "天使", n: 1 }]);
+const seasonWords = reviewWordCounts(plan.days[26], plan.days, wordJournal, "shen");
+assert.equal(byCount(seasonWords, "平安"), 4);
+assert.equal(byCount(seasonWords, "伯利恆"), 1);
+assert.equal(byCount(seasonWords, "天使"), 1);
+assert.equal(byCount(seasonWords, "馬槽"), 1);
+assert.equal(byCount(seasonWords, "聖誕"), 1);
+assert.equal(seasonWords[0].word, "平安");
+assert.deepEqual(reviewWordCounts(plan.days[0], plan.days, wordJournal, "shen"), []);
+assert.deepEqual(reviewWordCounts(plan.days[7], plan.days, {}, "shen"), []);
+assert.deepEqual(reviewWordCounts(plan.days[7], plan.days, { 3: { words: [] } }, "shen"), []);
+assert.deepEqual(reviewWordCounts(plan.days[7], plan.days, { 3: {} }, "shen"), []);
+const capped = reviewWordCounts(plan.days[7], plan.days, { 1: { words: ["一", "二", "三", "四", "五", "六"] } }, "shen");
+assert.equal(capped.length, 5);
+assert.equal(byCount(capped, "六"), 0);
+assert.equal(byCount(reviewWordCounts(plan.days[7], plan.days, { 1: { words: [null, "", "  ", { nope: true }, "光"] } }, "shen"), "光"), 1);
+assert.equal(wordCloudRem(1, 1), 1);
+assert.equal(wordCloudRem(1, 4), 1);
+assert.ok(wordCloudRem(4, 4) > wordCloudRem(2, 4));
+assert.ok(wordCloudRem(2, 4) > wordCloudRem(1, 4));
+assert.equal(appSource.includes("reviewWordCounts("), true);
 
 const day1 = parseVerses(plan.days[0].passage.shen);
 assert.deepEqual(day1.map((verse) => verse.n), ["1", "2", "3", "4", "5", "6", "7", "17", "18", "19"]);
@@ -1119,6 +1172,16 @@ assert.equal(spokenMark.length, 1);
 assert.equal(spokenMark[0].shen, "神的話");
 assert.equal(spokenMark[0].shangdi, "上帝的話");
 assert.equal(formatMarkedWords(spokenMark, shangdiSlots, "shangdi"), "「上帝的話」");
+assert.deepEqual(reviewWordCounts(plan.days[7], plan.days, { 7: { words: spokenMark } }, "shen"), [{ word: "神的話", n: 1 }]);
+assert.deepEqual(reviewWordCounts(plan.days[7], plan.days, { 7: { words: spokenMark } }, "shangdi"), [{ word: "上帝的話", n: 1 }]);
+const day19ForWords = plan.days.find((day) => day.day === 19);
+const repeatSlots = passageSlots(day19ForWords.passage.shen, day19ForWords.segments.shen);
+const repeatPlaces = repeatSlots.filter((slot) => slot.text === "懷的胎");
+let repeatedOnDay = toggleWord([], "懷的胎", { slots: repeatSlots, slotIndex: repeatSlots.indexOf(repeatPlaces[0]) }).words;
+repeatedOnDay = toggleWord(repeatedOnDay, "懷的胎", { slots: repeatSlots, slotIndex: repeatSlots.indexOf(repeatPlaces[1]) }).words;
+assert.equal(repeatedOnDay.length, 2);
+assert.deepEqual(reviewWordCounts(plan.days[21], plan.days, { 19: { words: repeatedOnDay } }, "shen"), [{ word: "懷的胎", n: 2 }]);
+assert.deepEqual(reviewWordCounts(plan.days[14], plan.days, { 19: { words: repeatedOnDay } }, "shen"), []);
 const shiftedText = "1 別字甲量出滿碗。";
 const shiftedSegments = "1 ｜別字｜甲｜量出｜滿碗｜。";
 const shiftedSlots = passageSlots(shiftedText, shiftedSegments);

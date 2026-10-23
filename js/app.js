@@ -35,6 +35,8 @@ import {
   reviewBounds,
   reviewIntensity,
   reviewSummary,
+  reviewWordCounts,
+  wordCloudRem,
   seasonPhase,
   weeksOf,
   breathPhaseMs,
@@ -408,6 +410,34 @@ function renderBars(counts, label) {
   return `<div class="bar-block"><p>${esc(label)}</p><div class="bars" aria-hidden="true">${segs}</div><p class="legend">${legend}</p></div>`;
 }
 
+function renderWordStats(day) {
+  const counts = reviewWordCounts(day, app.plan.days, app.state.days, currentEdition());
+  if (!counts.length) {
+    return `<section class="word-stats">
+      <h3>${esc(ui.review.wordsTitle)}</h3>
+      <p class="muted">${esc(ui.review.wordsEmpty)}</p>
+    </section>`;
+  }
+  const highest = counts[0].n;
+  const cloud = counts
+    .map((item) => `<span style="font-size:${wordCloudRem(item.n, highest)}rem">${esc(item.word)}</span>`)
+    .join("");
+  const rows = counts
+    .map((item) => `<tr><th scope="row">${esc(item.word)}</th><td class="count">${item.n}</td></tr>`)
+    .join("");
+  return `<section class="word-stats">
+    <h3>${esc(ui.review.wordsTitle)}</h3>
+    <div class="word-cloud" aria-hidden="true">${cloud}</div>
+    <table class="word-freq">
+      <caption class="sr-only">${esc(ui.review.wordsCaption)}</caption>
+      <thead>
+        <tr><th scope="col">${esc(ui.review.wordColumn)}</th><th scope="col" class="count">${esc(ui.review.countColumn)}</th></tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </section>`;
+}
+
 function renderReview(day) {
   const bounds = reviewBounds(day);
   const slice = app.plan.days.filter((item) => item.day >= bounds.fromDay && item.day <= bounds.toDay);
@@ -436,6 +466,7 @@ function renderReview(day) {
     <p class="summary">${esc(reviewSummary(countCores(beforePicks), countCores(afterPicks)))}</p>
     ${renderBars(countCores(beforePicks), ui.review.beforeLabel)}
     ${renderBars(countCores(afterPicks), ui.review.afterLabel)}
+    ${renderWordStats(day)}
     <div class="rev-list">${rows}</div>
     <button type="button" class="btn" data-action="next">${esc(ui.review.toPrayer)}</button>
   </div>`;
