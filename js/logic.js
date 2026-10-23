@@ -1108,12 +1108,132 @@ export function reviewWordCounts(day, planDays, daysState, edition = "shen") {
 /** Font size in rem. One mention stays small; the highest count in the cloud is the largest. */
 export function wordCloudRem(count, highest) {
   const small = 1;
-  const large = 2.05;
+  const large = 2.7;
   const top = Number(highest);
   const n = Number(count);
   if (!Number.isFinite(top) || top <= 1 || !Number.isFinite(n) || n <= 1) return small;
   const span = Math.min(1, Math.max(0, (n - 1) / (top - 1)));
   return Math.round((small + span * (large - small)) * 100) / 100;
+}
+
+/** Hues drawn from the existing watercolor palette. CSS maps each name to a color. */
+export const WORD_CLOUD_HUES = Object.freeze(["purple", "peace", "blue", "gold", "lavender", "ink"]);
+
+function cloudHash(word) {
+  let hash = 2166136261;
+  for (const char of String(word || "")) {
+    hash ^= char.codePointAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+export function wordCloudHue(word) {
+  return WORD_CLOUD_HUES[cloudHash(word) % WORD_CLOUD_HUES.length];
+}
+
+/** 0, 90, or -90. The most frequent word stays horizontal unless it cannot fit. */
+export function wordCloudAngle(word, rank) {
+  if (rank === 0) return 0;
+  const hash = cloudHash(word);
+  const vertical = hash % 2 === 0 ? 90 : -90;
+  if (String(word || "").length >= 4) return vertical;
+  return hash % 2 === 0 ? 0 : vertical;
+}
+
+function cloudBoxesOverlap(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+/**
+ * Pack words into a dense cluster. `measure(word, rem)` returns the unrotated
+ * pixel size. Rotation is only 0 or ±90 so the boxes stay upright.
+ */
+export function placeWordCloud(items, measure, boxWidth) {
+  const width = Math.max(0, Number(boxWidth) || 0);
+  const list = Array.isArray(items) ? items.filter((item) => item && String(item.word || "").trim()) : [];
+  if (!width || !list.length || typeof measure !== "function") return { width, height: 0, words: [] };
+  const pad = 1;
+  const placed = [];
+  const aspect = 0.96;
+
+  function unrotated(item) {
+    const size = measure(item.word, item.rem) || { width: 0, height: 0 };
+    const textW = Math.max(0, Number(size.width) || 0);
+    const textH = Math.max(0, Number(size.height) || 0);
+    return { textW, textH };
+  }
+
+  function orientation(item, rank, textW, textH) {
+    let rotation = wordCloudAngle(item.word, rank);
+    const horizontalFits = textW <= width - 4;
+    const verticalFits = textH <= width - 4;
+    if (rotation === 0 && !horizontalFits && verticalFits) {
+      rotation = cloudHash(item.word) % 2 === 0 ? 90 : -90;
+    } else if (rotation !== 0 && !verticalFits && horizontalFits) {
+      rotation = 0;
+    }
+    if (rotation === 0) return { rotation, boxW: textW, boxH: textH };
+    return { rotation, boxW: textH, boxH: textW };
+  }
+
+  function spotAt(cx, cy, boxW, boxH) {
+    const w = boxW + pad * 2;
+    const h = boxH + pad * 2;
+    const x = cx - w / 2;
+    const y = cy - h / 2;
+    if (x < 0 || x + w > width) return null;
+    const box = { x, y, w, h };
+    for (const other of placed) {
+      if (cloudBoxesOverlap(box, other)) return null;
+    }
+    return box;
+  }
+
+  function findSpot(boxW, boxH) {
+    const origin = spotAt(width / 2, 0, boxW, boxH);
+    if (origin) return origin;
+    let theta = 0;
+    let radius = 0;
+    for (let step = 0; step < 2800; step += 1) {
+      theta += 0.38;
+      radius += 0.72;
+      const cx = width / 2 + Math.cos(theta) * radius;
+      const cy = Math.sin(theta) * radius * aspect;
+      const spot = spotAt(cx, cy, boxW, boxH);
+      if (spot) return spot;
+    }
+    const bottom = placed.reduce((max, box) => Math.max(max, box.y + box.h), 0);
+    const w = boxW + pad * 2;
+    const h = boxH + pad * 2;
+    return { x: Math.max(0, (width - w) / 2), y: bottom, w, h };
+  }
+
+  list.forEach((item, rank) => {
+    const { textW, textH } = unrotated(item);
+    if (textW < 1 || textH < 1) return;
+    const { rotation, boxW, boxH } = orientation(item, rank, textW, textH);
+    const box = findSpot(boxW, boxH);
+    placed.push({ ...box, word: String(item.word), rem: item.rem, rotation });
+  });
+  if (!placed.length) return { width, height: 0, words: [] };
+
+  const minX = Math.min(...placed.map((box) => box.x));
+  const maxX = Math.max(...placed.map((box) => box.x + box.w));
+  const minY = Math.min(...placed.map((box) => box.y));
+  const maxY = Math.max(...placed.map((box) => box.y + box.h));
+  let shiftX = (width - (maxX - minX)) / 2 - minX;
+  if (minX + shiftX < 0) shiftX -= minX + shiftX;
+  if (maxX + shiftX > width) shiftX -= maxX + shiftX - width;
+  const shiftY = 2 - minY;
+  const words = placed.map((box) => ({
+    word: box.word,
+    rem: box.rem,
+    rotation: box.rotation,
+    x: box.x + shiftX + box.w / 2,
+    y: box.y + shiftY + box.h / 2,
+  }));
+  return { width, height: maxY - minY + 4, words };
 }
 
 export function reviewSummary(beforeCounts, afterCounts) {

@@ -34,6 +34,10 @@ import {
   reviewSummary,
   reviewWordCounts,
   wordCloudRem,
+  wordCloudHue,
+  wordCloudAngle,
+  placeWordCloud,
+  WORD_CLOUD_HUES,
   seasonPhase,
   BREATH_INHALE_MS,
   BREATH_EXHALE_MS,
@@ -197,6 +201,66 @@ assert.equal(wordCloudRem(1, 4), 1);
 assert.ok(wordCloudRem(4, 4) > wordCloudRem(2, 4));
 assert.ok(wordCloudRem(2, 4) > wordCloudRem(1, 4));
 assert.equal(appSource.includes("reviewWordCounts("), true);
+assert.equal(appSource.includes("placeWordCloud("), true);
+assert.equal(wordCloudAngle("平安", 0), 0);
+assert.ok([-90, 0, 90].includes(wordCloudAngle("以馬內利", 2)));
+assert.equal(wordCloudAngle("以馬內利", 2) === 0, false);
+assert.ok(WORD_CLOUD_HUES.includes(wordCloudHue("平安")));
+assert.equal(wordCloudHue("平安"), wordCloudHue("平安"));
+function cloudMeasure(word, rem) {
+  const px = Number(rem) * 16;
+  return { width: String(word).length * px, height: px * 1.15 };
+}
+const cloudItems = [
+  { word: "平安", rem: 2.05 },
+  { word: "回轉", rem: 1.45 },
+  { word: "以馬內利", rem: 1.2 },
+  { word: "眼淚", rem: 1 },
+  { word: "等候", rem: 1 },
+  { word: "嫩枝", rem: 1 },
+  { word: "安慰", rem: 1 },
+  { word: "大光", rem: 1 },
+  { word: "聖路", rem: 1 },
+];
+const packed = placeWordCloud(cloudItems, cloudMeasure, 328);
+assert.equal(packed.words.length, cloudItems.length);
+assert.equal(packed.words[0].rotation, 0);
+assert.equal(packed.words[0].word, "平安");
+assert.ok(packed.words.some((item) => item.rotation === 90 || item.rotation === -90));
+assert.ok(packed.words.every((item) => [-90, 0, 90].includes(item.rotation)));
+assert.ok(packed.height > cloudMeasure("平安", 2.05).height);
+const cloudAgain = placeWordCloud(cloudItems, cloudMeasure, 328);
+assert.deepEqual(cloudAgain, packed);
+for (let i = 0; i < packed.words.length; i += 1) {
+  const a = packed.words[i];
+  const size = cloudMeasure(a.word, a.rem);
+  const aw = a.rotation === 0 ? size.width : size.height;
+  const ah = a.rotation === 0 ? size.height : size.width;
+  assert.ok(a.x - aw / 2 >= -1, a.word);
+  assert.ok(a.x + aw / 2 <= 329, a.word);
+  for (let j = i + 1; j < packed.words.length; j += 1) {
+    const b = packed.words[j];
+    const bsize = cloudMeasure(b.word, b.rem);
+    const bw = b.rotation === 0 ? bsize.width : bsize.height;
+    const bh = b.rotation === 0 ? bsize.height : bsize.width;
+    const separated =
+      a.x + aw / 2 <= b.x - bw / 2 + 0.6 ||
+      b.x + bw / 2 <= a.x - aw / 2 + 0.6 ||
+      a.y + ah / 2 <= b.y - bh / 2 + 0.6 ||
+      b.y + bh / 2 <= a.y - ah / 2 + 0.6;
+    assert.equal(separated, true, `${a.word} overlaps ${b.word}`);
+  }
+}
+const wide = placeWordCloud(
+  [
+    { word: "很長很長的一句話", rem: 2 },
+    { word: "光", rem: 1 },
+  ],
+  cloudMeasure,
+  180
+);
+assert.notEqual(wide.words[0].rotation, 0);
+assert.deepEqual(placeWordCloud([], cloudMeasure, 328), { width: 328, height: 0, words: [] });
 
 const day1 = parseVerses(plan.days[0].passage.shen);
 assert.deepEqual(day1.map((verse) => verse.n), ["1", "2", "3", "4", "5", "6", "7", "17", "18", "19"]);

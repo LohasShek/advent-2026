@@ -37,6 +37,8 @@ import {
   reviewSummary,
   reviewWordCounts,
   wordCloudRem,
+  wordCloudHue,
+  placeWordCloud,
   seasonPhase,
   weeksOf,
   breathPhaseMs,
@@ -420,7 +422,10 @@ function renderWordStats(day) {
   }
   const highest = counts[0].n;
   const cloud = counts
-    .map((item) => `<span style="font-size:${wordCloudRem(item.n, highest)}rem">${esc(item.word)}</span>`)
+    .map(
+      (item) =>
+        `<span data-hue="${wordCloudHue(item.word)}" style="font-size:${wordCloudRem(item.n, highest)}rem">${esc(item.word)}</span>`
+    )
     .join("");
   const rows = counts
     .map((item) => `<tr><th scope="row">${esc(item.word)}</th><td class="count">${item.n}</td></tr>`)
@@ -1030,6 +1035,55 @@ function announce(message) {
   }, 40);
 }
 
+function layoutWordCloud(force = false) {
+  const cloud = document.querySelector(".word-cloud");
+  if (!cloud) {
+    app.cloudObserver?.disconnect();
+    return;
+  }
+  const width = Math.round(cloud.clientWidth);
+  if (width < 80) return;
+  if (!force && cloud.dataset.box === String(width) && cloud.classList.contains("is-ready")) return;
+  const spans = [...cloud.querySelectorAll("span")];
+  if (!spans.length) return;
+  const sizes = new Map();
+  const items = [];
+  for (const span of spans) {
+    const word = span.textContent || "";
+    const rem = Number.parseFloat(span.style.fontSize) || 1;
+    sizes.set(word, { width: span.offsetWidth, height: span.offsetHeight });
+    items.push({ word, rem });
+  }
+  if ([...sizes.values()].some((size) => size.width < 1 || size.height < 1)) return;
+  const placed = placeWordCloud(items, (word) => sizes.get(word), width);
+  cloud.style.height = `${Math.ceil(placed.height)}px`;
+  for (const span of spans) {
+    const spot = placed.words.find((item) => item.word === span.textContent);
+    if (!spot) continue;
+    span.dataset.rotate = String(spot.rotation);
+    span.style.left = `${spot.x}px`;
+    span.style.top = `${spot.y}px`;
+    span.style.transform = `translate(-50%, -50%) rotate(${spot.rotation}deg)`;
+  }
+  cloud.dataset.box = String(width);
+  cloud.classList.add("is-ready");
+  if (!app.cloudObserver && typeof ResizeObserver !== "undefined") {
+    app.cloudObserver = new ResizeObserver(() => layoutWordCloud());
+  }
+  if (app.cloudObserver) {
+    app.cloudObserver.disconnect();
+    app.cloudObserver.observe(cloud);
+  }
+  if (!force && document.fonts && document.fonts.status !== "loaded") {
+    const generation = (app.cloudGen || 0) + 1;
+    app.cloudGen = generation;
+    document.fonts.ready.then(() => {
+      if (app.cloudGen !== generation) return;
+      layoutWordCloud(true);
+    });
+  }
+}
+
 function render() {
   if (app.plan) selectBgmTrack(location.search || "", todayISO(), app.plan.days, app.plan.season);
   paintBgmHeader();
@@ -1083,6 +1137,7 @@ function render() {
   }
 
   paintSpeakingVerse();
+  layoutWordCloud();
   if (viewChanged) {
     window.scrollTo(0, 0);
     main.focus({ preventScroll: true });

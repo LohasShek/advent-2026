@@ -850,22 +850,35 @@ input[type="text"], textarea {
 .word-stats h3 { margin: 0.85rem 0 0.35rem; }
 
 .word-cloud {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: baseline;
-  gap: 0.45rem 0.75rem;
+  position: relative;
+  width: 100%;
   margin: 0.15rem 0 0.85rem;
-  line-height: 1.35;
-  text-align: center;
+  min-height: 0;
 }
 
+.word-cloud:not(.is-ready) { min-height: 7.5rem; }
+
 .word-cloud span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  margin: 0;
+  white-space: nowrap;
+  line-height: 1;
   font-family: var(--font-heading);
+  font-weight: 700;
   color: var(--c-ink);
-  line-height: 1.25;
-  max-width: 100%;
+  transform-origin: center center;
 }
+
+.word-cloud:not(.is-ready) span { visibility: hidden; }
+
+.word-cloud span[data-hue="purple"] { color: var(--c-purple); }
+.word-cloud span[data-hue="ink"] { color: var(--c-ink); }
+.word-cloud span[data-hue="peace"] { color: color-mix(in srgb, var(--emo-peace) 52%, #1b3428); }
+.word-cloud span[data-hue="blue"] { color: color-mix(in srgb, var(--c-greyblue) 48%, #1a3148); }
+.word-cloud span[data-hue="gold"] { color: color-mix(in srgb, var(--c-gold) 50%, #3a2910); }
+.word-cloud span[data-hue="lavender"] { color: color-mix(in srgb, var(--c-lavender) 50%, #2c223c); }
 
 .word-freq {
   width: 100%;
