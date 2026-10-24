@@ -68,7 +68,12 @@
     "topOne": "{label}出現得最多的是{name}",
     "empty": "這段日子還沒有感受紀錄。沒有紀錄也沒有關係，你可以安靜回想，或回到其中一天補記。",
     "notRecorded": "未記",
-    "toPrayer": "帶著這些去祈禱"
+    "toPrayer": "帶著這些去祈禱",
+    "wordsTitle": "圈選字詞",
+    "wordsEmpty": "這段日子還沒有圈選字詞。",
+    "wordsCaption": "圈選字詞出現次數",
+    "wordColumn": "字詞",
+    "countColumn": "次數"
   },
   "home": {
     "kicker": "香港時間 · {date} 開始",

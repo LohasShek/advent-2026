@@ -847,6 +847,74 @@ input[type="text"], textarea {
 .bars span { display: block; height: 100%; }
 .legend { opacity: 0.85; }
 
+.word-stats h3 { margin: 0.85rem 0 0.35rem; }
+
+.word-cloud {
+  position: relative;
+  width: 100%;
+  margin: 0.15rem 0 0.85rem;
+  min-height: 0;
+}
+
+.word-cloud:not(.is-ready) { min-height: 7.5rem; }
+
+.word-cloud span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  margin: 0;
+  white-space: nowrap;
+  line-height: 1;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: var(--c-ink);
+  transform-origin: center center;
+}
+
+.word-cloud:not(.is-ready) span { visibility: hidden; }
+
+.word-cloud span[data-hue="purple"] { color: var(--c-purple); }
+.word-cloud span[data-hue="ink"] { color: var(--c-ink); }
+.word-cloud span[data-hue="peace"] { color: color-mix(in srgb, var(--emo-peace) 52%, #1b3428); }
+.word-cloud span[data-hue="blue"] { color: color-mix(in srgb, var(--c-greyblue) 48%, #1a3148); }
+.word-cloud span[data-hue="gold"] { color: color-mix(in srgb, var(--c-gold) 50%, #3a2910); }
+.word-cloud span[data-hue="lavender"] { color: color-mix(in srgb, var(--c-lavender) 50%, #2c223c); }
+
+.word-freq {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 0.35rem;
+  font-size: 0.98rem;
+}
+
+.word-freq th,
+.word-freq td {
+  text-align: left;
+  padding: 0.4rem 0.15rem;
+  border-bottom: 1px solid var(--c-line);
+  vertical-align: baseline;
+}
+
+.word-freq thead th {
+  font-family: var(--font-heading);
+  font-weight: 400;
+  color: var(--c-purple);
+  font-size: 0.92rem;
+}
+
+.word-freq tbody th {
+  font-weight: 400;
+  color: var(--c-ink);
+  overflow-wrap: anywhere;
+}
+
+.word-freq .count {
+  text-align: right;
+  width: 4.2rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .rev-row {
   padding: 0.55rem 0;
   border-top: 1px solid var(--c-line);
